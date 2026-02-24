@@ -117,7 +117,12 @@ export async function GET(request: NextRequest) {
       )
       .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`);
 
-    // Recent issuances (with all filters including CA)
+    // Recent issuances: prefer final certs over precerts for the display list.
+    // Precerts at the ingestion frontier haven't had their final cert arrive yet,
+    // so we skip them here to avoid showing transient entries.
+    const recentConditions = caConditions.length > 0
+      ? [...caConditions, eq(certificates.isPrecert, false)]
+      : [eq(certificates.isPrecert, false)];
     const recentCerts = await db
       .select({
         id: certificates.id,
@@ -134,7 +139,7 @@ export async function GET(request: NextRequest) {
         isPrecert: certificates.isPrecert,
       })
       .from(certificates)
-      .where(caWhere)
+      .where(and(...recentConditions))
       .orderBy(desc(certificates.notBefore))
       .limit(10);
 
