@@ -260,10 +260,12 @@ export function parseChainFromExtraData(
 
 /** Extract a field from an X.500 Distinguished Name string */
 function extractDnField(dn: string, field: string): string | null {
-  // DN format: "CN=foo, O=bar, C=US" or "CN=foo,O=bar,C=US"
-  const regex = new RegExp(`(?:^|,)\\s*${field}=([^,]+)`, "i");
+  // DN format: "CN=foo, O=bar, C=US" - commas within values are escaped as \,
+  const regex = new RegExp(`(?:^|,)\\s*${field}=((?:[^,\\\\]|\\\\.)*)`, "i");
   const match = dn.match(regex);
-  return match ? match[1].trim() : null;
+  if (!match) return null;
+  // Unescape backslash-escaped characters
+  return match[1].replace(/\\(.)/g, "$1").trim();
 }
 
 /** Extract Subject Alternative Names (DNS names) */
