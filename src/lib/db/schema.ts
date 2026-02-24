@@ -1,0 +1,101 @@
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  bigint,
+  integer,
+  boolean,
+  jsonb,
+  date,
+  unique,
+} from "drizzle-orm/pg-core";
+
+export const certificates = pgTable("certificates", {
+  id: serial("id").primaryKey(),
+  fingerprintSha256: text("fingerprint_sha256").unique().notNull(),
+  serialNumber: text("serial_number").notNull(),
+  notBefore: timestamp("not_before", { withTimezone: true }).notNull(),
+  notAfter: timestamp("not_after", { withTimezone: true }).notNull(),
+  subjectDn: text("subject_dn").notNull(),
+  subjectCn: text("subject_cn"),
+  subjectOrg: text("subject_org"),
+  subjectCountry: text("subject_country"),
+  subjectState: text("subject_state"),
+  subjectLocality: text("subject_locality"),
+  issuerDn: text("issuer_dn").notNull(),
+  issuerCn: text("issuer_cn"),
+  issuerOrg: text("issuer_org"),
+  sanList: text("san_list").array().notNull().default([]),
+  markType: text("mark_type"),
+  certType: text("cert_type"),
+  logotypeSvgHash: text("logotype_svg_hash"),
+  logotypeSvg: text("logotype_svg"),
+  rawPem: text("raw_pem").notNull(),
+  ctLogTimestamp: timestamp("ct_log_timestamp", { withTimezone: true }),
+  ctLogIndex: bigint("ct_log_index", { mode: "number" }),
+  ctLogName: text("ct_log_name").default("gorgon"),
+  extensionsJson: jsonb("extensions_json"),
+  crtshId: bigint("crtsh_id", { mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const certificateChains = pgTable("certificate_chains", {
+  id: serial("id").primaryKey(),
+  leafCertId: integer("leaf_cert_id").references(() => certificates.id),
+  chainPosition: integer("chain_position").notNull(),
+  fingerprintSha256: text("fingerprint_sha256").notNull(),
+  subjectDn: text("subject_dn").notNull(),
+  issuerDn: text("issuer_dn").notNull(),
+  rawPem: text("raw_pem").notNull(),
+  notBefore: timestamp("not_before", { withTimezone: true }),
+  notAfter: timestamp("not_after", { withTimezone: true }),
+});
+
+export const domainBimiState = pgTable("domain_bimi_state", {
+  id: serial("id").primaryKey(),
+  domain: text("domain").unique().notNull(),
+  bimiRecordRaw: text("bimi_record_raw"),
+  bimiVersion: text("bimi_version"),
+  bimiLogoUrl: text("bimi_logo_url"),
+  bimiAuthorityUrl: text("bimi_authority_url"),
+  dmarcRecordRaw: text("dmarc_record_raw"),
+  dmarcPolicy: text("dmarc_policy"),
+  dmarcPct: integer("dmarc_pct"),
+  dmarcValid: boolean("dmarc_valid"),
+  svgFetched: boolean("svg_fetched").default(false),
+  svgContent: text("svg_content"),
+  svgContentType: text("svg_content_type"),
+  svgSizeBytes: integer("svg_size_bytes"),
+  svgTinyPsValid: boolean("svg_tiny_ps_valid"),
+  svgValidationErrors: text("svg_validation_errors").array(),
+  lastChecked: timestamp("last_checked", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const ingestionCursors = pgTable("ingestion_cursors", {
+  id: serial("id").primaryKey(),
+  logName: text("log_name").unique().notNull(),
+  lastIndex: bigint("last_index", { mode: "number" }).notNull().default(0),
+  treeSize: bigint("tree_size", { mode: "number" }),
+  lastRun: timestamp("last_run", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const caStats = pgTable(
+  "ca_stats",
+  {
+    id: serial("id").primaryKey(),
+    issuerOrg: text("issuer_org").notNull(),
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    totalIssued: integer("total_issued"),
+    vmcCount: integer("vmc_count"),
+    cmcCount: integer("cmc_count"),
+    uniqueDomains: integer("unique_domains"),
+    uniqueOrgs: integer("unique_orgs"),
+  },
+  (table) => [unique().on(table.issuerOrg, table.periodStart, table.periodEnd)]
+);
