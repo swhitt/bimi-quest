@@ -259,9 +259,10 @@ export function parseChainFromExtraData(
 }
 
 /** Extract a field from an X.500 Distinguished Name string */
-function extractDnField(dn: string, field: string): string | null {
+export function extractDnField(dn: string, field: string): string | null {
   // DN format: "CN=foo, O=bar, C=US" - commas within values are escaped as \,
-  const regex = new RegExp(`(?:^|,)\\s*${field}=((?:[^,\\\\]|\\\\.)*)`, "i");
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(?:^|,)\\s*${escaped}=((?:[^,\\\\]|\\\\.)*)`, "i");
   const match = dn.match(regex);
   if (!match) return null;
   // Unescape backslash-escaped characters
@@ -339,54 +340,24 @@ function readDerLength(
   return { length, bytesRead: 1 + numBytes };
 }
 
-/** Extract BIMI mark type from the BIMI mark type extension */
+/** Extract BIMI mark type from the subject DN field (OID 1.3.6.1.4.1.53087.1.13) */
 function extractMarkType(cert: X509Certificate): string | null {
-  try {
-    const ext = cert.extensions.find((e) => e.type === BIMI_MARK_TYPE_OID);
-    if (!ext) return null;
-
-    // The mark type extension value contains a UTF8String or PrintableString
-    // with the mark type value
-    const value = new Uint8Array(ext.value);
-    // Try to decode as a simple string (skip ASN.1 wrapper if present)
-    const text = new TextDecoder().decode(value);
-
-    // Look for known mark types in the decoded text
-    const knownTypes = [
-      "Registered Mark",
-      "Government Mark",
-      "Prior Use Mark",
-      "Modified Registered Mark",
-    ];
-    for (const type of knownTypes) {
-      if (text.includes(type)) return type;
-    }
-
-    // Fall back to the raw text if it looks reasonable
-    const cleaned = text.replace(/[\x00-\x1f]/g, "").trim();
-    return cleaned || null;
-  } catch {
-    return null;
-  }
+  return extractDnField(cert.subject, BIMI_MARK_TYPE_OID);
 }
 
 /** Derive cert type (VMC or CMC) from mark type */
 function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
   if (!markType) return null;
-  // VMC = Verified Mark Certificate (requires trademark verification)
-  // Known VMC mark types
-  const vmcTypes = [
-    "Registered Mark",
-    "Government Mark",
-    "Prior Use Mark",
-    "Modified Registered Mark",
-  ];
+  const vmcTypes = ["Registered Mark", "Government Mark"];
   if (vmcTypes.some((t) => markType.includes(t))) return "VMC";
-  // If it has a mark type but not a known VMC type, it might be a CMC
-  return "CMC";
+  const cmcTypes = ["Prior Use Mark", "Modified Registered Mark", "Pending Registration Mark"];
+  if (cmcTypes.some((t) => markType.includes(t))) return "CMC";
+  // Unknown mark type - default to VMC since Gorgon is a BIMI-only log
+  return "VMC";
 }
 
-/** Try to extract SVG logotype from the logotype extension */
+/** Try to extract SVG logotype from the logotype extension (RFC 3709).
+ *  SVGs are embedded as gzip-compressed base64 data URIs inside the ASN.1 structure. */
 function extractLogotypeSvg(
   cert: X509Certificate
 ): { svgHash: string | null; svgContent: string | null } {
@@ -394,28 +365,67 @@ function extractLogotypeSvg(
     const ext = cert.extensions.find((e) => e.type === LOGOTYPE_OID);
     if (!ext) return { svgHash: null, svgContent: null };
 
-    // The logotype extension (RFC 3709) contains ASN.1-encoded logotype data
-    // that may include embedded or referenced SVG images.
-    // The structure is complex: LogotypeExtn -> LogotypeInfo -> LogotypeData -> LogotypeImage
-    // For now, we'll look for SVG content in the raw bytes (base64-encoded SVG or raw XML)
-    const value = new Uint8Array(ext.value);
-    const text = new TextDecoder("utf-8", { fatal: false }).decode(value);
+    // Work with raw bytes to avoid UTF-8 decoding corruption of the ASN.1 framing
+    const rawBytes = Buffer.from(ext.value);
 
-    // Look for embedded SVG (might be base64 encoded within the ASN.1 structure)
-    const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
-    if (svgMatch) {
-      const svg = svgMatch[0];
-      // Simple hash of the SVG content
-      const hash = simpleHash(svg);
-      return { svgHash: hash, svgContent: svg };
+    // Find the data URI marker in the raw bytes
+    const marker = Buffer.from("data:image/svg+xml;base64,", "ascii");
+    const offset = rawBytes.indexOf(marker);
+    if (offset === -1) {
+      // Fallback: check for raw SVG in decoded text
+      const text = new TextDecoder("utf-8", { fatal: false }).decode(rawBytes);
+      const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
+      if (svgMatch) {
+        return { svgHash: simpleHash(svgMatch[0]), svgContent: svgMatch[0] };
+      }
+      return { svgHash: null, svgContent: null };
     }
 
-    // Look for base64-encoded SVG within the extension
-    // The logotype extension often contains a data URI or embedded gzip+base64 SVG
-    // This is a best-effort extraction
+    // Extract base64 characters from raw bytes (avoids TextDecoder corruption)
+    const b64Start = offset + marker.length;
+    let b64 = "";
+    for (let i = b64Start; i < rawBytes.length; i++) {
+      const ch = rawBytes[i];
+      if (
+        (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) ||
+        (ch >= 48 && ch <= 57) || ch === 43 || ch === 47 || ch === 61
+      ) {
+        b64 += String.fromCharCode(ch);
+      } else if (ch === 10 || ch === 13 || ch === 32) {
+        // skip whitespace in base64
+      } else {
+        break; // end of base64 payload
+      }
+    }
+
+    if (!b64) return { svgHash: null, svgContent: null };
+
+    const decoded = base64ToBuffer(b64);
+    const svg = decompressIfGzipped(decoded);
+    if (svg && svg.includes("<svg")) {
+      return { svgHash: simpleHash(svg), svgContent: svg };
+    }
+
     return { svgHash: null, svgContent: null };
   } catch {
     return { svgHash: null, svgContent: null };
+  }
+}
+
+/** Decompress gzip data, or decode as UTF-8 if not gzipped */
+function decompressIfGzipped(data: Uint8Array): string | null {
+  try {
+    // Gzip magic bytes: 1f 8b
+    if (data.length >= 2 && data[0] === 0x1f && data[1] === 0x8b) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const zlib = require("zlib") as typeof import("zlib");
+      const result = zlib.gunzipSync(Buffer.from(data));
+      return new TextDecoder().decode(result);
+    }
+    // Not gzipped, try as plain text
+    return new TextDecoder().decode(data);
+  } catch {
+    return null;
   }
 }
 

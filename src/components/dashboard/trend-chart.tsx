@@ -2,15 +2,17 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
+import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
+import { ChartTooltipContent } from "@/components/chart-tooltip";
+import { format, parseISO } from "date-fns";
 
 interface TrendDataPoint {
   month: string;
@@ -23,54 +25,128 @@ interface TrendChartProps {
   selectedCA: string;
 }
 
-const CA_COLORS: Record<string, string> = {
-  "SSL.com": "hsl(221, 83%, 53%)",
-  DigiCert: "hsl(199, 89%, 48%)",
-  Entrust: "hsl(0, 84%, 60%)",
-  GlobalSign: "hsl(142, 71%, 45%)",
-  Sectigo: "hsl(24, 95%, 53%)",
-};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TrendTooltip({ active, payload, label, colors }: any) {
+  if (!active || !payload?.length) return null;
+
+  const rows = [...payload]
+    .filter((p: { value: number }) => (p.value ?? 0) > 0)
+    .sort((a: { value: number }, b: { value: number }) => (b.value ?? 0) - (a.value ?? 0))
+    .map((p: { name: string; value: number }) => ({
+      color: getCAColor(colors, p.name ?? ""),
+      name: p.name ?? "",
+      value: (p.value ?? 0).toLocaleString(),
+    }));
+
+  const total = payload.reduce(
+    (sum: number, p: { value: number }) => sum + (p.value ?? 0),
+    0
+  );
+
+  let formattedLabel = String(label);
+  try {
+    formattedLabel = format(parseISO(`${label}-01`), "MMMM yyyy");
+  } catch {
+    // keep raw label
+  }
+
+  return (
+    <ChartTooltipContent
+      label={`${formattedLabel} (${total.toLocaleString()} total)`}
+      rows={rows}
+    />
+  );
+}
 
 export function TrendChart({ data, selectedCA }: TrendChartProps) {
-  // Pivot data: { month, CA1: count, CA2: count, ... }
+  const colors = useChartColors();
+  const isFiltered = selectedCA !== "All CAs" && selectedCA in CA_COLOR_INDEX;
+
   const months = [...new Set(data.map((d) => d.month))].sort();
-  const cas = [...new Set(data.map((d) => d.ca || "Unknown"))];
+
+  // When a specific CA is selected, show only that CA.
+  // When "All CAs", show stacked bars.
+  const displayCAs = isFiltered
+    ? [selectedCA]
+    : Object.keys(CA_COLOR_INDEX).filter((ca) =>
+        data.some((d) => (d.ca || "Unknown") === ca)
+      );
 
   const pivoted = months.map((month) => {
     const row: Record<string, string | number> = { month };
-    for (const ca of cas) {
-      const point = data.find((d) => d.month === month && (d.ca || "Unknown") === ca);
-      row[ca] = point?.count || 0;
+    for (const ca of displayCAs) {
+      const point = data.find(
+        (d) => d.month === month && (d.ca || "Unknown") === ca
+      );
+      row[ca] = point?.count ?? 0;
     }
     return row;
   });
 
+  const tickFormatter = (value: string) => {
+    try {
+      return format(parseISO(`${value}-01`), "MMM");
+    } catch {
+      return value;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Issuance Trends</CardTitle>
+        <CardTitle>
+          {isFiltered ? `${selectedCA} Issuance Trend` : "Issuance Trends"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {pivoted.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={pivoted}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" fontSize={12} />
-              <YAxis fontSize={12} />
-              <Tooltip />
-              <Legend />
-              {cas.map((ca) => (
-                <Line
-                  key={ca}
-                  type="monotone"
-                  dataKey={ca}
-                  stroke={CA_COLORS[ca] || "hsl(0, 0%, 60%)"}
-                  strokeWidth={ca === selectedCA ? 3 : 1.5}
-                  dot={ca === selectedCA}
-                  strokeOpacity={ca === selectedCA ? 1 : 0.5}
-                />
-              ))}
-            </LineChart>
+            <BarChart
+              data={pivoted}
+              margin={{ top: 4, right: 4, left: -16, bottom: 0 }}
+            >
+              <CartesianGrid
+                vertical={false}
+                strokeDasharray="3 3"
+                className="stroke-border"
+              />
+              <XAxis
+                dataKey="month"
+                tickFormatter={tickFormatter}
+                tick={{ fontSize: 11 }}
+                className="fill-muted-foreground"
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                className="fill-muted-foreground"
+                axisLine={false}
+                tickLine={false}
+                width={40}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+                content={(props) => (
+                  <TrendTooltip {...props} colors={colors} />
+                )}
+              />
+              {displayCAs.map((ca, i) => {
+                const color = getCAColor(colors, ca);
+                const isLast = i === displayCAs.length - 1;
+                return (
+                  <Bar
+                    key={ca}
+                    dataKey={ca}
+                    name={ca}
+                    stackId={isFiltered ? undefined : "trend"}
+                    fill={color}
+                    fillOpacity={isFiltered ? 0.85 : 0.8}
+                    radius={isFiltered || isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                  />
+                );
+              })}
+            </BarChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex h-[300px] items-center justify-center text-muted-foreground">

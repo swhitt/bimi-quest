@@ -13,6 +13,7 @@ import {
   sql,
   or,
 } from "drizzle-orm";
+import { excludeDuplicatePrecerts } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -32,9 +33,16 @@ export async function GET(request: NextRequest) {
   const validity = params.get("validity");
 
   try {
-    const conditions = [];
+    const conditions = [excludeDuplicatePrecerts()];
 
-    if (ca) conditions.push(eq(certificates.issuerOrg, ca));
+    if (ca) {
+      conditions.push(
+        or(
+          eq(certificates.rootCaOrg, ca),
+          eq(certificates.issuerOrg, ca)
+        )!
+      );
+    }
     if (certType) conditions.push(eq(certificates.certType, certType));
     if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
     if (to) conditions.push(lte(certificates.notBefore, new Date(to)));
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
           ilike(certificates.subjectCn, `%${search}%`),
           ilike(certificates.subjectOrg, `%${search}%`),
           sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE s ILIKE ${`%${search}%`})`
-        )
+        )!
       );
     }
 
@@ -74,17 +82,21 @@ export async function GET(request: NextRequest) {
       db
         .select({
           id: certificates.id,
+          serialNumber: certificates.serialNumber,
           fingerprintSha256: certificates.fingerprintSha256,
           subjectCn: certificates.subjectCn,
           subjectOrg: certificates.subjectOrg,
           subjectCountry: certificates.subjectCountry,
           issuerOrg: certificates.issuerOrg,
+          rootCaOrg: certificates.rootCaOrg,
           certType: certificates.certType,
           markType: certificates.markType,
           notBefore: certificates.notBefore,
           notAfter: certificates.notAfter,
           sanList: certificates.sanList,
           ctLogTimestamp: certificates.ctLogTimestamp,
+          logotypeSvg: certificates.logotypeSvg,
+          isPrecert: certificates.isPrecert,
         })
         .from(certificates)
         .where(where)

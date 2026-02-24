@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -11,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface GeoEntry {
   country: string | null;
@@ -20,19 +20,19 @@ interface GeoEntry {
 }
 
 export function MapContent() {
-  const searchParams = useSearchParams();
-  const ca = searchParams.get("ca");
+  const { buildApiParams } = useGlobalFilters();
   const [data, setData] = useState<GeoEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const apiQuery = buildApiParams();
+
   useEffect(() => {
-    const params = ca ? `?ca=${encodeURIComponent(ca)}` : "";
-    fetch(`/api/stats/geo${params}`)
+    fetch(`/api/stats/geo?${apiQuery}`)
       .then((res) => res.json())
       .then((json) => setData(json.geoData || []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [ca]);
+  }, [apiQuery]);
 
   if (loading) {
     return (
@@ -46,7 +46,6 @@ export function MapContent() {
 
   return (
     <>
-      {/* Top countries visualization as bars */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -59,14 +58,20 @@ export function MapContent() {
               {data.slice(0, 20).map((entry) => {
                 const pct = total > 0 ? (entry.total / total) * 100 : 0;
                 return (
-                  <div key={entry.country || "unknown"} className="flex items-center gap-3">
+                  <div
+                    key={entry.country || "unknown"}
+                    className="flex items-center gap-3"
+                  >
                     <span className="w-8 text-right font-mono text-sm">
                       {entry.country || "??"}
                     </span>
                     <div className="flex-1">
                       <div
-                        className="h-6 rounded bg-primary/80 flex items-center px-2"
-                        style={{ width: `${Math.max(pct, 2)}%` }}
+                        className="h-6 rounded flex items-center px-2"
+                        style={{
+                          background: "var(--chart-1)",
+                          width: `${Math.max(pct, 2)}%`,
+                        }}
                       >
                         <span className="text-xs text-primary-foreground font-medium">
                           {entry.total}
@@ -81,14 +86,11 @@ export function MapContent() {
               })}
             </div>
           ) : (
-            <p className="text-muted-foreground">
-              No geographic data available. Run the ingestion worker first.
-            </p>
+            <p className="text-muted-foreground">No geographic data available.</p>
           )}
         </CardContent>
       </Card>
 
-      {/* Full table */}
       <Card>
         <CardHeader>
           <CardTitle>All Countries</CardTitle>

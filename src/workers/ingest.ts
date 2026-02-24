@@ -16,6 +16,9 @@ import {
   parseChainCert,
 } from "../lib/ct/parser";
 import { dispatchNewCertNotification } from "../lib/notifications/dispatcher";
+import { normalizeIssuerOrg } from "../lib/ca-display";
+import { extractDnField } from "../lib/ct/parser";
+import { X509Certificate } from "@peculiar/x509";
 import type { CTLogEntry } from "../lib/ct/gorgon";
 
 const connectionString = process.env.DATABASE_URL;
@@ -36,7 +39,7 @@ async function processEntries(
 ): Promise<number> {
   let found = 0;
 
-  for (let i = startIndex; i < endIndex; i += BATCH_SIZE) {
+  for (let i = startIndex; i < endIndex; ) {
     const batchEnd = Math.min(i + BATCH_SIZE - 1, endIndex - 1);
     const batchLabel = `${i.toLocaleString()}-${batchEnd.toLocaleString()} of ${endIndex.toLocaleString()}`;
     process.stdout.write(`\r  Fetching entries ${batchLabel}...`);
@@ -47,6 +50,12 @@ async function processEntries(
     } catch (err) {
       console.error(`\n  Failed to fetch batch at ${i}:`, err);
       await throttle(2000);
+      continue;
+    }
+
+    if (response.entries.length === 0) {
+      // Server returned nothing - advance to avoid infinite loop
+      i += BATCH_SIZE;
       continue;
     }
 
@@ -66,6 +75,18 @@ async function processEntries(
           `\n  BIMI cert at index ${entryIndex}: ${bimiData.subjectCn || bimiData.subjectOrg || "unknown"} (${bimiData.issuerOrg || "unknown CA"})`
         );
 
+        // Derive root CA org from chain before inserting
+        let rootCaOrg: string | null = null;
+        for (const chainPem of parsed.chainPems) {
+          const info = parseChainCert(chainPem);
+          if (info && info.subjectDn === info.issuerDn) {
+            rootCaOrg = normalizeIssuerOrg(extractDnField(info.subjectDn, "O"));
+            break;
+          }
+        }
+        // Fall back to issuer org if no self-signed root in chain
+        if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
+
         const [inserted] = await db
           .insert(certificates)
           .values({
@@ -81,13 +102,15 @@ async function processEntries(
             subjectLocality: bimiData.subjectLocality,
             issuerDn: bimiData.issuerDn,
             issuerCn: bimiData.issuerCn,
-            issuerOrg: bimiData.issuerOrg,
+            issuerOrg: normalizeIssuerOrg(bimiData.issuerOrg),
+            rootCaOrg,
             sanList: bimiData.sanList,
             markType: bimiData.markType,
             certType: bimiData.certType,
             logotypeSvgHash: bimiData.logotypeSvgHash,
             logotypeSvg: bimiData.logotypeSvg,
             rawPem: bimiData.rawPem,
+            isPrecert: parsed.entryType === "precert",
             ctLogTimestamp: new Date(parsed.timestamp),
             ctLogIndex: entryIndex,
             ctLogName: "gorgon",
@@ -133,19 +156,22 @@ async function processEntries(
       }
     }
 
+    // Advance by actual entries returned, not BATCH_SIZE
+    i += response.entries.length;
+
     // Update cursor after each batch
     await db
       .insert(ingestionCursors)
       .values({
         logName: "gorgon",
-        lastIndex: i + response.entries.length,
+        lastIndex: i,
         lastRun: new Date(),
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: ingestionCursors.logName,
         set: {
-          lastIndex: i + response.entries.length,
+          lastIndex: i,
           lastRun: new Date(),
           updatedAt: new Date(),
         },
@@ -193,6 +219,110 @@ async function backfill() {
   console.log(`\nBackfill complete. Found ${count} BIMI certificates.`);
 }
 
+/**
+ * Verify ingestion integrity by checking for gaps in ct_log_index coverage.
+ * Compares the expected number of BIMI entries (sampled from the log) against
+ * what's actually in the database.
+ */
+async function checkIntegrity() {
+  console.log("Running ingestion integrity check...\n");
+
+  const sth = await getSTH();
+  console.log(`Gorgon tree size: ${sth.tree_size.toLocaleString()}`);
+
+  const cursor = await db
+    .select()
+    .from(ingestionCursors)
+    .where(eq(ingestionCursors.logName, "gorgon"))
+    .limit(1);
+  const lastIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
+  console.log(`Cursor at: ${lastIndex.toLocaleString()}`);
+
+  // Count certs and check for index gaps
+  const result = await sql`
+    SELECT
+      count(*) as total_certs,
+      min(ct_log_index) as min_index,
+      max(ct_log_index) as max_index
+    FROM certificates
+    WHERE ct_log_name = 'gorgon'
+  `;
+  const { total_certs, min_index, max_index } = result[0] as {
+    total_certs: string;
+    min_index: string;
+    max_index: string;
+  };
+  console.log(`DB certs: ${Number(total_certs).toLocaleString()} (indices ${min_index}-${max_index})`);
+
+  // Find gaps > 10 in ct_log_index (small gaps are normal from non-BIMI entries)
+  const gaps = await sql`
+    WITH ordered AS (
+      SELECT ct_log_index,
+        ct_log_index - LAG(ct_log_index) OVER (ORDER BY ct_log_index) as gap
+      FROM certificates
+      WHERE ct_log_name = 'gorgon'
+    )
+    SELECT gap, count(*) as occurrences
+    FROM ordered
+    WHERE gap > 10
+    GROUP BY gap
+    ORDER BY occurrences DESC
+    LIMIT 10
+  `;
+
+  if (gaps.length === 0) {
+    console.log("\nNo suspicious gaps found. Ingestion looks healthy.");
+  } else {
+    console.log("\nSuspicious gaps in ct_log_index:");
+    let totalMissing = 0;
+    for (const g of gaps) {
+      const { gap, occurrences } = g as { gap: string; occurrences: string };
+      const missing = (Number(gap) - 1) * Number(occurrences);
+      totalMissing += missing;
+      console.log(`  gap=${gap} occurs ${occurrences}x (~${missing.toLocaleString()} missing entries)`);
+    }
+    console.log(`\n  Estimated missing entries: ~${totalMissing.toLocaleString()}`);
+    console.log(`  Expected cert count: ~${(Number(total_certs) + totalMissing).toLocaleString()}`);
+    console.log("\n  Run 'bun run ingest:backfill' with cursor reset to 0 to fill gaps.");
+  }
+
+  // Sanity check: sample a range from the log and compare coverage
+  const sampleStart = Math.floor(Math.random() * Math.max(0, lastIndex - 200));
+  const sampleEnd = sampleStart + 99;
+  console.log(`\nSpot check: sampling entries ${sampleStart}-${sampleEnd} from Gorgon...`);
+
+  try {
+    const logEntries = await getEntries(sampleStart, sampleEnd);
+    let bimiCount = 0;
+    for (const entry of logEntries.entries) {
+      try {
+        const parsed = parseCTLogEntry(entry);
+        if (parsed && hasBIMIOID(parsed.cert)) bimiCount++;
+      } catch { /* skip */ }
+    }
+
+    const dbCount = await sql`
+      SELECT count(*) as cnt FROM certificates
+      WHERE ct_log_name = 'gorgon'
+        AND ct_log_index >= ${sampleStart}
+        AND ct_log_index <= ${sampleEnd}
+    `;
+    const dbCerts = Number((dbCount[0] as { cnt: string }).cnt);
+
+    console.log(`  Log has ${bimiCount} BIMI entries in this range`);
+    console.log(`  DB has ${dbCerts} certs in this range`);
+
+    const coverage = bimiCount > 0 ? ((dbCerts / bimiCount) * 100).toFixed(1) : "N/A";
+    console.log(`  Coverage: ${coverage}%`);
+
+    if (bimiCount > 0 && dbCerts / bimiCount < 0.9) {
+      console.log("  WARNING: Coverage below 90% - data may be incomplete!");
+    }
+  } catch (err) {
+    console.error("  Spot check failed:", err);
+  }
+}
+
 async function stream() {
   console.log("Starting stream mode (polling every 30s)...");
   while (true) {
@@ -222,12 +352,95 @@ async function stream() {
   }
 }
 
+/**
+ * Re-extract SVGs and mark types from stored PEMs for certs missing them.
+ * Useful after fixing the extraction logic without re-scanning the entire CT log.
+ */
+async function reparse() {
+  console.log("Re-parsing stored certificates for SVG and mark type...\n");
+
+  const BATCH = 100;
+  let offset = 0;
+  let updated = 0;
+
+  while (true) {
+    const rows = await sql`
+      SELECT id, raw_pem, logotype_svg, mark_type
+      FROM certificates
+      ORDER BY id
+      LIMIT ${BATCH} OFFSET ${offset}
+    `;
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const { id, raw_pem, logotype_svg, mark_type } = row as {
+        id: number;
+        raw_pem: string;
+        logotype_svg: string | null;
+        mark_type: string | null;
+      };
+
+      // Skip if already has both SVG and mark type
+      if (logotype_svg && mark_type) continue;
+
+      try {
+        const b64 = raw_pem
+          .replace(/-----BEGIN CERTIFICATE-----/g, "")
+          .replace(/-----END CERTIFICATE-----/g, "")
+          .replace(/\s/g, "");
+        const der = new Uint8Array(Buffer.from(b64, "base64"));
+        const cert = new X509Certificate(
+          der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer
+        );
+
+        const bimiData = await extractBIMIData(cert, der);
+        const updates: Record<string, string | null> = {};
+
+        if (!logotype_svg && bimiData.logotypeSvg) {
+          updates.logotype_svg = bimiData.logotypeSvg;
+          updates.logotype_svg_hash = bimiData.logotypeSvgHash;
+        }
+        if (!mark_type && bimiData.markType) {
+          updates.mark_type = bimiData.markType;
+          updates.cert_type = bimiData.certType;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await sql`
+            UPDATE certificates SET
+              logotype_svg = COALESCE(${updates.logotype_svg ?? null}, logotype_svg),
+              logotype_svg_hash = COALESCE(${updates.logotype_svg_hash ?? null}, logotype_svg_hash),
+              mark_type = COALESCE(${updates.mark_type ?? null}, mark_type),
+              cert_type = COALESCE(${updates.cert_type ?? null}, cert_type)
+            WHERE id = ${id}
+          `;
+          updated++;
+          if (updated % 100 === 0) {
+            process.stdout.write(`\r  Updated ${updated} certs...`);
+          }
+        }
+      } catch (err) {
+        console.error(`\n  Error re-parsing cert ${id}:`, err);
+      }
+    }
+
+    offset += BATCH;
+    process.stdout.write(`\r  Scanned ${offset} certs, updated ${updated}...`);
+  }
+
+  console.log(`\n\nRe-parse complete. Updated ${updated} certificates.`);
+}
+
 // Entry point
 const mode = process.argv[2] || "backfill";
 console.log(`BIMI Intel Ingestion Worker - Mode: ${mode}`);
 
 if (mode === "stream") {
   stream().catch(console.error);
+} else if (mode === "reparse") {
+  reparse().catch(console.error);
+} else if (mode === "check") {
+  checkIntegrity().catch(console.error);
 } else {
   backfill().catch(console.error);
 }

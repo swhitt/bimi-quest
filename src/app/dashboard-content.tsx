@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { MarketShareChart } from "@/components/dashboard/market-share-chart";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
+import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface DashboardData {
   selectedCA: string;
@@ -17,6 +17,7 @@ interface DashboardData {
   monthlyTrend: { month: string; ca: string | null; count: number }[];
   recentCerts: {
     id: number;
+    serialNumber: string;
     subjectCn: string | null;
     subjectOrg: string | null;
     issuerOrg: string | null;
@@ -24,23 +25,26 @@ interface DashboardData {
     notBefore: string;
     subjectCountry: string | null;
     sanList: string[];
+    logotypeSvg: string | null;
+    isPrecert: boolean | null;
   }[];
 }
 
 export function DashboardContent() {
-  const searchParams = useSearchParams();
-  const ca = searchParams.get("ca") || localStorage?.getItem("bimi-intel-ca") || "SSL.com";
+  const { buildApiParams, ca } = useGlobalFilters();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const apiQuery = buildApiParams();
+
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/dashboard?ca=${encodeURIComponent(ca)}`)
+    fetch(`/api/dashboard?${apiQuery}`)
       .then((res) => res.json())
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [ca]);
+  }, [apiQuery]);
 
   if (loading || !data) {
     return (
@@ -61,7 +65,10 @@ export function DashboardContent() {
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <MarketShareChart data={data.caBreakdown} selectedCA={data.selectedCA} />
+        <MarketShareChart
+          data={data.caBreakdown}
+          selectedCA={data.selectedCA}
+        />
         <TrendChart data={data.monthlyTrend} selectedCA={data.selectedCA} />
       </div>
 

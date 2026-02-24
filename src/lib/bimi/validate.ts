@@ -168,9 +168,9 @@ function parsePemBasicInfo(
   notBefore: Date;
   notAfter: Date;
   certType: string | null;
+  markType: string | null;
 } | null {
   try {
-    // Use @peculiar/x509 if available in the context
     const { X509Certificate } = require("@peculiar/x509");
     const b64 = pem
       .replace(/-----BEGIN CERTIFICATE-----/g, "")
@@ -179,18 +179,14 @@ function parsePemBasicInfo(
     const der = Buffer.from(b64, "base64");
     const cert = new X509Certificate(der);
 
-    // Check for BIMI mark type OID
-    const markTypeExt = cert.extensions.find(
-      (e: { type: string }) => e.type === "1.3.6.1.4.1.53087.1.13"
-    );
+    // Mark type is a subject DN field, not a standalone extension
+    const MARK_TYPE_OID = "1.3.6.1.4.1.53087.1.13";
+    const markType = extractDnField(cert.subject, MARK_TYPE_OID);
+
     let certType: string | null = null;
-    if (markTypeExt) certType = "VMC";
-    else if (
-      cert.extensions.some(
-        (e: { type: string }) => e.type === "1.3.6.1.5.5.7.1.12"
-      )
-    ) {
-      certType = "CMC";
+    if (markType) {
+      const vmcTypes = ["Registered Mark", "Government Mark"];
+      certType = vmcTypes.some((t) => markType.includes(t)) ? "VMC" : "CMC";
     }
 
     return {
@@ -198,8 +194,17 @@ function parsePemBasicInfo(
       notBefore: cert.notBefore,
       notAfter: cert.notAfter,
       certType,
+      markType,
     };
   } catch {
     return null;
   }
+}
+
+function extractDnField(dn: string, field: string): string | null {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(?:^|,)\\s*${escaped}=((?:[^,\\\\]|\\\\.)*)`, "i");
+  const match = dn.match(regex);
+  if (!match) return null;
+  return match[1].replace(/\\(.)/g, "$1").trim();
 }
