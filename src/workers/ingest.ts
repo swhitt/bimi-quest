@@ -60,6 +60,8 @@ async function processEntries(
       continue;
     }
 
+    let lastSuccessIndex = i - 1;
+
     for (let j = 0; j < response.entries.length; j++) {
       const entry = response.entries[j];
       const entryIndex = i + j;
@@ -121,7 +123,7 @@ async function processEntries(
           .returning({ id: certificates.id });
 
         if (inserted) {
-          // Store certificate chain
+          // Store certificate chain (normalized: upsert unique certs, then link)
           for (let k = 0; k < parsed.chainPems.length; k++) {
             const chainInfo = parseChainCert(parsed.chainPems[k]);
             const fingerprint = await computePemFingerprint(parsed.chainPems[k]);
@@ -138,7 +140,7 @@ async function processEntries(
               .onConflictDoNothing({ target: chainCerts.fingerprintSha256 })
               .returning({ id: chainCerts.id });
 
-            // If conflict, look up existing chain cert
+            // If conflict, look up existing id
             let chainCertId = chainCert?.id;
             if (!chainCertId) {
               const [existing] = await db
@@ -146,16 +148,14 @@ async function processEntries(
                 .from(chainCerts)
                 .where(eq(chainCerts.fingerprintSha256, fingerprint))
                 .limit(1);
-              chainCertId = existing?.id;
+              chainCertId = existing.id;
             }
 
-            if (chainCertId) {
-              await db.insert(certificateChainLinks).values({
-                leafCertId: inserted.id,
-                chainCertId,
-                chainPosition: k + 1,
-              });
-            }
+            await db.insert(certificateChainLinks).values({
+              leafCertId: inserted.id,
+              chainCertId,
+              chainPosition: k + 1,
+            });
           }
 
           found++;
@@ -173,13 +173,25 @@ async function processEntries(
             );
           }
         }
+        lastSuccessIndex = entryIndex;
       } catch (err) {
-        console.error(`\n  Error processing entry ${entryIndex}:`, err);
+        const msg = err instanceof Error ? err.message : String(err);
+        const cause = err instanceof Error && err.cause ? `\n    Cause: ${err.cause}` : "";
+        console.error(`\n  Error processing entry ${entryIndex}: ${msg.slice(0, 200)}${cause}`);
+        // Don't advance cursor past failed entries
+        break;
       }
     }
 
-    // Advance by actual entries returned, not BATCH_SIZE
-    i += response.entries.length;
+    // Only advance cursor to last successfully processed entry + 1
+    const newCursor = lastSuccessIndex + 1;
+    if (newCursor > i) {
+      i = newCursor;
+    } else {
+      // Nothing succeeded in this batch, stop to avoid infinite loop
+      console.error(`\n  Batch starting at ${i} failed entirely, stopping.`);
+      break;
+    }
 
     // Update cursor after each batch
     await db

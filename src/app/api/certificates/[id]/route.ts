@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, and, ne, inArray } from "drizzle-orm";
 
 export async function GET(
   _request: NextRequest,
@@ -24,6 +24,25 @@ export async function GET(
     if (!cert) {
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
     }
+
+    // Fetch the paired precert/final cert (same serial number, different isPrecert)
+    const [pairedCert] = await db
+      .select({
+        id: certificates.id,
+        isPrecert: certificates.isPrecert,
+        fingerprintSha256: certificates.fingerprintSha256,
+        ctLogIndex: certificates.ctLogIndex,
+        ctLogTimestamp: certificates.ctLogTimestamp,
+        extensionsJson: certificates.extensionsJson,
+      })
+      .from(certificates)
+      .where(
+        and(
+          eq(certificates.serialNumber, cert.serialNumber),
+          ne(certificates.id, certId)
+        )
+      )
+      .limit(1);
 
     // Fetch chain by joining links -> chain_certs
     const chain = await db
@@ -54,6 +73,7 @@ export async function GET(
 
     return NextResponse.json({
       certificate: cert,
+      pairedCert: pairedCert || null,
       chain,
       bimiStates,
     });
