@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,12 +15,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format, formatDistanceToNow } from "date-fns";
+import { decodeExtension } from "@/lib/x509/decode-extensions";
 
 interface CertData {
   certificate: {
     id: number;
     fingerprintSha256: string;
     serialNumber: string;
+    isPrecert: boolean;
     notBefore: string;
     notAfter: string;
     subjectDn: string;
@@ -42,6 +45,14 @@ interface CertData {
     extensionsJson: Record<string, string> | null;
     crtshId: string | null;
   };
+  pairedCert: {
+    id: number;
+    isPrecert: boolean;
+    fingerprintSha256: string;
+    ctLogIndex: string | null;
+    ctLogTimestamp: string | null;
+    extensionsJson: Record<string, string> | null;
+  } | null;
   chain: {
     id: number;
     chainPosition: number;
@@ -88,21 +99,6 @@ interface BimiCheckResult {
   }[];
 }
 
-// Well-known OID names
-const OID_NAMES: Record<string, string> = {
-  "2.5.29.14": "Subject Key Identifier",
-  "2.5.29.15": "Key Usage",
-  "2.5.29.17": "Subject Alternative Name",
-  "2.5.29.19": "Basic Constraints",
-  "2.5.29.31": "CRL Distribution Points",
-  "2.5.29.32": "Certificate Policies",
-  "2.5.29.35": "Authority Key Identifier",
-  "2.5.29.37": "Extended Key Usage",
-  "1.3.6.1.5.5.7.1.1": "Authority Information Access",
-  "1.3.6.1.5.5.7.1.12": "Logotype (RFC 3709)",
-  "1.3.6.1.4.1.53087.1.13": "BIMI Mark Type",
-  "1.3.6.1.4.1.11129.2.4.2": "CT Precert SCTs",
-};
 
 function chainLabel(chainCert: { chainPosition: number; subjectDn: string; issuerDn: string }): string {
   // Self-signed cert (subject matches issuer) is a root CA
@@ -196,6 +192,11 @@ export function CertificateDetail({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {cert.isPrecert && (
+            <Badge variant="secondary" className="text-amber-600 dark:text-amber-400" title="This is a precertificate">
+              Precert
+            </Badge>
+          )}
           {isExpired ? (
             <Badge variant="destructive" title={format(new Date(cert.notAfter), "PPP")}>
               Expired {formatDistanceToNow(new Date(cert.notAfter), { addSuffix: true })}
@@ -213,6 +214,36 @@ export function CertificateDetail({ id }: { id: string }) {
           {cert.markType && <Badge variant="secondary">{cert.markType}</Badge>}
         </div>
       </div>
+
+      {/* Precert/Final cert pairing notice */}
+      {data.pairedCert && (
+        <Card className={cert.isPrecert ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/10" : "border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/10"}>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                {cert.isPrecert ? (
+                  <>
+                    <span className="text-muted-foreground">This is a precertificate. The final certificate is also logged:</span>
+                    <Link href={`/certificates/${data.pairedCert.id}`} className="font-medium hover:underline">
+                      View final certificate
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">The precertificate for this certificate is also logged:</span>
+                    <Link href={`/certificates/${data.pairedCert.id}`} className="font-medium hover:underline">
+                      View precertificate
+                    </Link>
+                  </>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono">
+                CT #{data.pairedCert.ctLogIndex || "?"}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Logo Section - prominent display with validation */}
       {cert.logotypeSvg && (
@@ -593,20 +624,29 @@ export function CertificateDetail({ id }: { id: string }) {
                 <TableRow>
                   <TableHead>OID</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Value (hex)</TableHead>
+                  <TableHead>Value</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(cert.extensionsJson).map(([oid, value]) => (
-                  <TableRow key={oid}>
-                    <TableCell className="font-mono text-xs">{oid}</TableCell>
-                    <TableCell>{OID_NAMES[oid] || "Unknown"}</TableCell>
-                    <TableCell className="max-w-xs truncate font-mono text-xs">
-                      {typeof value === "string" ? value.substring(0, 80) : JSON.stringify(value).substring(0, 80)}
-                      {typeof value === "string" && value.length > 80 ? "..." : ""}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {Object.entries(cert.extensionsJson).map(([oid, value]) => {
+                  const hexStr = typeof value === "string" ? value : JSON.stringify(value);
+                  const ext = decodeExtension(oid, hexStr);
+                  return (
+                    <TableRow key={oid}>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{oid}</TableCell>
+                      <TableCell className="whitespace-nowrap">{ext.name}</TableCell>
+                      <TableCell className="max-w-md text-xs">
+                        {ext.decoded ? (
+                          <span className="whitespace-pre-wrap break-all">{ext.decoded}</span>
+                        ) : (
+                          <span className="font-mono text-muted-foreground break-all">
+                            {hexStr.substring(0, 80)}{hexStr.length > 80 ? "..." : ""}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
