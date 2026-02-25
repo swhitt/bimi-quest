@@ -230,6 +230,26 @@ export function CertificateDetail({ id }: { id: string }) {
             </Badge>
           )}
           {cert.markType && <Badge variant="secondary">{cert.markType}</Badge>}
+          <a
+            href={`https://crt.sh/?q=${cert.fingerprintSha256}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary"
+          >
+            crt.sh
+            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+          </a>
+          {data.pairedCert && (
+            <a
+              href={`https://crt.sh/?q=${data.pairedCert.fingerprintSha256}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              {cert.isPrecert ? "Final cert" : "Precert"} on crt.sh
+              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+            </a>
+          )}
         </div>
       </div>
 
@@ -706,32 +726,6 @@ export function CertificateDetail({ id }: { id: string }) {
           />
           <Row label="CT Log Index" value={cert.ctLogIndex} />
           <Row label="CT Log" value="Gorgon (DigiCert)" />
-          <div className="flex gap-4">
-            <span className="w-40 shrink-0 text-muted-foreground">crt.sh</span>
-            <a
-              href={`https://crt.sh/?q=${cert.fingerprintSha256}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm hover:underline"
-            >
-              View on crt.sh
-            </a>
-          </div>
-          {data.pairedCert && (
-            <div className="flex gap-4">
-              <span className="w-40 shrink-0 text-muted-foreground">
-                crt.sh ({cert.isPrecert ? "final cert" : "precert"})
-              </span>
-              <a
-                href={`https://crt.sh/?q=${data.pairedCert.fingerprintSha256}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm hover:underline"
-              >
-                View {cert.isPrecert ? "final certificate" : "precertificate"} on crt.sh
-              </a>
-            </div>
-          )}
         </CardContent>
       </Card>
 
