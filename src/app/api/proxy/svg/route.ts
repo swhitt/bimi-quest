@@ -7,13 +7,19 @@ const CACHE_TTL = 86400_000; // 24 hours
 const MAX_CACHE_SIZE = 500;
 const MAX_SVG_SIZE = 1_048_576; // 1 MB
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-} as const;
+function corsHeaders(request: NextRequest): Record<string, string> {
+  const origin = request.headers.get("Origin");
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+  };
+  if (origin) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
 }
 
 export async function GET(request: NextRequest) {
@@ -30,17 +36,17 @@ export async function GET(request: NextRequest) {
     if (parsedUrl.protocol !== "https:") {
       return NextResponse.json(
         { error: "Only HTTPS URLs are allowed" },
-        { status: 400, headers: CORS_HEADERS }
+        { status: 400, headers: corsHeaders(request) }
       );
     }
   } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400, headers: CORS_HEADERS });
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400, headers: corsHeaders(request) });
   }
 
   if (isPrivateHostname(parsedUrl.hostname)) {
     return NextResponse.json(
       { error: "Requests to private/internal hosts are not allowed" },
-      { status: 400, headers: CORS_HEADERS }
+      { status: 400, headers: corsHeaders(request) }
     );
   }
 
@@ -49,7 +55,7 @@ export async function GET(request: NextRequest) {
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return new NextResponse(cached.content, {
       headers: {
-        ...CORS_HEADERS,
+        ...corsHeaders(request),
         "Content-Type": cached.contentType,
         "Cache-Control": "public, max-age=86400",
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
@@ -70,7 +76,7 @@ export async function GET(request: NextRequest) {
     if (!res.ok) {
       return NextResponse.json(
         { error: `Upstream returned ${res.status}` },
-        { status: 502, headers: CORS_HEADERS }
+        { status: 502, headers: corsHeaders(request) }
       );
     }
 
@@ -79,7 +85,7 @@ export async function GET(request: NextRequest) {
     if (declaredLength > MAX_SVG_SIZE) {
       return NextResponse.json(
         { error: `Response too large (${declaredLength} bytes, max ${MAX_SVG_SIZE})` },
-        { status: 502, headers: CORS_HEADERS }
+        { status: 502, headers: corsHeaders(request) }
       );
     }
 
@@ -93,7 +99,7 @@ export async function GET(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Response is not an SVG" },
-        { status: 502, headers: CORS_HEADERS }
+        { status: 502, headers: corsHeaders(request) }
       );
     }
 
@@ -102,7 +108,7 @@ export async function GET(request: NextRequest) {
     if (!reader) {
       return NextResponse.json(
         { error: "No response body" },
-        { status: 502, headers: CORS_HEADERS }
+        { status: 502, headers: corsHeaders(request) }
       );
     }
 
@@ -117,7 +123,7 @@ export async function GET(request: NextRequest) {
         reader.cancel();
         return NextResponse.json(
           { error: `Response too large (exceeded ${MAX_SVG_SIZE} bytes)` },
-          { status: 502, headers: CORS_HEADERS }
+          { status: 502, headers: corsHeaders(request) }
         );
       }
       chunks.push(value);
@@ -129,7 +135,7 @@ export async function GET(request: NextRequest) {
     if (!content.includes("<svg") && !content.includes("<SVG")) {
       return NextResponse.json(
         { error: "Response does not appear to be SVG" },
-        { status: 502, headers: CORS_HEADERS }
+        { status: 502, headers: corsHeaders(request) }
       );
     }
 
@@ -142,7 +148,7 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(content, {
       headers: {
-        ...CORS_HEADERS,
+        ...corsHeaders(request),
         "Content-Type": "image/svg+xml",
         "Cache-Control": "public, max-age=86400",
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
@@ -153,7 +159,7 @@ export async function GET(request: NextRequest) {
     console.error("SVG proxy error:", error);
     return NextResponse.json(
       { error: "Failed to fetch SVG" },
-      { status: 502, headers: CORS_HEADERS }
+      { status: 502, headers: corsHeaders(request) }
     );
   }
 }

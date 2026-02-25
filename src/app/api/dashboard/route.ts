@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
+import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc, or } from "drizzle-orm";
 import { excludeDuplicatePrecerts } from "@/lib/db/filters";
 
@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
       markTypeBreakdown,
       [newLast30dRow],
       [caNewLast30dRow],
+      [lastUpdatedRow],
     ] = await Promise.all([
       // Total certificates (base filters, no CA filter)
       db
@@ -203,6 +204,13 @@ export async function GET(request: NextRequest) {
             gte(certificates.notBefore, thirtyDaysAgo)
           )
         ),
+
+      // Last ingestion run timestamp
+      db
+        .select({ lastRun: ingestionCursors.lastRun })
+        .from(ingestionCursors)
+        .orderBy(desc(ingestionCursors.lastRun))
+        .limit(1),
     ]);
 
     const totalCerts = totalRow?.count || 0;
@@ -228,6 +236,7 @@ export async function GET(request: NextRequest) {
         markTypeBreakdown,
         newLast30d: newLast30dRow?.count || 0,
         caNewLast30d: caNewLast30dRow?.count || 0,
+        lastUpdated: lastUpdatedRow?.lastRun?.toISOString() || null,
       },
       {
         headers: {

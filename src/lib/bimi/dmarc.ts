@@ -99,10 +99,15 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
   };
 }
 
-/** Check if a DMARC record meets BIMI requirements */
-export function isDMARCValidForBIMI(record: DMARCRecord): boolean {
-  // BIMI requires p=quarantine or p=reject
-  if (record.policy !== "quarantine" && record.policy !== "reject") {
+/** Check if a DMARC record meets BIMI requirements.
+ *  When checking a subdomain, the sp= tag (subdomain policy) takes
+ *  precedence over p= if present. */
+export function isDMARCValidForBIMI(record: DMARCRecord, isSubdomain = false): boolean {
+  const effectivePolicy = isSubdomain && record.sp
+    ? record.sp
+    : record.policy;
+
+  if (effectivePolicy !== "quarantine" && effectivePolicy !== "reject") {
     return false;
   }
   // pct must be 100 (default if not specified)

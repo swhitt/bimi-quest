@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalFilterBar } from "@/components/global-filter-bar";
@@ -46,7 +47,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <ThemeProvider
           attribute="class"
@@ -57,7 +58,8 @@ export default function RootLayout({
           <TooltipProvider>
             <Nav />
             <GlobalFilterBar />
-            <main className="container mx-auto px-4 py-6">{children}</main>
+            <main className="container mx-auto px-4 py-6 flex-1">{children}</main>
+            <Footer />
           </TooltipProvider>
         </ThemeProvider>
       </body>

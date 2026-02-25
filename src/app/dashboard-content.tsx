@@ -6,6 +6,7 @@ import { MarketShareChart } from "@/components/dashboard/market-share-chart";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { formatDistanceToNow } from "date-fns";
 
 interface DashboardData {
   selectedCA: string;
@@ -32,6 +33,7 @@ interface DashboardData {
     logotypeSvg: string | null;
     isPrecert: boolean | null;
   }[];
+  lastUpdated: string | null;
 }
 
 export function DashboardContent() {
@@ -100,6 +102,12 @@ export function DashboardContent() {
       </div>
 
       <RecentCerts certs={data.recentCerts} />
+
+      {data.lastUpdated && (
+        <p className="text-xs text-muted-foreground text-right">
+          Data last updated {formatDistanceToNow(new Date(data.lastUpdated), { addSuffix: true })}
+        </p>
+      )}
     </div>
   );
 }

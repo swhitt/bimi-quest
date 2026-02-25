@@ -7,12 +7,13 @@ export interface BIMIRecord {
   authorityUrl: string | null;
 }
 
-/** Look up the BIMI TXT record for a domain */
+/** Look up the BIMI TXT record for a domain under the given selector */
 export async function lookupBIMIRecord(
-  domain: string
+  domain: string,
+  selector: string = "default"
 ): Promise<BIMIRecord | null> {
   try {
-    const records = await dns.resolveTxt(`default._bimi.${domain}`);
+    const records = await dns.resolveTxt(`${selector}._bimi.${domain}`);
     // TXT records can be split across multiple strings, concatenate them
     for (const record of records) {
       const txt = record.join("");

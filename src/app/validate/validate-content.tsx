@@ -74,7 +74,7 @@ export function ValidateContent() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">BIMI Validator</h1>
         <p className="text-muted-foreground">
-          Enter a domain to run a full BIMI validation check (DMARC, DNS, SVG, certificate).
+          Check if a domain is ready for BIMI (Brand Indicators for Message Identification). Tests DNS records, DMARC policy, SVG logo compliance, and certificate status.
         </p>
       </div>
 
@@ -144,6 +144,13 @@ export function ValidateContent() {
                 </p>
               )
             }
+            guidance={
+              <div>
+                <p>Add a TXT record at <code className="text-xs bg-background px-1 py-0.5 rounded">default._bimi.{result.domain}</code> with the following format:</p>
+                <p><code className="text-xs bg-background px-1 py-0.5 rounded">v=BIMI1; l=https://example.com/logo.svg; a=https://example.com/cert.pem;</code></p>
+                <p>The <code className="text-xs bg-background px-1 py-0.5 rounded">l=</code> tag points to your SVG Tiny PS logo file hosted over HTTPS. The <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag points to your VMC or CMC certificate in PEM format.</p>
+              </div>
+            }
           />
 
           {/* DMARC */}
@@ -164,6 +171,12 @@ export function ValidateContent() {
               ) : (
                 <p className="text-sm text-muted-foreground">No DMARC record found</p>
               )
+            }
+            guidance={
+              <div>
+                <p>BIMI requires a DMARC policy of <code className="text-xs bg-background px-1 py-0.5 rounded">p=quarantine</code> or <code className="text-xs bg-background px-1 py-0.5 rounded">p=reject</code> with <code className="text-xs bg-background px-1 py-0.5 rounded">pct=100</code> (the default if omitted).</p>
+                <p>Start with <code className="text-xs bg-background px-1 py-0.5 rounded">p=quarantine</code> if you haven&apos;t enforced DMARC yet. Make sure SPF and DKIM are properly configured first, then monitor reports before moving to <code className="text-xs bg-background px-1 py-0.5 rounded">p=reject</code>.</p>
+              </div>
             }
           />
 
@@ -198,6 +211,12 @@ export function ValidateContent() {
                 )}
               </div>
             }
+            guidance={
+              <div>
+                <p>Your logo must be in SVG Tiny PS (Portable/Secure) format with a square aspect ratio and hosted over HTTPS. Most existing SVG logos will need conversion since SVG Tiny PS is a restricted subset of SVG that disallows scripts, external references, and many advanced features.</p>
+                <p>Tools like the BIMI Group&apos;s SVG converter or Adobe Illustrator&apos;s &quot;SVG Tiny 1.2&quot; export can help. The final file should use <code className="text-xs bg-background px-1 py-0.5 rounded">baseProfile=&quot;tiny-ps&quot;</code> and <code className="text-xs bg-background px-1 py-0.5 rounded">version=&quot;1.2&quot;</code> in the root element.</p>
+              </div>
+            }
           />
 
           {/* Certificate */}
@@ -227,6 +246,12 @@ export function ValidateContent() {
                 )}
               </div>
             }
+            guidance={
+              <div>
+                <p>BIMI supports two certificate types: <strong>VMC</strong> (Verified Mark Certificate) requires a registered trademark and costs around $1,500/yr from CAs like DigiCert, Entrust, or SSL.com. <strong>CMC</strong> (Common Mark Certificate) does not require a trademark, making it accessible to any organization.</p>
+                <p>Host the certificate in PEM format at an HTTPS URL and reference it in your BIMI DNS record using the <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag.</p>
+              </div>
+            }
           />
         </div>
       )}
@@ -238,11 +263,14 @@ function CheckCard({
   title,
   pass,
   details,
+  guidance,
 }: {
   title: string;
   pass: boolean;
   details: React.ReactNode;
+  guidance?: React.ReactNode;
 }) {
+  const [showGuide, setShowGuide] = useState(false);
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-3 pb-2">
@@ -251,15 +279,32 @@ function CheckCard({
         </Badge>
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
-      <CardContent>{details}</CardContent>
+      <CardContent className="space-y-3">
+        {details}
+        {!pass && guidance && (
+          <div>
+            <button
+              onClick={() => setShowGuide(!showGuide)}
+              className="text-sm text-primary hover:underline font-medium"
+            >
+              {showGuide ? "Hide guidance" : "How to fix this"}
+            </button>
+            {showGuide && (
+              <div className="mt-2 rounded-md bg-muted p-3 text-sm space-y-2">
+                {guidance}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }
 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div className="flex gap-4">
-      <span className="w-40 shrink-0 text-muted-foreground">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:gap-4">
+      <span className="sm:w-40 sm:shrink-0 text-muted-foreground text-xs sm:text-sm">{label}</span>
       <span className="break-all">{value || "-"}</span>
     </div>
   );

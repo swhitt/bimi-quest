@@ -42,14 +42,14 @@ export function RecentCerts({ certs }: RecentCertsProps) {
               <Link
                 key={cert.id}
                 href={`/certificates/${cert.id}`}
-                className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-secondary/50"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 transition-colors hover:bg-secondary/50"
               >
                 <div className="flex items-center gap-3">
                   {cert.logotypeSvg ? (
                     <HoverCard openDelay={300} closeDelay={100}>
                       <HoverCardTrigger asChild>
                         <div
-                          className="h-8 w-8 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
+                          className="h-10 w-10 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
                           dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
                         />
                       </HoverCardTrigger>
@@ -68,7 +68,7 @@ export function RecentCerts({ certs }: RecentCertsProps) {
                       </HoverCardContent>
                     </HoverCard>
                   ) : (
-                    <div className="h-8 w-8 shrink-0 rounded border bg-muted" />
+                    <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
                   )}
                   <div className="space-y-1">
                     <div className="font-medium">
@@ -84,7 +84,7 @@ export function RecentCerts({ certs }: RecentCertsProps) {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline">{cert.certType || "BIMI"}</Badge>
                   {cert.isPrecert && (
                     <Badge variant="secondary" className="text-[10px] px-1 py-0 text-amber-600 dark:text-amber-400" title="Precertificate only (final certificate not yet logged)">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback, Suspense } from "react";
+import { useCallback, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -94,96 +94,158 @@ function FilterBarInner() {
 
   const hasFilters = ca || type !== "all" || validity !== "all" || dateFrom || dateTo;
 
+  const filterCount =
+    (ca ? 1 : 0) +
+    (type !== "all" ? 1 : 0) +
+    (validity !== "all" ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const clearFilters = useCallback(() => {
+    let pagePath = pathname;
+    if (pathname.startsWith("/ca/")) {
+      const segs = pathname.split("/").filter(Boolean);
+      pagePath = "/" + segs.slice(2).join("/");
+      if (pagePath === "/") pagePath = "/";
+    }
+    router.push(pagePath);
+  }, [pathname, router]);
+
+  // Shared filter controls rendered with optional width override for mobile
+  const caSelect = (className?: string) => (
+    <Select
+      value={caSlug || "all"}
+      onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}
+    >
+      <SelectTrigger size="sm" className={className ?? "w-[130px]"}>
+        <SelectValue placeholder="All CAs" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All CAs</SelectItem>
+        {ALL_CA_SLUGS.map((slug) => (
+          <SelectItem key={slug} value={slug}>
+            {CA_DISPLAY_NAMES[slug]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const typeSelect = (className?: string) => (
+    <Select
+      value={type}
+      onValueChange={(v) => updateSecondaryFilter("type", v)}
+    >
+      <SelectTrigger size="sm" className={className ?? "w-[110px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {CERT_TYPES.map((t) => (
+          <SelectItem key={t.value} value={t.value}>
+            {t.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const validitySelect = (className?: string) => (
+    <Select
+      value={validity}
+      onValueChange={(v) => updateSecondaryFilter("validity", v)}
+    >
+      <SelectTrigger size="sm" className={className ?? "w-[120px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {VALIDITY_OPTIONS.map((v) => (
+          <SelectItem key={v.value} value={v.value}>
+            {v.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const dateRange = (fullWidth?: boolean) => (
+    <div className="flex items-center gap-1.5">
+      <Input
+        type="date"
+        value={dateFrom}
+        onChange={(e) => updateSecondaryFilter("from", e.target.value)}
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+      />
+      <span className="text-xs text-muted-foreground">to</span>
+      <Input
+        type="date"
+        value={dateTo}
+        onChange={(e) => updateSecondaryFilter("to", e.target.value)}
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+      />
+    </div>
+  );
+
   return (
     <div className="border-b bg-muted/30">
-      <div className="container mx-auto flex items-center gap-2 px-4 py-2 overflow-x-auto">
-        <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
-
-        <Select
-          value={caSlug || "all"}
-          onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}
-        >
-          <SelectTrigger size="sm" className="w-[130px]">
-            <SelectValue placeholder="All CAs" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All CAs</SelectItem>
-            {ALL_CA_SLUGS.map((slug) => (
-              <SelectItem key={slug} value={slug}>
-                {CA_DISPLAY_NAMES[slug]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={type}
-          onValueChange={(v) => updateSecondaryFilter("type", v)}
-        >
-          <SelectTrigger size="sm" className="w-[110px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CERT_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={validity}
-          onValueChange={(v) => updateSecondaryFilter("validity", v)}
-        >
-          <SelectTrigger size="sm" className="w-[120px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {VALIDITY_OPTIONS.map((v) => (
-              <SelectItem key={v.value} value={v.value}>
-                {v.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="flex items-center gap-1.5">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => updateSecondaryFilter("from", e.target.value)}
-            className="h-8 w-[130px] text-xs"
-          />
-          <span className="text-xs text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => updateSecondaryFilter("to", e.target.value)}
-            className="h-8 w-[130px] text-xs"
-          />
+      <div className="container mx-auto px-4 py-2">
+        {/* Mobile toggle */}
+        <div className="flex items-center justify-between md:hidden">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <SlidersHorizontal className="size-4" />
+            Filters
+            {hasFilters && (
+              <span className="text-xs bg-primary/10 px-1.5 py-0.5 rounded">
+                {filterCount}
+              </span>
+            )}
+          </button>
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={clearFilters}
+              className="text-muted-foreground"
+            >
+              <X className="size-3" />
+              Clear
+            </Button>
+          )}
         </div>
 
-        {hasFilters && (
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              // Get the base page path
-              let pagePath = pathname;
-              if (pathname.startsWith("/ca/")) {
-                const segs = pathname.split("/").filter(Boolean);
-                pagePath = "/" + segs.slice(2).join("/");
-                if (pagePath === "/") pagePath = "/";
-              }
-              router.push(pagePath);
-            }}
-            className="text-muted-foreground"
-          >
-            <X className="size-3" />
-            Clear
-          </Button>
+        {/* Mobile expanded (stacked vertically) */}
+        {isOpen && (
+          <div className="flex flex-col gap-2 pt-2 md:hidden">
+            {caSelect("w-full")}
+            {typeSelect("w-full")}
+            {validitySelect("w-full")}
+            {dateRange(true)}
+          </div>
         )}
+
+        {/* Desktop inline (hidden on mobile) */}
+        <div className="hidden md:flex items-center gap-2">
+          <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
+          {caSelect()}
+          {typeSelect()}
+          {validitySelect()}
+          {dateRange()}
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={clearFilters}
+              className="text-muted-foreground"
+            >
+              <X className="size-3" />
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

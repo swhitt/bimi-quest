@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { validateSVGTinyPS } from "@/lib/bimi/svg";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { lookupDMARC, isDMARCValidForBIMI } from "@/lib/bimi/dmarc";
+import { isPrivateHostname } from "@/lib/net/hostname";
 
 export async function GET(
   _request: NextRequest,
@@ -98,7 +99,10 @@ export async function GET(
 
           // Fetch and validate the web SVG if we have a logo URL
           if (logoUrl) {
-            try {
+            const parsedLogo = new URL(logoUrl);
+            if (isPrivateHostname(parsedLogo.hostname)) {
+              // Skip fetch to prevent SSRF against internal hosts
+            } else try {
               const res = await fetch(logoUrl, {
                 headers: {
                   "User-Agent": "bimi-intel/1.0 (BIMI Validator)",

@@ -220,7 +220,15 @@ export function CertificateDetail({ id }: { id: string }) {
               Expires {formatDistanceToNow(new Date(cert.notAfter), { addSuffix: true })}
             </Badge>
           )}
-          {cert.certType && <Badge variant="outline">{cert.certType}</Badge>}
+          {cert.certType && (
+            <Badge variant="outline">
+              {cert.certType === "VMC"
+                ? "VMC (Verified Mark Certificate)"
+                : cert.certType === "CMC"
+                  ? "CMC (Common Mark Certificate)"
+                  : cert.certType}
+            </Badge>
+          )}
           {cert.markType && <Badge variant="secondary">{cert.markType}</Badge>}
         </div>
       </div>
@@ -505,6 +513,9 @@ export function CertificateDetail({ id }: { id: string }) {
                 value={cert.logotypeSvg ? "Present" : "Missing"}
               />
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Revocation status (OCSP/CRL) is not checked. Certificates shown as valid may have been revoked by the issuing CA.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -552,7 +563,7 @@ export function CertificateDetail({ id }: { id: string }) {
       {cert.sanList.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Subject Alternative Names ({cert.sanList.length})</CardTitle>
+            <CardTitle>Subject Alternative Names (SANs) ({cert.sanList.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">

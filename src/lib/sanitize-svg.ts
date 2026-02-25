@@ -23,9 +23,7 @@ const ALLOWED_TAGS = [
   "title",
   "desc",
   "metadata",
-  "image",
   "switch",
-  "foreignObject",
   "solidColor",
 ];
 
@@ -60,7 +58,6 @@ const ALLOWED_ATTRS = [
   "transform",
   "id",
   "class",
-  "style",
   "clip-path",
   "mask",
   "font-family",
@@ -85,7 +82,6 @@ const ALLOWED_ATTRS = [
   "gradientTransform",
   "spreadMethod",
   "xlink:href",
-  "href",
   "preserveAspectRatio",
   "overflow",
   "display",

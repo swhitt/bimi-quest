@@ -1,6 +1,7 @@
 import { lookupBIMIRecord, type BIMIRecord } from "./dns";
 import { lookupDMARC, isDMARCValidForBIMI, type DMARCRecord } from "./dmarc";
 import { validateSVGTinyPS, type SVGValidationResult } from "./svg";
+import { isPrivateHostname } from "@/lib/net/hostname";
 
 export interface BIMIValidationResult {
   domain: string;
@@ -69,33 +70,39 @@ export async function validateDomain(
   } = { found: false, url: null, validation: null, sizeBytes: null };
 
   if (bimiRecord?.logoUrl) {
-    try {
-      const res = await fetch(bimiRecord.logoUrl, {
-        headers: { "User-Agent": "bimi-intel/1.0 (BIMI Validator)" },
-      });
-      if (res.ok) {
-        const svgText = await res.text();
-        const validation = validateSVGTinyPS(svgText);
-        svgResult = {
-          found: true,
-          url: bimiRecord.logoUrl,
-          validation,
-          sizeBytes: new TextEncoder().encode(svgText).length,
-        };
-        if (!validation.valid) {
+    const parsedLogoUrl = new URL(bimiRecord.logoUrl);
+    if (isPrivateHostname(parsedLogoUrl.hostname)) {
+      errors.push("Refusing to fetch from private/internal host");
+    } else {
+      try {
+        const res = await fetch(bimiRecord.logoUrl, {
+          headers: { "User-Agent": "bimi-intel/1.0 (BIMI Validator)" },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (res.ok) {
+          const svgText = await res.text();
+          const validation = validateSVGTinyPS(svgText);
+          svgResult = {
+            found: true,
+            url: bimiRecord.logoUrl,
+            validation,
+            sizeBytes: new TextEncoder().encode(svgText).length,
+          };
+          if (!validation.valid) {
+            errors.push(
+              `SVG validation failed: ${validation.errors.join("; ")}`
+            );
+          }
+        } else {
           errors.push(
-            `SVG validation failed: ${validation.errors.join("; ")}`
+            `Failed to fetch SVG logo: HTTP ${res.status} from ${bimiRecord.logoUrl}`
           );
         }
-      } else {
+      } catch (err) {
         errors.push(
-          `Failed to fetch SVG logo: HTTP ${res.status} from ${bimiRecord.logoUrl}`
+          `Failed to fetch SVG logo: ${err instanceof Error ? err.message : "unknown error"}`
         );
       }
-    } catch (err) {
-      errors.push(
-        `Failed to fetch SVG logo: ${err instanceof Error ? err.message : "unknown error"}`
-      );
     }
   }
 
@@ -111,37 +118,43 @@ export async function validateDomain(
   };
 
   if (bimiRecord?.authorityUrl) {
-    try {
-      const res = await fetch(bimiRecord.authorityUrl, {
-        headers: { "User-Agent": "bimi-intel/1.0 (BIMI Validator)" },
-      });
-      if (res.ok) {
-        const pemText = await res.text();
-        // Basic PEM parsing to extract validity info
-        const certInfo = parsePemBasicInfo(pemText);
-        if (certInfo) {
-          certResult = {
-            found: true,
-            authorityUrl: bimiRecord.authorityUrl,
-            certType: certInfo.certType,
-            issuer: certInfo.issuer,
-            validFrom: certInfo.notBefore,
-            validTo: certInfo.notAfter,
-            isExpired: certInfo.notAfter < now,
-          };
-          if (certInfo.notAfter < now) {
-            errors.push("BIMI certificate is expired");
+    const parsedAuthUrl = new URL(bimiRecord.authorityUrl);
+    if (isPrivateHostname(parsedAuthUrl.hostname)) {
+      errors.push("Refusing to fetch from private/internal host");
+    } else {
+      try {
+        const res = await fetch(bimiRecord.authorityUrl, {
+          headers: { "User-Agent": "bimi-intel/1.0 (BIMI Validator)" },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (res.ok) {
+          const pemText = await res.text();
+          // Basic PEM parsing to extract validity info
+          const certInfo = parsePemBasicInfo(pemText);
+          if (certInfo) {
+            certResult = {
+              found: true,
+              authorityUrl: bimiRecord.authorityUrl,
+              certType: certInfo.certType,
+              issuer: certInfo.issuer,
+              validFrom: certInfo.notBefore,
+              validTo: certInfo.notAfter,
+              isExpired: certInfo.notAfter < now,
+            };
+            if (certInfo.notAfter < now) {
+              errors.push("BIMI certificate is expired");
+            }
           }
+        } else {
+          errors.push(
+            `Failed to fetch authority certificate: HTTP ${res.status}`
+          );
         }
-      } else {
+      } catch (err) {
         errors.push(
-          `Failed to fetch authority certificate: HTTP ${res.status}`
+          `Failed to fetch authority certificate: ${err instanceof Error ? err.message : "unknown error"}`
         );
       }
-    } catch (err) {
-      errors.push(
-        `Failed to fetch authority certificate: ${err instanceof Error ? err.message : "unknown error"}`
-      );
     }
   }
 

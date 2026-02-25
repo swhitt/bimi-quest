@@ -9,6 +9,14 @@ import {
   flexRender,
   type ColumnDef,
 } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    className?: string;
+  }
+}
 import {
   Table,
   TableBody,
@@ -226,6 +234,7 @@ export function CertificatesTable({
     {
       id: "sans",
       header: "SANs",
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => {
         const sans = row.original.sanList;
         if (sans.length <= 1) return null;
@@ -279,6 +288,7 @@ export function CertificatesTable({
     {
       accessorKey: "subjectCountry",
       header: "Country",
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="font-mono text-sm">
           {row.original.subjectCountry || "-"}
@@ -313,6 +323,7 @@ export function CertificatesTable({
     },
     {
       accessorKey: "notAfter",
+      meta: { className: "hidden md:table-cell" },
       header: () => (
         <SortHeader
           label="Expires"
@@ -403,13 +414,13 @@ export function CertificatesTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border overflow-hidden">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-muted/50 hover:bg-muted/50">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-xs uppercase tracking-wider">
+                  <TableHead key={header.id} className={cn("text-xs uppercase tracking-wider", header.column.columnDef.meta?.className)}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -432,7 +443,7 @@ export function CertificatesTable({
                   }
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3">
+                    <TableCell key={cell.id} className={cn("py-3", cell.column.columnDef.meta?.className)}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -447,7 +458,16 @@ export function CertificatesTable({
                   colSpan={columns.length}
                   className="h-32 text-center text-muted-foreground"
                 >
-                  No certificates found.
+                  <div className="space-y-1">
+                    <p>No certificates match your current filters.</p>
+                    <p className="text-xs">
+                      Try adjusting your search or filters, or use the{" "}
+                      <Link href="/validate" className="text-primary hover:underline">
+                        Validator
+                      </Link>{" "}
+                      to check a specific domain.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
