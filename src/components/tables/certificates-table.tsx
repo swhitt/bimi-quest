@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format, formatDistanceToNow } from "date-fns";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -267,9 +268,9 @@ export function CertificatesTable({
         />
       ),
       cell: ({ row }) => {
-        const issuer = row.original.issuerOrg || "Unknown";
-        const root = row.original.rootCaOrg;
-        const showRoot = root && root !== issuer;
+        const issuer = displayIssuerOrg(row.original.issuerOrg);
+        const root = displayRootCa(row.original.rootCaOrg);
+        const showRoot = row.original.rootCaOrg && root !== issuer;
         return (
           <div>
             <Badge variant="secondary" className="whitespace-nowrap">

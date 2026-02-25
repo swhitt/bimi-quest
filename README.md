@@ -2,8 +2,6 @@
 
 Competitive intelligence tool for the BIMI certificate market. Scans CT logs for VMC/CMC issuances across all CAs and shows who's winning.
 
-The default view is SSL.com vs the market, but you can switch to any CA.
-
 ## What it does
 
 - Scans DigiCert's Gorgon CT log for certificates with BIMI OIDs

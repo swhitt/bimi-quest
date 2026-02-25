@@ -221,7 +221,7 @@ export function ValidateContent() {
                 }
                 guidance={
                   <div>
-                    <p>BIMI supports two certificate types: <strong>VMC</strong> (Verified Mark Certificate) requires a registered trademark and costs around $1,500/yr from CAs like DigiCert, Entrust, or SSL.com. <strong>CMC</strong> (Common Mark Certificate) does not require a trademark, making it accessible to any organization.</p>
+                    <p>BIMI supports two certificate types: <strong>VMC</strong> (Verified Mark Certificate) requires a registered trademark and costs around $1,500/yr from CAs like DigiCert or Entrust. <strong>CMC</strong> (Common Mark Certificate) does not require a trademark, making it accessible to any organization.</p>
                     <p>Host the certificate in PEM format at an HTTPS URL and reference it in your BIMI DNS record using the <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag.</p>
                   </div>
                 }

@@ -13,6 +13,7 @@ import {
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { format, parseISO } from "date-fns";
+import { displayRootCa } from "@/lib/ca-display";
 
 interface TrendDataPoint {
   month: string;
@@ -62,21 +63,27 @@ export function TrendChart({ data, selectedCA }: TrendChartProps) {
   const colors = useChartColors();
   const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
-  const months = [...new Set(data.map((d) => d.month))].sort();
+  // Normalize raw rootCaOrg values to display names
+  const normalized = data.map((d) => ({
+    ...d,
+    ca: displayRootCa(d.ca),
+  }));
+
+  const months = [...new Set(normalized.map((d) => d.month))].sort();
 
   // When a specific CA is selected, show only that CA.
   // When "All Issuers", show stacked bars.
   const displayCAs = isFiltered
     ? [selectedCA]
     : Object.keys(CA_COLOR_INDEX).filter((ca) =>
-        data.some((d) => (d.ca || "Unknown") === ca)
+        normalized.some((d) => d.ca === ca)
       );
 
   const pivoted = months.map((month) => {
     const row: Record<string, string | number> = { month };
     for (const ca of displayCAs) {
-      const point = data.find(
-        (d) => d.month === month && (d.ca || "Unknown") === ca
+      const point = normalized.find(
+        (d) => d.month === month && d.ca === ca
       );
       row[ca] = point?.count ?? 0;
     }

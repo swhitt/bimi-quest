@@ -7,25 +7,25 @@ import { useEffect, useState } from "react";
 const LIGHT_COLORS: Record<string, string> = {
   DigiCert: "hsl(221, 83%, 53%)",
   Entrust: "hsl(160, 60%, 45%)",
-  "GlobalSign nv-sa": "hsl(35, 92%, 50%)",
-  "SSL Corporation": "hsl(262, 83%, 58%)",
-  "Sectigo Limited": "hsl(0, 72%, 51%)",
+  GlobalSign: "hsl(35, 92%, 50%)",
+  "SSL.com": "hsl(262, 83%, 58%)",
+  Sectigo: "hsl(0, 72%, 51%)",
 };
 
 const DARK_COLORS: Record<string, string> = {
   DigiCert: "hsl(217, 91%, 60%)",
   Entrust: "hsl(160, 70%, 50%)",
-  "GlobalSign nv-sa": "hsl(38, 92%, 55%)",
-  "SSL Corporation": "hsl(270, 76%, 65%)",
-  "Sectigo Limited": "hsl(4, 90%, 58%)",
+  GlobalSign: "hsl(38, 92%, 55%)",
+  "SSL.com": "hsl(270, 76%, 65%)",
+  Sectigo: "hsl(4, 90%, 58%)",
 };
 
 export const CA_COLOR_INDEX: Record<string, number> = {
   DigiCert: 1,
   Entrust: 2,
-  "GlobalSign nv-sa": 3,
-  "SSL Corporation": 4,
-  "Sectigo Limited": 5,
+  GlobalSign: 3,
+  "SSL.com": 4,
+  Sectigo: 5,
 };
 
 export function useChartColors(): Record<string, string> {

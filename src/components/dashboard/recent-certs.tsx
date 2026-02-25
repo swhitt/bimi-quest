@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/hover-card";
 import { format, formatDistanceToNow } from "date-fns";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
 
 interface RecentCert {
   id: number;
@@ -18,6 +19,7 @@ interface RecentCert {
   subjectCn: string | null;
   subjectOrg: string | null;
   issuerOrg: string | null;
+  rootCaOrg: string | null;
   certType: string | null;
   notBefore: string;
   subjectCountry: string | null;
@@ -92,7 +94,12 @@ export function RecentCerts({ certs }: RecentCertsProps) {
                       Precert
                     </Badge>
                   )}
-                  <Badge variant="secondary">{cert.issuerOrg || "Unknown CA"}</Badge>
+                  <Badge variant="secondary">{displayIssuerOrg(cert.issuerOrg)}</Badge>
+                  {cert.rootCaOrg && displayRootCa(cert.rootCaOrg) !== displayIssuerOrg(cert.issuerOrg) && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Root: {displayRootCa(cert.rootCaOrg)}
+                    </span>
+                  )}
                   <span
                     className="text-xs text-muted-foreground"
                     title={format(new Date(cert.notBefore), "PPP pp")}

@@ -7,6 +7,7 @@ import { TrendChart } from "@/components/dashboard/trend-chart";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { formatDistanceToNow } from "date-fns";
+import { displayIssuerOrg } from "@/lib/ca-display";
 
 interface DashboardData {
   selectedCA: string;
@@ -28,6 +29,7 @@ interface DashboardData {
     subjectCn: string | null;
     subjectOrg: string | null;
     issuerOrg: string | null;
+    rootCaOrg: string | null;
     certType: string | null;
     notBefore: string;
     subjectCountry: string | null;
@@ -82,10 +84,14 @@ export function DashboardContent() {
     );
   }
 
+  const displayCA = data.selectedCA === "All Issuers"
+    ? "All Issuers"
+    : displayIssuerOrg(data.selectedCA);
+
   return (
     <div className="space-y-6">
       <KPICards
-        selectedCA={data.selectedCA}
+        selectedCA={displayCA}
         totalCerts={data.totalCerts}
         caCerts={data.caCerts}
         activeCerts={data.activeCerts || 0}
@@ -99,9 +105,9 @@ export function DashboardContent() {
       <div className="grid gap-4 md:grid-cols-2">
         <MarketShareChart
           data={data.caBreakdown}
-          selectedCA={data.selectedCA}
+          selectedCA={displayCA}
         />
-        <TrendChart data={data.monthlyTrend} selectedCA={data.selectedCA} />
+        <TrendChart data={data.monthlyTrend} selectedCA={displayCA} />
       </div>
 
       <RecentCerts certs={data.recentCerts} />
