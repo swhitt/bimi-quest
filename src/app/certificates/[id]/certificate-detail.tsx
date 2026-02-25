@@ -265,7 +265,7 @@ export function CertificateDetail({ id }: { id: string }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
-              {cert.isPrecert ? "Final cert" : "Precert"} on crt.sh
+              crt.sh {cert.isPrecert ? "Final" : "Precert"}
               <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
             </a>
           )}
