@@ -31,13 +31,17 @@ const VALIDITY_OPTIONS = [
   { value: "expired", label: "Expired" },
 ];
 
+const PRECERT_OPTIONS = [
+  { value: "all", label: "Cert & Precert" },
+  { value: "cert", label: "Certs Only" },
+  { value: "precert", label: "Precerts Only" },
+];
+
 function FilterBarInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  // Don't show on validate page
-  if (pathname === "/validate") return null;
+  const [isOpen, setIsOpen] = useState(false);
 
   // Read CA from path segment /ca/slug
   const pathMatch = pathname.match(/^\/ca\/([^/]+)/);
@@ -47,7 +51,6 @@ function FilterBarInner() {
   // Build a URL preserving secondary filters, with the CA in the path
   const buildUrl = useCallback(
     (newCaSlug: string, updates?: Record<string, string | null>) => {
-      // Figure out the base page path (stripping /ca/xxx prefix)
       let pagePath = pathname;
       if (pathname.startsWith("/ca/")) {
         const segs = pathname.split("/").filter(Boolean);
@@ -60,7 +63,6 @@ function FilterBarInner() {
         : pagePath;
 
       const params = new URLSearchParams(searchParams.toString());
-      // CA is in the path, not in params
       params.delete("ca");
       params.delete("page");
 
@@ -87,22 +89,6 @@ function FilterBarInner() {
     [router, buildUrl, caSlug]
   );
 
-  const type = searchParams.get("type") ?? "all";
-  const validity = searchParams.get("validity") ?? "all";
-  const dateFrom = searchParams.get("from") ?? "";
-  const dateTo = searchParams.get("to") ?? "";
-
-  const hasFilters = ca || type !== "all" || validity !== "all" || dateFrom || dateTo;
-
-  const filterCount =
-    (ca ? 1 : 0) +
-    (type !== "all" ? 1 : 0) +
-    (validity !== "all" ? 1 : 0) +
-    (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0);
-
-  const [isOpen, setIsOpen] = useState(false);
-
   const clearFilters = useCallback(() => {
     let pagePath = pathname;
     if (pathname.startsWith("/ca/")) {
@@ -112,6 +98,25 @@ function FilterBarInner() {
     }
     router.push(pagePath);
   }, [pathname, router]);
+
+  // Don't show on validate or about pages
+  if (pathname === "/validate" || pathname === "/about" || pathname === "/privacy") return null;
+
+  const type = searchParams.get("type") ?? "all";
+  const validity = searchParams.get("validity") ?? "all";
+  const precert = searchParams.get("precert") ?? "all";
+  const dateFrom = searchParams.get("from") ?? "";
+  const dateTo = searchParams.get("to") ?? "";
+
+  const hasFilters = ca || type !== "all" || validity !== "all" || precert !== "all" || dateFrom || dateTo;
+
+  const filterCount =
+    (ca ? 1 : 0) +
+    (type !== "all" ? 1 : 0) +
+    (validity !== "all" ? 1 : 0) +
+    (precert !== "all" ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
 
   // Shared filter controls rendered with optional width override for mobile
   const caSelect = (className?: string) => (
@@ -163,6 +168,24 @@ function FilterBarInner() {
         {VALIDITY_OPTIONS.map((v) => (
           <SelectItem key={v.value} value={v.value}>
             {v.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const precertSelect = (className?: string) => (
+    <Select
+      value={precert}
+      onValueChange={(v) => updateSecondaryFilter("precert", v)}
+    >
+      <SelectTrigger size="sm" className={className ?? "w-[140px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {PRECERT_OPTIONS.map((p) => (
+          <SelectItem key={p.value} value={p.value}>
+            {p.label}
           </SelectItem>
         ))}
       </SelectContent>
@@ -223,6 +246,7 @@ function FilterBarInner() {
             {caSelect("w-full")}
             {typeSelect("w-full")}
             {validitySelect("w-full")}
+            {precertSelect("w-full")}
             {dateRange(true)}
           </div>
         )}
@@ -233,6 +257,7 @@ function FilterBarInner() {
           {caSelect()}
           {typeSelect()}
           {validitySelect()}
+          {precertSelect()}
           {dateRange()}
           {hasFilters && (
             <Button

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
-import { excludeDuplicatePrecerts } from "@/lib/db/filters";
+import { buildPrecertCondition } from "@/lib/db/filters";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi-intel.vercel.app";
 
@@ -19,7 +19,7 @@ export async function GET() {
       subjectCountry: certificates.subjectCountry,
     })
     .from(certificates)
-    .where(excludeDuplicatePrecerts())
+    .where(buildPrecertCondition(null))
     .orderBy(desc(certificates.notBefore))
     .limit(50);
 

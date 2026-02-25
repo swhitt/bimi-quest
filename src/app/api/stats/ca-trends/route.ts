@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, gte, and, count, desc } from "drizzle-orm";
-import { excludeDuplicatePrecerts } from "@/lib/db/filters";
+import { buildPrecertCondition } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
   const months = parseInt(request.nextUrl.searchParams.get("months") || "12");
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         ),
       })
       .from(certificates)
-      .where(and(excludeDuplicatePrecerts(), gte(certificates.notBefore, cutoff)))
+      .where(and(buildPrecertCondition(null), gte(certificates.notBefore, cutoff)))
       .groupBy(
         sql`to_char(${certificates.notBefore}, 'YYYY-MM')`,
         certificates.rootCaOrg
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         total: count(),
       })
       .from(certificates)
-      .where(excludeDuplicatePrecerts())
+      .where(buildPrecertCondition(null))
       .groupBy(certificates.rootCaOrg)
       .orderBy(desc(count()))
       .limit(10);

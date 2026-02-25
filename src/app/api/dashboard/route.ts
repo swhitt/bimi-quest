@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc, or } from "drizzle-orm";
-import { excludeDuplicatePrecerts } from "@/lib/db/filters";
+import { buildPrecertCondition } from "@/lib/db/filters";
 
 function buildBaseConditions(params: URLSearchParams) {
-  const conditions = [excludeDuplicatePrecerts()];
+  const conditions = [buildPrecertCondition(params.get("precert"))];
   const certType = params.get("type");
   const from = params.get("from");
   const to = params.get("to");

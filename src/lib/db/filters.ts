@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { certificates } from "./schema";
 
 /**
@@ -15,4 +15,16 @@ export function excludeDuplicatePrecerts() {
         AND c2.is_precert = false
     )
   )`;
+}
+
+/**
+ * Build precert filter condition based on the "precert" query param.
+ * - "cert": only final certificates
+ * - "precert": only precertificates
+ * - "both" or unset: default dedup behavior (exclude precerts that have a matching final)
+ */
+export function buildPrecertCondition(precertParam: string | null) {
+  if (precertParam === "cert") return eq(certificates.isPrecert, false);
+  if (precertParam === "precert") return eq(certificates.isPrecert, true);
+  return excludeDuplicatePrecerts();
 }

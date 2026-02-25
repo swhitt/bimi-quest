@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, eq, or, and, gte, lte, count, desc } from "drizzle-orm";
-import { excludeDuplicatePrecerts } from "@/lib/db/filters";
+import { buildPrecertCondition } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const validity = params.get("validity");
 
   try {
-    const conditions = [excludeDuplicatePrecerts()];
+    const conditions = [buildPrecertCondition(params.get("precert"))];
 
     if (ca) {
       conditions.push(
