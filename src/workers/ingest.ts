@@ -4,7 +4,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
 import {
   certificates,
-  certificateChains,
+  chainCerts,
+  certificateChainLinks,
   ingestionCursors,
 } from "../lib/db/schema";
 import { getSTH, getEntries, throttle } from "../lib/ct/gorgon";
@@ -28,7 +29,7 @@ if (!connectionString) {
 }
 
 const sql = neon(connectionString);
-const db = drizzle({ client: sql, schema: { certificates, certificateChains, ingestionCursors } });
+const db = drizzle({ client: sql, schema: { certificates, chainCerts, certificateChainLinks, ingestionCursors } });
 
 const BATCH_SIZE = 256;
 
@@ -124,16 +125,37 @@ async function processEntries(
           for (let k = 0; k < parsed.chainPems.length; k++) {
             const chainInfo = parseChainCert(parsed.chainPems[k]);
             const fingerprint = await computePemFingerprint(parsed.chainPems[k]);
-            await db.insert(certificateChains).values({
-              leafCertId: inserted.id,
-              chainPosition: k + 1,
-              fingerprintSha256: fingerprint,
-              subjectDn: chainInfo?.subjectDn || "unknown",
-              issuerDn: chainInfo?.issuerDn || "unknown",
-              rawPem: parsed.chainPems[k],
-              notBefore: chainInfo?.notBefore,
-              notAfter: chainInfo?.notAfter,
-            });
+            const [chainCert] = await db
+              .insert(chainCerts)
+              .values({
+                fingerprintSha256: fingerprint,
+                subjectDn: chainInfo?.subjectDn || "unknown",
+                issuerDn: chainInfo?.issuerDn || "unknown",
+                rawPem: parsed.chainPems[k],
+                notBefore: chainInfo?.notBefore,
+                notAfter: chainInfo?.notAfter,
+              })
+              .onConflictDoNothing({ target: chainCerts.fingerprintSha256 })
+              .returning({ id: chainCerts.id });
+
+            // If conflict, look up existing chain cert
+            let chainCertId = chainCert?.id;
+            if (!chainCertId) {
+              const [existing] = await db
+                .select({ id: chainCerts.id })
+                .from(chainCerts)
+                .where(eq(chainCerts.fingerprintSha256, fingerprint))
+                .limit(1);
+              chainCertId = existing?.id;
+            }
+
+            if (chainCertId) {
+              await db.insert(certificateChainLinks).values({
+                leafCertId: inserted.id,
+                chainCertId,
+                chainPosition: k + 1,
+              });
+            }
           }
 
           found++;

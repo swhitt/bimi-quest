@@ -43,16 +43,21 @@ export const certificates = pgTable("certificates", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-export const certificateChains = pgTable("certificate_chains", {
+export const chainCerts = pgTable("chain_certs", {
   id: serial("id").primaryKey(),
-  leafCertId: integer("leaf_cert_id").references(() => certificates.id),
-  chainPosition: integer("chain_position").notNull(),
-  fingerprintSha256: text("fingerprint_sha256").notNull(),
+  fingerprintSha256: text("fingerprint_sha256").unique().notNull(),
   subjectDn: text("subject_dn").notNull(),
   issuerDn: text("issuer_dn").notNull(),
   rawPem: text("raw_pem").notNull(),
   notBefore: timestamp("not_before", { withTimezone: true }),
   notAfter: timestamp("not_after", { withTimezone: true }),
+});
+
+export const certificateChainLinks = pgTable("certificate_chain_links", {
+  id: serial("id").primaryKey(),
+  leafCertId: integer("leaf_cert_id").references(() => certificates.id),
+  chainCertId: integer("chain_cert_id").references(() => chainCerts.id),
+  chainPosition: integer("chain_position").notNull(),
 });
 
 export const domainBimiState = pgTable("domain_bimi_state", {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { certificates, certificateChains, domainBimiState } from "@/lib/db/schema";
+import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 export async function GET(
@@ -25,12 +25,22 @@ export async function GET(
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
     }
 
-    // Fetch chain
+    // Fetch chain by joining links -> chain_certs
     const chain = await db
-      .select()
-      .from(certificateChains)
-      .where(eq(certificateChains.leafCertId, certId))
-      .orderBy(certificateChains.chainPosition);
+      .select({
+        id: chainCerts.id,
+        chainPosition: certificateChainLinks.chainPosition,
+        fingerprintSha256: chainCerts.fingerprintSha256,
+        subjectDn: chainCerts.subjectDn,
+        issuerDn: chainCerts.issuerDn,
+        rawPem: chainCerts.rawPem,
+        notBefore: chainCerts.notBefore,
+        notAfter: chainCerts.notAfter,
+      })
+      .from(certificateChainLinks)
+      .innerJoin(chainCerts, eq(certificateChainLinks.chainCertId, chainCerts.id))
+      .where(eq(certificateChainLinks.leafCertId, certId))
+      .orderBy(certificateChainLinks.chainPosition);
 
     // Fetch BIMI state for associated domains
     const domains = cert.sanList.length > 0 ? cert.sanList : cert.subjectCn ? [cert.subjectCn] : [];
