@@ -6,14 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { format, formatDistanceToNow } from "date-fns";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
@@ -74,6 +66,19 @@ interface CertData {
   }[];
 }
 
+interface RevocationCheck {
+  url: string;
+  status: "good" | "revoked" | "unknown" | "error";
+  thisUpdate?: string;
+  nextUpdate?: string;
+  errorMessage?: string;
+}
+
+interface RevocationResult {
+  ocsp: RevocationCheck | null;
+  crl: (Omit<RevocationCheck, "status"> & { status: "good" | "revoked" | "error" }) | null;
+}
+
 interface BimiCheckResult {
   certSvgValidation: { valid: boolean; errors: string[]; warnings: string[] } | null;
   certValidity: {
@@ -118,6 +123,8 @@ export function CertificateDetail({ id }: { id: string }) {
   const [svgBgDark, setSvgBgDark] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showDiff, setShowDiff] = useState<string | null>(null);
+  const [revocation, setRevocation] = useState<RevocationResult | null>(null);
+  const [revocationLoading, setRevocationLoading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/certificates/${id}`)
@@ -139,10 +146,22 @@ export function CertificateDetail({ id }: { id: string }) {
       .finally(() => setBimiLoading(false));
   }, [id]);
 
-  // Auto-run BIMI check when data loads
+  const runRevocationCheck = useCallback(() => {
+    setRevocationLoading(true);
+    fetch(`/api/certificates/${id}/revocation`)
+      .then((res) => res.json())
+      .then(setRevocation)
+      .catch(() => {})
+      .finally(() => setRevocationLoading(false));
+  }, [id]);
+
+  // Auto-run BIMI check and revocation check when data loads
   useEffect(() => {
-    if (data) runBimiCheck();
-  }, [data, runBimiCheck]);
+    if (data) {
+      runBimiCheck();
+      runRevocationCheck();
+    }
+  }, [data, runBimiCheck, runRevocationCheck]);
 
   const copyToClipboard = useCallback((text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -533,71 +552,89 @@ export function CertificateDetail({ id }: { id: string }) {
                 value={cert.logotypeSvg ? "Present" : "Missing"}
               />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Revocation status (OCSP/CRL) is not checked. Certificates shown as valid may have been revoked by the issuing CA.
-            </p>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Subject Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Subject</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row label="Common Name" value={cert.subjectCn} />
-            <Row label="Organization" value={cert.subjectOrg} />
-            <Row label="Country" value={cert.subjectCountry} />
-            <Row label="State" value={cert.subjectState} />
-            <Row label="Locality" value={cert.subjectLocality} />
-            <Row label="Full DN" value={cert.subjectDn} />
-          </CardContent>
-        </Card>
+      {/* Revocation Status */}
+      <RevocationStatusCard
+        revocation={revocation}
+        loading={revocationLoading}
+        onRecheck={runRevocationCheck}
+      />
 
-        {/* Issuer + Validity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Issuer & Validity</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row label="Issuer CN" value={cert.issuerCn} />
-            <Row label="Issuer Org" value={cert.issuerOrg} />
-            <Row label="Issuer DN" value={cert.issuerDn} />
-            <Separator className="my-2" />
-            <Row
-              label="Valid From"
-              value={format(new Date(cert.notBefore), "PPP")}
-            />
-            <Row
-              label="Valid To"
-              value={format(new Date(cert.notAfter), "PPP")}
-            />
-            <Row label="Serial Number" value={cert.serialNumber} mono />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* SANs */}
-      {cert.sanList.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Subject Alternative Names (SANs) ({cert.sanList.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {cert.sanList.map((san) => (
-                <Link key={san} href={`/validate?domain=${encodeURIComponent(san)}`}>
-                  <Badge variant="outline" className="hover:bg-secondary cursor-pointer">
-                    {san}
-                  </Badge>
-                </Link>
+      {/* Certificate Details - crt.sh style */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificate Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="font-mono text-sm space-y-0.5 overflow-x-auto">
+            <CertLine label="Version" value="3 (0x2)" indent={2} />
+            <CertLine label="Serial Number" value={formatSerial(cert.serialNumber)} indent={2} />
+            <CertLine label="Signature Algorithm" value="sha256WithRSAEncryption" indent={2} muted />
+            <div className="pt-1" />
+            <CertSection title="Issuer" indent={2}>
+              {cert.issuerCn && <CertLine label="commonName" value={cert.issuerCn} indent={3} />}
+              {cert.issuerOrg && <CertLine label="organizationName" value={cert.issuerOrg} indent={3} />}
+            </CertSection>
+            <div className="pt-1" />
+            <CertSection title="Validity" indent={2}>
+              <CertLine label="Not Before" value={formatCertDate(cert.notBefore)} indent={3} />
+              <CertLine label="Not After" value={formatCertDate(cert.notAfter)} indent={3} highlight={isExpired ? "destructive" : undefined} />
+            </CertSection>
+            <div className="pt-1" />
+            <CertSection title="Subject" indent={2}>
+              {cert.subjectCn && <CertLine label="commonName" value={cert.subjectCn} indent={3} />}
+              {cert.subjectOrg && <CertLine label="organizationName" value={cert.subjectOrg} indent={3} />}
+              {cert.subjectCountry && <CertLine label="countryName" value={cert.subjectCountry} indent={3} />}
+              {cert.subjectState && <CertLine label="stateOrProvinceName" value={cert.subjectState} indent={3} />}
+              {cert.subjectLocality && <CertLine label="localityName" value={cert.subjectLocality} indent={3} />}
+              {/* BIMI-specific subject fields from the full DN */}
+              {parseBimiSubjectFields(cert.subjectDn).map(([oid, val]) => (
+                <CertLine key={oid} label={oid} value={val} indent={3} />
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CertSection>
+            {cert.sanList.length > 0 && (
+              <>
+                <div className="pt-1" />
+                <CertSection title="Subject Alternative Names" indent={2}>
+                  {cert.sanList.map((san) => (
+                    <div key={san} className="pl-[3.5rem]">
+                      <Link href={`/validate?domain=${encodeURIComponent(san)}`} className="text-primary hover:underline">
+                        DNS:{san}
+                      </Link>
+                    </div>
+                  ))}
+                </CertSection>
+              </>
+            )}
+            {cert.extensionsJson && Object.keys(cert.extensionsJson).length > 0 && (
+              <>
+                <div className="pt-1" />
+                <CertSection title="X509v3 Extensions" indent={2}>
+                  {Object.entries(cert.extensionsJson).map(([oid, value]) => {
+                    const hexStr = typeof value === "string" ? value : JSON.stringify(value);
+                    const ext = decodeExtension(oid, hexStr);
+                    return (
+                      <div key={oid} className="pl-[3.5rem] py-0.5">
+                        <span className="text-muted-foreground">{ext.name !== "Unknown" ? ext.name : oid}:</span>
+                        {ext.decoded ? (
+                          <span className="ml-2 whitespace-pre-wrap break-all">{ext.decoded}</span>
+                        ) : (
+                          <span className="ml-2 text-muted-foreground/60 break-all">
+                            {hexStr.substring(0, 64)}{hexStr.length > 64 ? "..." : ""}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CertSection>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Certificate Chain */}
       {data.chain.length > 0 && (
@@ -651,47 +688,6 @@ export function CertificateDetail({ id }: { id: string }) {
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Extensions */}
-      {cert.extensionsJson && Object.keys(cert.extensionsJson).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Extensions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>OID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(cert.extensionsJson).map(([oid, value]) => {
-                  const hexStr = typeof value === "string" ? value : JSON.stringify(value);
-                  const ext = decodeExtension(oid, hexStr);
-                  return (
-                    <TableRow key={oid}>
-                      <TableCell className="font-mono text-xs whitespace-nowrap">{oid}</TableCell>
-                      <TableCell className="whitespace-nowrap">{ext.name}</TableCell>
-                      <TableCell className="max-w-md text-xs">
-                        {ext.decoded ? (
-                          <span className="whitespace-pre-wrap break-all">{ext.decoded}</span>
-                        ) : (
-                          <span className="font-mono text-muted-foreground break-all">
-                            {hexStr.substring(0, 80)}{hexStr.length > 80 ? "..." : ""}
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
           </CardContent>
         </Card>
       )}
@@ -792,6 +788,204 @@ function Row({
       <span className={`break-all ${mono ? "font-mono text-xs" : ""}`}>
         {value || "-"}
       </span>
+    </div>
+  );
+}
+
+function RevocationStatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "good":
+      return <Badge className="bg-emerald-600 hover:bg-emerald-700">Good</Badge>;
+    case "revoked":
+      return <Badge variant="destructive">Revoked</Badge>;
+    case "unknown":
+      return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white">Unknown</Badge>;
+    case "error":
+      return <Badge variant="secondary">Error</Badge>;
+    default:
+      return <Badge variant="secondary">Not Available</Badge>;
+  }
+}
+
+function RevocationStatusCard({
+  revocation,
+  loading,
+  onRecheck,
+}: {
+  revocation: RevocationResult | null;
+  loading: boolean;
+  onRecheck: () => void;
+}) {
+  // Show the card even while loading (with skeleton state)
+  const hasAnyData = revocation?.ocsp || revocation?.crl;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Revocation Status</CardTitle>
+        <Button variant="outline" size="sm" onClick={onRecheck} disabled={loading}>
+          {loading ? "Checking..." : "Re-check"}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loading && !revocation ? (
+          <p className="text-sm text-muted-foreground">Checking OCSP and CRL status...</p>
+        ) : !hasAnyData ? (
+          <p className="text-sm text-muted-foreground">
+            No OCSP or CRL endpoints found in this certificate&apos;s extensions.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* OCSP */}
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">OCSP</span>
+                {revocation?.ocsp ? (
+                  <RevocationStatusBadge status={revocation.ocsp.status} />
+                ) : (
+                  <Badge variant="secondary">Not Available</Badge>
+                )}
+              </div>
+              {revocation?.ocsp && (
+                <div className="space-y-1 text-xs">
+                  <div className="text-muted-foreground font-mono break-all">
+                    {revocation.ocsp.url}
+                  </div>
+                  {revocation.ocsp.thisUpdate && (
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground shrink-0">This Update:</span>
+                      <span>{format(new Date(revocation.ocsp.thisUpdate), "PPP pp")}</span>
+                    </div>
+                  )}
+                  {revocation.ocsp.nextUpdate && (
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground shrink-0">Next Update:</span>
+                      <span>{format(new Date(revocation.ocsp.nextUpdate), "PPP pp")}</span>
+                    </div>
+                  )}
+                  {revocation.ocsp.errorMessage && (
+                    <div className="text-destructive">{revocation.ocsp.errorMessage}</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* CRL */}
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">CRL</span>
+                {revocation?.crl ? (
+                  <RevocationStatusBadge status={revocation.crl.status} />
+                ) : (
+                  <Badge variant="secondary">Not Available</Badge>
+                )}
+              </div>
+              {revocation?.crl && (
+                <div className="space-y-1 text-xs">
+                  <div className="text-muted-foreground font-mono break-all">
+                    {revocation.crl.url}
+                  </div>
+                  {revocation.crl.thisUpdate && (
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground shrink-0">This Update:</span>
+                      <span>{format(new Date(revocation.crl.thisUpdate), "PPP pp")}</span>
+                    </div>
+                  )}
+                  {revocation.crl.nextUpdate && (
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground shrink-0">Next Update:</span>
+                      <span>{format(new Date(revocation.crl.nextUpdate), "PPP pp")}</span>
+                    </div>
+                  )}
+                  {revocation.crl.errorMessage && (
+                    <div className="text-destructive">{revocation.crl.errorMessage}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// crt.sh-style certificate detail helpers
+
+function formatSerial(serial: string): string {
+  // Format as colon-separated hex pairs like crt.sh
+  const hex = serial.replace(/^0x/i, "").toLowerCase();
+  return hex.match(/.{1,2}/g)?.join(":") || serial;
+}
+
+function formatCertDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toUTCString().replace("GMT", "UTC");
+}
+
+/** Extract BIMI-specific OID fields from the subject DN that aren't standard fields */
+function parseBimiSubjectFields(dn: string): [string, string][] {
+  const bimiOids: Record<string, string> = {
+    "1.3.6.1.4.1.53087.1.2": "BIMI Trademark Office",
+    "1.3.6.1.4.1.53087.1.3": "BIMI Trademark Country",
+    "1.3.6.1.4.1.53087.1.4": "BIMI Trademark ID",
+    "1.3.6.1.4.1.53087.1.13": "BIMI Mark Type",
+  };
+  const results: [string, string][] = [];
+  for (const [oid, label] of Object.entries(bimiOids)) {
+    const re = new RegExp(`${oid.replace(/\./g, "\\.")}\\s*=\\s*([^,+]+)`);
+    const m = dn.match(re);
+    if (m) results.push([label, m[1].trim()]);
+  }
+  return results;
+}
+
+function CertLine({
+  label,
+  value,
+  indent,
+  muted,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  indent: number;
+  muted?: boolean;
+  highlight?: "destructive";
+}) {
+  const pad = indent * 1.25;
+  return (
+    <div style={{ paddingLeft: `${pad}rem` }}>
+      <span className="text-muted-foreground">{label}:</span>{" "}
+      <span className={
+        highlight === "destructive"
+          ? "text-destructive font-medium"
+          : muted
+            ? "text-muted-foreground/70"
+            : ""
+      }>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function CertSection({
+  title,
+  indent,
+  children,
+}: {
+  title: string;
+  indent: number;
+  children: React.ReactNode;
+}) {
+  const pad = indent * 1.25;
+  return (
+    <div>
+      <div style={{ paddingLeft: `${pad}rem` }} className="font-medium text-foreground">
+        {title}:
+      </div>
+      {children}
     </div>
   );
 }
