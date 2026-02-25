@@ -16,7 +16,7 @@ import {
   ALL_CA_SLUGS,
   CA_DISPLAY_NAMES,
   CA_SLUG_TO_NAME,
-  caNameToSlug,
+  ROOT_CA_OPTIONS,
 } from "@/lib/ca-slugs";
 
 const CERT_TYPES = [
@@ -102,16 +102,18 @@ function FilterBarInner() {
   // Don't show on validate or about pages
   if (pathname === "/validate" || pathname === "/privacy") return null;
 
+  const rootCa = searchParams.get("root") ?? "all";
   const type = searchParams.get("type") ?? "all";
   const validity = searchParams.get("validity") ?? "all";
   const precert = searchParams.get("precert") ?? "all";
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
 
-  const hasFilters = ca || type !== "all" || validity !== "all" || precert !== "all" || dateFrom || dateTo;
+  const hasFilters = ca || rootCa !== "all" || type !== "all" || validity !== "all" || precert !== "all" || dateFrom || dateTo;
 
   const filterCount =
     (ca ? 1 : 0) +
+    (rootCa !== "all" ? 1 : 0) +
     (type !== "all" ? 1 : 0) +
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
@@ -124,14 +126,33 @@ function FilterBarInner() {
       value={caSlug || "all"}
       onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[130px]"}>
-        <SelectValue placeholder="All CAs" />
+      <SelectTrigger size="sm" className={className ?? "w-[140px]"}>
+        <SelectValue placeholder="All Issuers" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All CAs</SelectItem>
+        <SelectItem value="all">All Issuers</SelectItem>
         {ALL_CA_SLUGS.map((slug) => (
           <SelectItem key={slug} value={slug}>
             {CA_DISPLAY_NAMES[slug]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const rootCaSelect = (className?: string) => (
+    <Select
+      value={rootCa}
+      onValueChange={(v) => updateSecondaryFilter("root", v)}
+    >
+      <SelectTrigger size="sm" className={className ?? "w-[140px]"}>
+        <SelectValue placeholder="All Root CAs" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Root CAs</SelectItem>
+        {ROOT_CA_OPTIONS.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
           </SelectItem>
         ))}
       </SelectContent>
@@ -244,6 +265,7 @@ function FilterBarInner() {
         {isOpen && (
           <div className="flex flex-col gap-2 pt-2 md:hidden">
             {caSelect("w-full")}
+            {rootCaSelect("w-full")}
             {typeSelect("w-full")}
             {validitySelect("w-full")}
             {precertSelect("w-full")}
@@ -255,6 +277,7 @@ function FilterBarInner() {
         <div className="hidden md:flex items-center gap-2">
           <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
           {caSelect()}
+          {rootCaSelect()}
           {typeSelect()}
           {validitySelect()}
           {precertSelect()}

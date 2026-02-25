@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
   const offset = (page - 1) * limit;
 
   const ca = params.get("ca");
+  const root = params.get("root");
   const certType = params.get("type");
   const from = params.get("from");
   const to = params.get("to");
@@ -35,14 +36,8 @@ export async function GET(request: NextRequest) {
   try {
     const conditions = [buildPrecertCondition(params.get("precert"))];
 
-    if (ca) {
-      conditions.push(
-        or(
-          eq(certificates.rootCaOrg, ca),
-          eq(certificates.issuerOrg, ca)
-        )!
-      );
-    }
+    if (ca) conditions.push(eq(certificates.issuerOrg, ca));
+    if (root) conditions.push(eq(certificates.rootCaOrg, root));
     if (certType) conditions.push(eq(certificates.certType, certType));
     if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
     if (to) conditions.push(lte(certificates.notBefore, new Date(to)));

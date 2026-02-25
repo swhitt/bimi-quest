@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
-import { sql, eq, count, countDistinct, and, gte, lte, desc, or } from "drizzle-orm";
+import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
 import { buildPrecertCondition } from "@/lib/db/filters";
 
 function buildBaseConditions(params: URLSearchParams) {
@@ -10,6 +10,7 @@ function buildBaseConditions(params: URLSearchParams) {
   const from = params.get("from");
   const to = params.get("to");
   const validity = params.get("validity");
+  const root = params.get("root");
 
   if (certType) conditions.push(eq(certificates.certType, certType));
   if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
@@ -18,6 +19,7 @@ function buildBaseConditions(params: URLSearchParams) {
     conditions.push(gte(certificates.notAfter, new Date()));
   if (validity === "expired")
     conditions.push(lte(certificates.notAfter, new Date()));
+  if (root) conditions.push(eq(certificates.rootCaOrg, root));
 
   return conditions;
 }
@@ -31,16 +33,8 @@ export async function GET(request: NextRequest) {
     const baseWhere =
       baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-    // CA filter matches on root_ca_org OR issuer_org so clicking
-    // "SSL.com" in the pie chart catches both SSL.com-direct and Sectigo-via-SSL.com
     const caConditions = selectedCA
-      ? [
-          ...baseConditions,
-          or(
-            eq(certificates.rootCaOrg, selectedCA),
-            eq(certificates.issuerOrg, selectedCA)
-          ),
-        ]
+      ? [...baseConditions, eq(certificates.issuerOrg, selectedCA)]
       : baseConditions;
     const caWhere =
       caConditions.length > 0 ? and(...caConditions) : undefined;
@@ -223,7 +217,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        selectedCA: selectedCA || "All CAs",
+        selectedCA: selectedCA || "All Issuers",
         totalCerts,
         caCerts,
         marketShare,

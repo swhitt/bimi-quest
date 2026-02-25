@@ -15,7 +15,7 @@ const navItems = [
 ];
 
 // Secondary filter keys that travel as query params
-const SECONDARY_FILTER_KEYS = ["type", "validity", "from", "to", "country", "precert"];
+const SECONDARY_FILTER_KEYS = ["type", "validity", "from", "to", "country", "precert", "root"];
 
 function NavLinks() {
   const pathname = usePathname();

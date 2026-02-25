@@ -60,12 +60,12 @@ function TrendTooltip({ active, payload, label, colors }: any) {
 
 export function TrendChart({ data, selectedCA }: TrendChartProps) {
   const colors = useChartColors();
-  const isFiltered = selectedCA !== "All CAs" && selectedCA in CA_COLOR_INDEX;
+  const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
   const months = [...new Set(data.map((d) => d.month))].sort();
 
   // When a specific CA is selected, show only that CA.
-  // When "All CAs", show stacked bars.
+  // When "All Issuers", show stacked bars.
   const displayCAs = isFiltered
     ? [selectedCA]
     : Object.keys(CA_COLOR_INDEX).filter((ca) =>

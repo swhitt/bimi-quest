@@ -64,7 +64,7 @@ function BarTooltip({ active, payload, colors }: any) {
 
 export function MarketShareChart({ data, selectedCA }: MarketShareChartProps) {
   const colors = useChartColors();
-  const isFiltered = selectedCA !== "All CAs" && selectedCA in CA_COLOR_INDEX;
+  const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
   const grandTotal = data.reduce((s, d) => s + d.total, 0);
 

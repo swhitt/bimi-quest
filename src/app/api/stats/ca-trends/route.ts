@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { sql, gte, and, count, desc } from "drizzle-orm";
+import { sql, eq, gte, and, count, desc } from "drizzle-orm";
 import { buildPrecertCondition } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
-  const months = parseInt(request.nextUrl.searchParams.get("months") || "12");
+  const params = request.nextUrl.searchParams;
+  const months = parseInt(params.get("months") || "12");
+  const ca = params.get("ca");
+  const root = params.get("root");
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - months);
 
   try {
+    const baseConditions = [buildPrecertCondition(params.get("precert"))];
+    if (ca) baseConditions.push(eq(certificates.issuerOrg, ca));
+    if (root) baseConditions.push(eq(certificates.rootCaOrg, root));
+
     const trends = await db
       .select({
         month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
@@ -23,7 +30,7 @@ export async function GET(request: NextRequest) {
         ),
       })
       .from(certificates)
-      .where(and(buildPrecertCondition(null), gte(certificates.notBefore, cutoff)))
+      .where(and(...baseConditions, gte(certificates.notBefore, cutoff)))
       .groupBy(
         sql`to_char(${certificates.notBefore}, 'YYYY-MM')`,
         certificates.rootCaOrg
@@ -37,7 +44,7 @@ export async function GET(request: NextRequest) {
         total: count(),
       })
       .from(certificates)
-      .where(buildPrecertCondition(null))
+      .where(and(...baseConditions))
       .groupBy(certificates.rootCaOrg)
       .orderBy(desc(count()))
       .limit(10);
