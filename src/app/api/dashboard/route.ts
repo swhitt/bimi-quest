@@ -123,6 +123,7 @@ export async function GET(request: NextRequest) {
       db
         .select({
           id: certificates.id,
+          fingerprintSha256: certificates.fingerprintSha256,
           serialNumber: certificates.serialNumber,
           subjectCn: certificates.subjectCn,
           subjectOrg: certificates.subjectOrg,

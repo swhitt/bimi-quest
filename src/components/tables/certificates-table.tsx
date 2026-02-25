@@ -214,7 +214,7 @@ export function CertificatesTable({
         return (
           <div className="min-w-0">
             <Link
-              href={`/certificates/${row.original.id}`}
+              href={`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`}
               className="font-medium hover:underline block truncate"
               onClick={(e) => e.stopPropagation()}
             >
@@ -439,7 +439,7 @@ export function CertificatesTable({
                   key={row.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() =>
-                    router.push(`/certificates/${row.original.id}`)
+                    router.push(`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`)
                   }
                 >
                   {row.getVisibleCells().map((cell) => (

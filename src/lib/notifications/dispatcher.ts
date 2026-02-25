@@ -2,6 +2,7 @@ import { sendDiscordNotification } from "./discord";
 
 export interface NewCertEvent {
   certId: number;
+  fingerprintSha256: string;
   domain: string;
   org: string;
   ca: string;

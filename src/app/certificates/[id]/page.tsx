@@ -7,9 +7,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const isHash = /^[0-9a-f]+$/i.test(id) && !/^\d+$/.test(id);
+  const label = isHash ? `${id.slice(0, 12)}...` : `#${id}`;
   return {
-    title: `Certificate #${id}`,
-    description: `BIMI certificate details, chain, extensions, and validation results for certificate #${id}.`,
+    title: `Certificate ${label}`,
+    description: `BIMI certificate details, chain, extensions, and validation results for certificate ${label}.`,
   };
 }
 

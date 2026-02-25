@@ -13,6 +13,7 @@ import { sanitizeSvg } from "@/lib/sanitize-svg";
 
 interface RecentCert {
   id: number;
+  fingerprintSha256: string;
   serialNumber: string;
   subjectCn: string | null;
   subjectOrg: string | null;
@@ -41,7 +42,7 @@ export function RecentCerts({ certs }: RecentCertsProps) {
             {certs.map((cert) => (
               <Link
                 key={cert.id}
-                href={`/certificates/${cert.id}`}
+                href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 transition-colors hover:bg-secondary/50"
               >
                 <div className="flex items-center gap-3">

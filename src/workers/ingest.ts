@@ -120,7 +120,7 @@ async function processEntries(
             extensionsJson: bimiData.extensionsJson,
           })
           .onConflictDoNothing({ target: certificates.fingerprintSha256 })
-          .returning({ id: certificates.id });
+          .returning({ id: certificates.id, fingerprintSha256: certificates.fingerprintSha256 });
 
         if (inserted) {
           // Store certificate chain (normalized: upsert unique certs, then link)
@@ -163,6 +163,7 @@ async function processEntries(
           if (notify) {
             dispatchNewCertNotification({
               certId: inserted.id,
+              fingerprintSha256: inserted.fingerprintSha256,
               domain: bimiData.sanList[0] || bimiData.subjectCn || "unknown",
               org: bimiData.subjectOrg || "unknown",
               ca: bimiData.issuerOrg || "unknown",

@@ -5,6 +5,7 @@ export interface DiscordCertPayload {
   certType: "VMC" | "CMC";
   country: string | null;
   certId: number;
+  fingerprintSha256: string;
   baseUrl: string;
 }
 
@@ -28,7 +29,7 @@ export async function sendDiscordNotification(
   }
 
   const color = CA_COLORS[payload.ca] ?? DEFAULT_COLOR;
-  const certUrl = `${payload.baseUrl}/certificates/${payload.certId}`;
+  const certUrl = `${payload.baseUrl}/certificates/${payload.fingerprintSha256.slice(0, 12)}`;
 
   const embed = {
     title: `New ${payload.certType} Certificate`,

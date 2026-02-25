@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
 import { eq, and, ne, inArray } from "drizzle-orm";
+import { resolveCertParam } from "@/lib/db/filters";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const certId = parseInt(id);
-
-  if (isNaN(certId)) {
-    return NextResponse.json({ error: "Invalid certificate ID" }, { status: 400 });
-  }
+  const { id: rawId } = await params;
 
   try {
+    const { id: certId, error } = await resolveCertParam(rawId);
+    if (error) return NextResponse.json({ error: error.message }, { status: error.status });
+    if (!certId) return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
+
     const [cert] = await db
       .select()
       .from(certificates)

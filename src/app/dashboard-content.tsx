@@ -23,6 +23,7 @@ interface DashboardData {
   markTypeBreakdown: { markType: string | null; count: number }[];
   recentCerts: {
     id: number;
+    fingerprintSha256: string;
     serialNumber: string;
     subjectCn: string | null;
     subjectOrg: string | null;

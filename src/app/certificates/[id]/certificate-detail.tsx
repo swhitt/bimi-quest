@@ -242,14 +242,14 @@ export function CertificateDetail({ id }: { id: string }) {
                 {cert.isPrecert ? (
                   <>
                     <span className="text-muted-foreground">This is a precertificate. The final certificate is also logged:</span>
-                    <Link href={`/certificates/${data.pairedCert.id}`} className="font-medium hover:underline">
+                    <Link href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`} className="font-medium hover:underline">
                       View final certificate
                     </Link>
                   </>
                 ) : (
                   <>
                     <span className="text-muted-foreground">The precertificate for this certificate is also logged:</span>
-                    <Link href={`/certificates/${data.pairedCert.id}`} className="font-medium hover:underline">
+                    <Link href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`} className="font-medium hover:underline">
                       View precertificate
                     </Link>
                   </>

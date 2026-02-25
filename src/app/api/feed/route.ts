@@ -10,6 +10,7 @@ export async function GET() {
   const recent = await db
     .select({
       id: certificates.id,
+      fingerprintSha256: certificates.fingerprintSha256,
       subjectOrg: certificates.subjectOrg,
       subjectCn: certificates.subjectCn,
       sanList: certificates.sanList,
@@ -26,7 +27,7 @@ export async function GET() {
   const items = recent.map((cert) => {
     const title = `${cert.certType || "BIMI"}: ${cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}`;
     const domain = cert.sanList[0] || cert.subjectCn || "";
-    const link = `${BASE_URL}/certificates/${cert.id}`;
+    const link = `${BASE_URL}/certificates/${cert.fingerprintSha256.slice(0, 12)}`;
     const pubDate = cert.notBefore.toUTCString();
     const description = `${cert.certType || "BIMI"} certificate issued by ${cert.issuerOrg || "Unknown CA"} for ${domain}${cert.subjectCountry ? ` (${cert.subjectCountry})` : ""}`;
 
