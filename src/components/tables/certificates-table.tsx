@@ -273,7 +273,7 @@ export function CertificatesTable({
         if (!row.original.notBefore) return "-";
         const date = new Date(row.original.notBefore);
         return (
-          <div>
+          <div title={format(date, "PPP pp")}>
             <span className="text-sm">
               {format(date, "yyyy-MM-dd")}
             </span>
@@ -300,12 +300,14 @@ export function CertificatesTable({
         const date = new Date(row.original.notAfter);
         const isExpired = date < new Date();
         return (
-          <span className={isExpired ? "text-destructive" : "text-sm"}>
-            {format(date, "yyyy-MM-dd")}
-            {isExpired && (
-              <span className="text-xs block">expired</span>
-            )}
-          </span>
+          <div title={format(date, "PPP pp")}>
+            <span className={isExpired ? "text-destructive text-sm" : "text-sm"}>
+              {format(date, "yyyy-MM-dd")}
+            </span>
+            <span className={`text-xs block ${isExpired ? "text-destructive" : "text-muted-foreground"}`}>
+              {formatDistanceToNow(date, { addSuffix: true })}
+            </span>
+          </div>
         );
       },
     },
