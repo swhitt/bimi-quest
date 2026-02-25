@@ -205,7 +205,7 @@ export function CertificateDetail({ id }: { id: string }) {
         <div className="flex items-start gap-4">
           {cert.logotypeSvg && (
             <div
-              className="h-16 w-16 shrink-0 rounded-lg border bg-white p-1.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-white p-1.5 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
               dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
             />
           )}
@@ -326,7 +326,7 @@ export function CertificateDetail({ id }: { id: string }) {
             <div className="flex gap-6">
               {/* Large SVG preview */}
               <div
-                className={`flex h-40 w-40 shrink-0 items-center justify-center rounded-lg border p-3 ${
+                className={`flex h-40 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
                   svgBgDark ? "bg-zinc-900" : "bg-white"
                 }`}
                 dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
@@ -458,7 +458,7 @@ export function CertificateDetail({ id }: { id: string }) {
                     <div className="flex flex-wrap gap-4">
                       <div className="text-center">
                         <div
-                          className="h-20 w-20 rounded-lg border bg-white p-1.5 mx-auto overflow-hidden [&>svg]:w-full [&>svg]:h-full"
+                          className="flex h-20 w-20 items-center justify-center rounded-lg border bg-white p-1.5 mx-auto overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
                           dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
                         />
                         <span className="text-xs text-muted-foreground mt-1 block">
