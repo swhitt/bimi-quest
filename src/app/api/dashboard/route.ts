@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
       [totalRow],
       [caRow],
       caBreakdown,
-      issuerBreakdown,
       monthlyTrend,
       recentCerts,
       [uniques],
@@ -73,6 +72,7 @@ export async function GET(request: NextRequest) {
       [newLast30dRow],
       [caNewLast30dRow],
       [lastUpdatedRow],
+      [activeCertsRow],
     ] = await Promise.all([
       // Total certificates (base filters, no CA filter)
       db
@@ -101,18 +101,6 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(baseWhere)
         .groupBy(certificates.rootCaOrg)
-        .orderBy(desc(count())),
-
-      // Issuer breakdown within root CA (for drill-down)
-      db
-        .select({
-          rootCa: certificates.rootCaOrg,
-          issuer: certificates.issuerOrg,
-          total: count(),
-        })
-        .from(certificates)
-        .where(baseWhere)
-        .groupBy(certificates.rootCaOrg, certificates.issuerOrg)
         .orderBy(desc(count())),
 
       // Monthly trend (last 12 months, grouped by root CA)
@@ -211,6 +199,17 @@ export async function GET(request: NextRequest) {
         .from(ingestionCursors)
         .orderBy(desc(ingestionCursors.lastRun))
         .limit(1),
+
+      // Currently valid certificates (notAfter >= now, with CA filters)
+      db
+        .select({ count: count() })
+        .from(certificates)
+        .where(
+          and(
+            ...(caConditions.length > 0 ? caConditions : []),
+            gte(certificates.notAfter, new Date())
+          )
+        ),
     ]);
 
     const totalCerts = totalRow?.count || 0;
@@ -229,13 +228,13 @@ export async function GET(request: NextRequest) {
         marketShare,
         uniqueOrgs: uniques?.uniqueOrgs || 0,
         caBreakdown,
-        issuerBreakdown,
         monthlyTrend,
         recentCerts,
         expiringCount: expiringRow?.count || 0,
         markTypeBreakdown,
         newLast30d: newLast30dRow?.count || 0,
         caNewLast30d: caNewLast30dRow?.count || 0,
+        activeCerts: activeCertsRow?.count || 0,
         lastUpdated: lastUpdatedRow?.lastRun?.toISOString() || null,
       },
       {

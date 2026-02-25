@@ -1,4 +1,5 @@
 import { X509Certificate } from "@peculiar/x509";
+import { createHash } from "crypto";
 import type { CTLogEntry } from "./gorgon";
 
 // BIMI-relevant OIDs
@@ -376,7 +377,7 @@ function extractLogotypeSvg(
       const text = new TextDecoder("utf-8", { fatal: false }).decode(rawBytes);
       const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
       if (svgMatch) {
-        return { svgHash: simpleHash(svgMatch[0]), svgContent: svgMatch[0] };
+        return { svgHash: sha256Hex(svgMatch[0]), svgContent: svgMatch[0] };
       }
       return { svgHash: null, svgContent: null };
     }
@@ -403,7 +404,7 @@ function extractLogotypeSvg(
     const decoded = base64ToBuffer(b64);
     const svg = decompressIfGzipped(decoded);
     if (svg && svg.includes("<svg")) {
-      return { svgHash: simpleHash(svg), svgContent: svg };
+      return { svgHash: sha256Hex(svg), svgContent: svg };
     }
 
     return { svgHash: null, svgContent: null };
@@ -429,15 +430,9 @@ function decompressIfGzipped(data: Uint8Array): string | null {
   }
 }
 
-/** Simple non-crypto hash for SVG deduplication */
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(16).padStart(8, "0");
+/** SHA-256 hash for SVG content comparison and deduplication */
+function sha256Hex(str: string): string {
+  return createHash("sha256").update(str).digest("hex");
 }
 
 /** Parse a chain cert minimally to extract subject/issuer DNs */

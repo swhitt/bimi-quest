@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { DashboardContent } from "./dashboard-content";
+import { DomainSearch } from "@/components/domain-search";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Use the default title from layout.tsx metadata template
@@ -25,6 +26,7 @@ export default function DashboardPage() {
           <p>Organizations need a DMARC policy of "quarantine" or "reject", an SVG Tiny PS logo, and a Verified Mark Certificate (VMC) or Common Mark Certificate (CMC) from a Certificate Authority. This dashboard tracks all BIMI certificates issued via public Certificate Transparency logs.</p>
         </div>
       </details>
+      <DomainSearch />
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>

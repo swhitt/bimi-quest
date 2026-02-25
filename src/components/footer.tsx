@@ -12,7 +12,6 @@ export function Footer() {
           logs.
         </p>
         <nav className="flex items-center gap-4">
-          <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
           <Link href="/api/feed" className="hover:text-foreground transition-colors">RSS</Link>
         </nav>

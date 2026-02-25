@@ -76,7 +76,7 @@ export async function GET(
 
           // If no cached state, do live DNS lookups
           if (!cachedState) {
-            const [bimiRecord, dmarcRecord] = await Promise.all([
+            const [bimiRecord, dmarcLookup] = await Promise.all([
               lookupBIMIRecord(domain),
               lookupDMARC(domain),
             ]);
@@ -87,9 +87,9 @@ export async function GET(
               authorityUrl = bimiRecord.authorityUrl;
             }
 
-            if (dmarcRecord) {
-              dmarcPolicy = dmarcRecord.policy;
-              dmarcValid = isDMARCValidForBIMI(dmarcRecord);
+            if (dmarcLookup) {
+              dmarcPolicy = dmarcLookup.record.policy;
+              dmarcValid = isDMARCValidForBIMI(dmarcLookup.record, dmarcLookup.isSubdomain);
             }
           }
 

@@ -40,19 +40,26 @@ function getOrgDomain(domain: string): string | null {
   return parts.slice(-2).join(".");
 }
 
+export interface DMARCLookupResult {
+  record: DMARCRecord;
+  /** True when the record was found at the org domain, not the queried domain */
+  isSubdomain: boolean;
+}
+
 /** Look up the DMARC TXT record for a domain, falling back to the
  *  organizational domain per RFC 7489 section 6.6.3 */
 export async function lookupDMARC(
   domain: string
-): Promise<DMARCRecord | null> {
+): Promise<DMARCLookupResult | null> {
   // Try exact domain first
   const record = await lookupDMARCAt(domain);
-  if (record) return record;
+  if (record) return { record, isSubdomain: false };
 
   // Fall back to organizational domain per RFC 7489 section 6.6.3
   const orgDomain = getOrgDomain(domain);
   if (orgDomain && orgDomain !== domain) {
-    return lookupDMARCAt(orgDomain);
+    const orgRecord = await lookupDMARCAt(orgDomain);
+    if (orgRecord) return { record: orgRecord, isSubdomain: true };
   }
 
   return null;

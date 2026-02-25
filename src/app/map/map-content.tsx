@@ -93,52 +93,7 @@ export function MapContent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Certificates by Country ({total.toLocaleString()} total)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.length > 0 ? (
-            <div className="space-y-2">
-              {data.slice(0, 20).map((entry) => {
-                const pct = total > 0 ? (entry.total / total) * 100 : 0;
-                return (
-                  <div
-                    key={entry.country || "unknown"}
-                    className="flex items-center gap-3"
-                  >
-                    <span className="w-8 text-right font-mono text-sm">
-                      {entry.country || "??"}
-                    </span>
-                    <div className="flex-1">
-                      <div
-                        className="h-6 rounded flex items-center px-2"
-                        style={{
-                          background: "var(--chart-1)",
-                          width: `${Math.max(pct, 2)}%`,
-                        }}
-                      >
-                        <span className="text-xs text-primary-foreground font-medium">
-                          {entry.total}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="w-16 text-right text-sm text-muted-foreground">
-                      {pct.toFixed(1)}%
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">No geographic data available.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Countries</CardTitle>
+          <CardTitle>Certificates by Country ({total.toLocaleString()} total)</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

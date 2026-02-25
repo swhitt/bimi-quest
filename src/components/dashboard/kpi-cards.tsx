@@ -7,6 +7,7 @@ interface KPICardsProps {
   selectedCA: string;
   totalCerts: number;
   caCerts: number;
+  activeCerts: number;
   marketShare: string;
   uniqueOrgs: number;
   newLast30d: number;
@@ -16,10 +17,22 @@ interface KPICardsProps {
 
 function DeltaBadge({ value }: { value: number }) {
   if (value === 0) return null;
+  const isNegative = value < 0;
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-      <TrendingUp className="size-3" />
-      +{value.toLocaleString()} (30d)
+    <span
+      className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+        isNegative
+          ? "text-red-600 dark:text-red-400"
+          : "text-emerald-600 dark:text-emerald-400"
+      }`}
+    >
+      {isNegative ? (
+        <TrendingDown className="size-3" />
+      ) : (
+        <TrendingUp className="size-3" />
+      )}
+      {isNegative ? "" : "+"}
+      {value.toLocaleString()} (30d)
     </span>
   );
 }
@@ -28,6 +41,7 @@ export function KPICards({
   selectedCA,
   totalCerts,
   caCerts,
+  activeCerts,
   marketShare,
   uniqueOrgs,
   newLast30d,
@@ -38,13 +52,16 @@ export function KPICards({
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total BIMI Certs</CardTitle>
+          <CardTitle className="text-sm font-medium">Active (Valid)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{totalCerts.toLocaleString()}</div>
+          <div className="text-2xl font-bold">{activeCerts.toLocaleString()}</div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Across all CAs</p>
-            <DeltaBadge value={newLast30d} />
+            <p className="text-xs text-muted-foreground">
+              {totalCerts > 0
+                ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalCerts.toLocaleString()} total`
+                : "Currently valid certs"}
+            </p>
           </div>
         </CardContent>
       </Card>

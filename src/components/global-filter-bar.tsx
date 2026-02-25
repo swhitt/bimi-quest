@@ -100,7 +100,7 @@ function FilterBarInner() {
   }, [pathname, router]);
 
   // Don't show on validate or about pages
-  if (pathname === "/validate" || pathname === "/about" || pathname === "/privacy") return null;
+  if (pathname === "/validate" || pathname === "/privacy") return null;
 
   const type = searchParams.get("type") ?? "all";
   const validity = searchParams.get("validity") ?? "all";

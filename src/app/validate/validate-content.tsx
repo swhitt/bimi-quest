@@ -126,133 +126,149 @@ export function ValidateContent() {
             )}
           </Card>
 
-          {/* BIMI DNS */}
-          <CheckCard
-            title="BIMI DNS Record"
-            pass={result.bimi.found}
-            details={
-              result.bimi.record ? (
-                <div className="space-y-1 text-sm">
-                  <Row label="Raw" value={result.bimi.record.raw} />
-                  <Row label="Version" value={result.bimi.record.version} />
-                  <Row label="Logo URL" value={result.bimi.record.logoUrl} />
-                  <Row label="Authority URL" value={result.bimi.record.authorityUrl} />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No BIMI record found at default._bimi.{result.domain}
-                </p>
-              )
-            }
-            guidance={
-              <div>
-                <p>Add a TXT record at <code className="text-xs bg-background px-1 py-0.5 rounded">default._bimi.{result.domain}</code> with the following format:</p>
-                <p><code className="text-xs bg-background px-1 py-0.5 rounded">v=BIMI1; l=https://example.com/logo.svg; a=https://example.com/cert.pem;</code></p>
-                <p>The <code className="text-xs bg-background px-1 py-0.5 rounded">l=</code> tag points to your SVG Tiny PS logo file hosted over HTTPS. The <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag points to your VMC or CMC certificate in PEM format.</p>
-              </div>
-            }
-          />
+          {/* Sequential validation steps with dependency chain */}
+          <div className="relative">
+            {/* Vertical connector line between steps */}
+            <div className="absolute left-[1.65rem] top-10 bottom-10 w-0.5 bg-border hidden sm:block" />
 
-          {/* DMARC */}
-          <CheckCard
-            title="DMARC Policy"
-            pass={result.dmarc.validForBIMI}
-            details={
-              result.dmarc.record ? (
-                <div className="space-y-1 text-sm">
-                  <Row label="Raw" value={result.dmarc.record.raw} />
-                  <Row label="Policy" value={result.dmarc.record.policy} />
-                  <Row label="PCT" value={String(result.dmarc.record.pct)} />
-                  <Row
-                    label="BIMI Ready"
-                    value={result.dmarc.validForBIMI ? "Yes" : "No (needs p=quarantine/reject, pct=100)"}
-                  />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No DMARC record found</p>
-              )
-            }
-            guidance={
-              <div>
-                <p>BIMI requires a DMARC policy of <code className="text-xs bg-background px-1 py-0.5 rounded">p=quarantine</code> or <code className="text-xs bg-background px-1 py-0.5 rounded">p=reject</code> with <code className="text-xs bg-background px-1 py-0.5 rounded">pct=100</code> (the default if omitted).</p>
-                <p>Start with <code className="text-xs bg-background px-1 py-0.5 rounded">p=quarantine</code> if you haven&apos;t enforced DMARC yet. Make sure SPF and DKIM are properly configured first, then monitor reports before moving to <code className="text-xs bg-background px-1 py-0.5 rounded">p=reject</code>.</p>
-              </div>
-            }
-          />
+            <div className="space-y-4">
+              {/* Step 1: BIMI DNS */}
+              <CheckCard
+                step={1}
+                title="BIMI DNS Record"
+                subtitle="The foundation: your BIMI TXT record must exist"
+                pass={result.bimi.found}
+                details={
+                  result.bimi.record ? (
+                    <div className="space-y-1 text-sm">
+                      <Row label="Raw" value={result.bimi.record.raw} />
+                      <Row label="Version" value={result.bimi.record.version} />
+                      <Row label="Logo URL" value={result.bimi.record.logoUrl} />
+                      <Row label="Authority URL" value={result.bimi.record.authorityUrl} />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No BIMI record found at default._bimi.{result.domain}
+                    </p>
+                  )
+                }
+                guidance={
+                  <div>
+                    <p>Add a TXT record at <code className="text-xs bg-background px-1 py-0.5 rounded">default._bimi.{result.domain}</code> with the following format:</p>
+                    <p><code className="text-xs bg-background px-1 py-0.5 rounded">v=BIMI1; l=https://example.com/logo.svg; a=https://example.com/cert.pem;</code></p>
+                    <p>The <code className="text-xs bg-background px-1 py-0.5 rounded">l=</code> tag points to your SVG Tiny PS logo file hosted over HTTPS. The <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag points to your VMC or CMC certificate in PEM format.</p>
+                  </div>
+                }
+              />
 
-          {/* SVG */}
-          <CheckCard
-            title="SVG Logo"
-            pass={result.svg.found && (result.svg.validation?.valid ?? false)}
-            details={
-              <div className="space-y-1 text-sm">
-                <Row label="Found" value={result.svg.found ? "Yes" : "No"} />
-                {result.svg.url && <Row label="URL" value={result.svg.url} />}
-                {result.svg.sizeBytes !== null && (
-                  <Row label="Size" value={`${result.svg.sizeBytes} bytes`} />
-                )}
-                {result.svg.validation && (
-                  <>
-                    <Row
-                      label="SVG Tiny PS"
-                      value={result.svg.validation.valid ? "Valid" : "Invalid"}
-                    />
-                    {result.svg.validation.errors.map((e, i) => (
-                      <div key={i} className="text-destructive ml-40">
-                        &#x2022; {e}
-                      </div>
-                    ))}
-                    {result.svg.validation.warnings.map((w, i) => (
-                      <div key={i} className="text-yellow-600 ml-40">
-                        &#x26A0; {w}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            }
-            guidance={
-              <div>
-                <p>Your logo must be in SVG Tiny PS (Portable/Secure) format with a square aspect ratio and hosted over HTTPS. Most existing SVG logos will need conversion since SVG Tiny PS is a restricted subset of SVG that disallows scripts, external references, and many advanced features.</p>
-                <p>Tools like the BIMI Group&apos;s SVG converter or Adobe Illustrator&apos;s &quot;SVG Tiny 1.2&quot; export can help. The final file should use <code className="text-xs bg-background px-1 py-0.5 rounded">baseProfile=&quot;tiny-ps&quot;</code> and <code className="text-xs bg-background px-1 py-0.5 rounded">version=&quot;1.2&quot;</code> in the root element.</p>
-              </div>
-            }
-          />
+              {/* Step 2: DMARC */}
+              <CheckCard
+                step={2}
+                title="DMARC Policy"
+                subtitle="Email authentication must be enforced before BIMI works"
+                pass={result.dmarc.validForBIMI}
+                details={
+                  result.dmarc.record ? (
+                    <div className="space-y-1 text-sm">
+                      <Row label="Raw" value={result.dmarc.record.raw} />
+                      <Row label="Policy" value={result.dmarc.record.policy} />
+                      <Row label="PCT" value={String(result.dmarc.record.pct)} />
+                      <Row
+                        label="BIMI Ready"
+                        value={result.dmarc.validForBIMI ? "Yes" : "No (needs p=quarantine/reject, pct=100)"}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No DMARC record found</p>
+                  )
+                }
+                guidance={
+                  <div>
+                    <p>BIMI requires a DMARC policy of <code className="text-xs bg-background px-1 py-0.5 rounded">p=quarantine</code> or <code className="text-xs bg-background px-1 py-0.5 rounded">p=reject</code> with <code className="text-xs bg-background px-1 py-0.5 rounded">pct=100</code> (the default if omitted).</p>
+                    <p>Start with <code className="text-xs bg-background px-1 py-0.5 rounded">p=quarantine</code> if you haven&apos;t enforced DMARC yet. Make sure SPF and DKIM are properly configured first, then monitor reports before moving to <code className="text-xs bg-background px-1 py-0.5 rounded">p=reject</code>.</p>
+                  </div>
+                }
+              />
 
-          {/* Certificate */}
-          <CheckCard
-            title="Authority Certificate"
-            pass={result.certificate.found && !result.certificate.isExpired}
-            details={
-              <div className="space-y-1 text-sm">
-                <Row label="Found" value={result.certificate.found ? "Yes" : "No"} />
-                {result.certificate.certType && (
-                  <Row label="Type" value={result.certificate.certType} />
-                )}
-                {result.certificate.issuer && (
-                  <Row label="Issuer" value={result.certificate.issuer} />
-                )}
-                {result.certificate.validFrom && (
-                  <Row label="Valid From" value={result.certificate.validFrom} />
-                )}
-                {result.certificate.validTo && (
-                  <Row label="Valid To" value={result.certificate.validTo} />
-                )}
-                {result.certificate.isExpired !== null && (
-                  <Row
-                    label="Status"
-                    value={result.certificate.isExpired ? "Expired" : "Active"}
-                  />
-                )}
-              </div>
-            }
-            guidance={
-              <div>
-                <p>BIMI supports two certificate types: <strong>VMC</strong> (Verified Mark Certificate) requires a registered trademark and costs around $1,500/yr from CAs like DigiCert, Entrust, or SSL.com. <strong>CMC</strong> (Common Mark Certificate) does not require a trademark, making it accessible to any organization.</p>
-                <p>Host the certificate in PEM format at an HTTPS URL and reference it in your BIMI DNS record using the <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag.</p>
-              </div>
-            }
-          />
+              {/* Step 3: Certificate */}
+              <CheckCard
+                step={3}
+                title="Authority Certificate"
+                subtitle="A valid VMC or CMC proves your brand identity"
+                pass={result.certificate.found && !result.certificate.isExpired}
+                details={
+                  <div className="space-y-1 text-sm">
+                    <Row label="Found" value={result.certificate.found ? "Yes" : "No"} />
+                    {result.certificate.certType && (
+                      <Row label="Type" value={result.certificate.certType} />
+                    )}
+                    {result.certificate.issuer && (
+                      <Row label="Issuer" value={result.certificate.issuer} />
+                    )}
+                    {result.certificate.validFrom && (
+                      <Row label="Valid From" value={result.certificate.validFrom} />
+                    )}
+                    {result.certificate.validTo && (
+                      <Row label="Valid To" value={result.certificate.validTo} />
+                    )}
+                    {result.certificate.isExpired !== null && (
+                      <Row
+                        label="Status"
+                        value={result.certificate.isExpired ? "Expired" : "Active"}
+                      />
+                    )}
+                  </div>
+                }
+                guidance={
+                  <div>
+                    <p>BIMI supports two certificate types: <strong>VMC</strong> (Verified Mark Certificate) requires a registered trademark and costs around $1,500/yr from CAs like DigiCert, Entrust, or SSL.com. <strong>CMC</strong> (Common Mark Certificate) does not require a trademark, making it accessible to any organization.</p>
+                    <p>Host the certificate in PEM format at an HTTPS URL and reference it in your BIMI DNS record using the <code className="text-xs bg-background px-1 py-0.5 rounded">a=</code> tag.</p>
+                  </div>
+                }
+              />
+
+              {/* Step 4: SVG Logo */}
+              <CheckCard
+                step={4}
+                title="SVG Logo"
+                subtitle="Your logo must meet SVG Tiny PS requirements"
+                pass={result.svg.found && (result.svg.validation?.valid ?? false)}
+                details={
+                  <div className="space-y-1 text-sm">
+                    <Row label="Found" value={result.svg.found ? "Yes" : "No"} />
+                    {result.svg.url && <Row label="URL" value={result.svg.url} />}
+                    {result.svg.sizeBytes !== null && (
+                      <Row label="Size" value={`${result.svg.sizeBytes} bytes`} />
+                    )}
+                    {result.svg.validation && (
+                      <>
+                        <Row
+                          label="SVG Tiny PS"
+                          value={result.svg.validation.valid ? "Valid" : "Invalid"}
+                        />
+                        {result.svg.validation.errors.map((e, i) => (
+                          <div key={i} className="text-destructive ml-40">
+                            &#x2022; {e}
+                          </div>
+                        ))}
+                        {result.svg.validation.warnings.map((w, i) => (
+                          <div key={i} className="text-yellow-600 ml-40">
+                            &#x26A0; {w}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                }
+                guidance={
+                  <div>
+                    <p>Your logo must be in SVG Tiny PS (Portable/Secure) format with a square aspect ratio and hosted over HTTPS. Most existing SVG logos will need conversion since SVG Tiny PS is a restricted subset of SVG that disallows scripts, external references, and many advanced features.</p>
+                    <p>Tools like the BIMI Group&apos;s SVG converter or Adobe Illustrator&apos;s &quot;SVG Tiny 1.2&quot; export can help. The final file should use <code className="text-xs bg-background px-1 py-0.5 rounded">baseProfile=&quot;tiny-ps&quot;</code> and <code className="text-xs bg-background px-1 py-0.5 rounded">version=&quot;1.2&quot;</code> in the root element.</p>
+                  </div>
+                }
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -260,28 +276,48 @@ export function ValidateContent() {
 }
 
 function CheckCard({
+  step,
   title,
+  subtitle,
   pass,
   details,
   guidance,
 }: {
+  step: number;
   title: string;
+  subtitle: string;
   pass: boolean;
   details: React.ReactNode;
   guidance?: React.ReactNode;
 }) {
-  const [showGuide, setShowGuide] = useState(false);
+  // Guidance is expanded by default on FAIL, collapsed for PASS
+  const [showGuide, setShowGuide] = useState(!pass);
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-3 pb-2">
+    <Card className="relative sm:pl-6">
+      {/* Step number indicator */}
+      <div className="absolute left-3 top-4 sm:left-[-0.5rem] sm:top-4 z-10">
+        <div
+          className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-4 ring-background ${
+            pass
+              ? "bg-emerald-600 text-white dark:bg-emerald-500"
+              : "bg-destructive text-destructive-foreground"
+          }`}
+        >
+          {pass ? "\u2713" : step}
+        </div>
+      </div>
+      <CardHeader className="flex flex-row items-center gap-3 pb-2 pl-12 sm:pl-8">
         <Badge variant={pass ? "default" : "destructive"}>
           {pass ? "PASS" : "FAIL"}
         </Badge>
-        <CardTitle className="text-lg">{title}</CardTitle>
+        <div>
+          <CardTitle className="text-lg">{title}</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pl-12 sm:pl-8">
         {details}
-        {!pass && guidance && (
+        {guidance && !pass && (
           <div>
             <button
               onClick={() => setShowGuide(!showGuide)}
@@ -322,9 +358,9 @@ function ReadinessScore({ result }: { result: ValidationResult }) {
   score = checks.filter(Boolean).length;
   const pct = Math.round((score / checks.length) * 100);
   const color =
-    pct === 100
+    pct >= 80
       ? "text-emerald-600 dark:text-emerald-400"
-      : pct >= 60
+      : pct >= 50
         ? "text-amber-600 dark:text-amber-400"
         : "text-destructive";
 

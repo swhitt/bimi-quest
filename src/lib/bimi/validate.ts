@@ -48,15 +48,19 @@ export async function validateDomain(
   }
 
   // 2. DMARC record
-  const dmarcRecord = await lookupDMARC(domain);
+  const dmarcLookup = await lookupDMARC(domain);
+  const dmarcRecord = dmarcLookup?.record ?? null;
   let dmarcValid = false;
   if (!dmarcRecord) {
     errors.push(`No DMARC record found at _dmarc.${domain}`);
   } else {
-    dmarcValid = isDMARCValidForBIMI(dmarcRecord);
+    dmarcValid = isDMARCValidForBIMI(dmarcRecord, dmarcLookup!.isSubdomain);
     if (!dmarcValid) {
+      const effectiveTag = dmarcLookup!.isSubdomain && dmarcRecord.sp
+        ? `sp=${dmarcRecord.sp}`
+        : `p=${dmarcRecord.policy}`;
       errors.push(
-        `DMARC policy does not meet BIMI requirements (need p=quarantine or p=reject with pct=100, got p=${dmarcRecord.policy} pct=${dmarcRecord.pct})`
+        `DMARC policy does not meet BIMI requirements (need p=quarantine or p=reject with pct=100, got ${effectiveTag} pct=${dmarcRecord.pct})`
       );
     }
   }
@@ -144,6 +148,15 @@ export async function validateDomain(
             if (certInfo.notAfter < now) {
               errors.push("BIMI certificate is expired");
             }
+            // Verify the certificate's SANs actually cover the domain
+            if (certInfo.sans.length > 0) {
+              const covered = certInfo.sans.some((san) => sanCoversDomain(san, domain));
+              if (!covered) {
+                errors.push(
+                  `Certificate does not cover domain ${domain} (SANs: ${certInfo.sans.join(", ")})`
+                );
+              }
+            }
           }
         } else {
           errors.push(
@@ -173,6 +186,26 @@ export async function validateDomain(
   };
 }
 
+/** Check if a certificate SAN covers the given domain (exact or wildcard match) */
+function sanCoversDomain(san: string, domain: string): boolean {
+  const sanLower = san.toLowerCase();
+  const domLower = domain.toLowerCase();
+
+  if (sanLower === domLower) return true;
+
+  // Wildcard: *.example.com matches mail.example.com but not example.com
+  // or sub.mail.example.com (only one level)
+  if (sanLower.startsWith("*.")) {
+    const sanBase = sanLower.slice(2);
+    const dotIdx = domLower.indexOf(".");
+    if (dotIdx !== -1 && domLower.slice(dotIdx + 1) === sanBase) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /** Extract basic info from a PEM certificate (best effort, no full parser) */
 function parsePemBasicInfo(
   pem: string
@@ -182,6 +215,7 @@ function parsePemBasicInfo(
   notAfter: Date;
   certType: string | null;
   markType: string | null;
+  sans: string[];
 } | null {
   try {
     const { X509Certificate } = require("@peculiar/x509");
@@ -202,12 +236,29 @@ function parsePemBasicInfo(
       certType = vmcTypes.some((t) => markType.includes(t)) ? "VMC" : "CMC";
     }
 
+    // Extract Subject Alternative Names (DNS names)
+    const sans: string[] = [];
+    try {
+      const { SubjectAlternativeNameExtension } = require("@peculiar/x509");
+      const sanExt = cert.getExtension(SubjectAlternativeNameExtension);
+      if (sanExt) {
+        for (const name of sanExt.names.items) {
+          if (name.type === "dns") {
+            sans.push(name.value);
+          }
+        }
+      }
+    } catch {
+      // SAN parsing failed, leave empty
+    }
+
     return {
       issuer: cert.issuer,
       notBefore: cert.notBefore,
       notAfter: cert.notAfter,
       certType,
       markType,
+      sans,
     };
   } catch {
     return null;

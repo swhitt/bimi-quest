@@ -12,12 +12,13 @@ interface DashboardData {
   selectedCA: string;
   totalCerts: number;
   caCerts: number;
+  activeCerts: number;
   marketShare: string;
   uniqueOrgs: number;
   newLast30d: number;
   caNewLast30d: number;
   expiringCount: number;
-  caBreakdown: { ca: string | null; total: number }[];
+  caBreakdown: { ca: string | null; total: number; vmcCount: number; cmcCount: number }[];
   monthlyTrend: { month: string; ca: string | null; count: number }[];
   markTypeBreakdown: { markType: string | null; count: number }[];
   recentCerts: {
@@ -86,6 +87,7 @@ export function DashboardContent() {
         selectedCA={data.selectedCA}
         totalCerts={data.totalCerts}
         caCerts={data.caCerts}
+        activeCerts={data.activeCerts || 0}
         marketShare={data.marketShare}
         uniqueOrgs={data.uniqueOrgs}
         newLast30d={data.newLast30d || 0}
