@@ -4,13 +4,13 @@ import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
 import { buildPrecertCondition } from "@/lib/db/filters";
 
-function buildBaseConditions(params: URLSearchParams) {
+// Conditions without CA/root filters (for the "total" denominator)
+function buildGlobalConditions(params: URLSearchParams) {
   const conditions = [buildPrecertCondition(params.get("precert"))];
   const certType = params.get("type");
   const from = params.get("from");
   const to = params.get("to");
   const validity = params.get("validity");
-  const root = params.get("root");
 
   if (certType) conditions.push(eq(certificates.certType, certType));
   if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
@@ -19,16 +19,28 @@ function buildBaseConditions(params: URLSearchParams) {
     conditions.push(gte(certificates.notAfter, new Date()));
   if (validity === "expired")
     conditions.push(lte(certificates.notAfter, new Date()));
-  if (root) conditions.push(eq(certificates.rootCaOrg, root));
 
+  return conditions;
+}
+
+// Conditions including root CA filter (for breakdowns/trends)
+function buildBaseConditions(params: URLSearchParams) {
+  const conditions = buildGlobalConditions(params);
+  const root = params.get("root");
+  if (root) conditions.push(eq(certificates.rootCaOrg, root));
   return conditions;
 }
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const selectedCA = searchParams.get("ca") || null;
+  const selectedRoot = searchParams.get("root") || null;
 
   try {
+    const globalConditions = buildGlobalConditions(searchParams);
+    const globalWhere =
+      globalConditions.length > 0 ? and(...globalConditions) : undefined;
+
     const baseConditions = buildBaseConditions(searchParams);
     const baseWhere =
       baseConditions.length > 0 ? and(...baseConditions) : undefined;
@@ -68,11 +80,11 @@ export async function GET(request: NextRequest) {
       [lastUpdatedRow],
       [activeCertsRow],
     ] = await Promise.all([
-      // Total certificates (base filters, no CA filter)
+      // Total certificates (global filters only, no CA/root filter - used as denominator for market share)
       db
         .select({ count: count() })
         .from(certificates)
-        .where(baseWhere),
+        .where(globalWhere),
 
       // Certificates for selected CA (or all if no CA selected)
       db
@@ -166,13 +178,13 @@ export async function GET(request: NextRequest) {
         .groupBy(certificates.markType)
         .orderBy(desc(count())),
 
-      // New certs in last 30 days (base filters, for delta)
+      // New certs in last 30 days (global filters, for delta denominator)
       db
         .select({ count: count() })
         .from(certificates)
         .where(
           and(
-            ...(baseConditions.length > 0 ? baseConditions : []),
+            ...(globalConditions.length > 0 ? globalConditions : []),
             gte(certificates.notBefore, thirtyDaysAgo)
           )
         ),
@@ -210,8 +222,9 @@ export async function GET(request: NextRequest) {
     const totalCerts = totalRow?.count || 0;
     const caCerts = caRow?.count || 0;
 
+    const hasCAFilter = selectedCA || selectedRoot;
     const marketShare =
-      selectedCA && totalCerts > 0
+      hasCAFilter && totalCerts > 0
         ? ((caCerts / totalCerts) * 100).toFixed(1)
         : "100.0";
 
