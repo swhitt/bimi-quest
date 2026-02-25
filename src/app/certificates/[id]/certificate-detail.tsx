@@ -327,7 +327,18 @@ export function CertificateDetail({ id }: { id: string }) {
                 )}
 
                 <div className="grid gap-2 text-sm">
-                  {dc.dmarcPolicy && <Row label="DMARC Policy" value={dc.dmarcPolicy} />}
+                  {dc.dmarcPolicy && (
+                    <div className="flex gap-4">
+                      <span className="w-40 shrink-0 text-muted-foreground">DMARC Policy</span>
+                      <span className={
+                        /^(quarantine|reject)$/i.test(dc.dmarcPolicy)
+                          ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                          : "text-destructive font-medium"
+                      }>
+                        {dc.dmarcPolicy}
+                      </span>
+                    </div>
+                  )}
                   {dc.logoUrl && <Row label="Logo URL" value={dc.logoUrl} mono />}
                   {dc.authorityUrl && <Row label="Authority URL" value={dc.authorityUrl} mono />}
                 </div>

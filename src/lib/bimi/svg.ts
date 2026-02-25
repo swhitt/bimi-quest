@@ -231,6 +231,14 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   }
 
   // =============================================
+  // Namespace check
+  // =============================================
+
+  if (!/xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(svgAttrs)) {
+    errors.push('Missing required xmlns="http://www.w3.org/2000/svg"');
+  }
+
+  // =============================================
   // Gmail compatibility warnings
   // =============================================
 
@@ -251,7 +259,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
 
   if (!widthMatch || !heightMatch) {
     warnings.push(
-      "Missing explicit width/height attributes (recommended for Gmail compatibility)"
+      "Missing explicit width/height attributes (Gmail requires explicit dimensions)"
     );
   } else {
     const w = parseFloat(widthMatch[1]);
@@ -259,7 +267,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
     if (!isNaN(w) && !isNaN(h)) {
       if (w < 96 || h < 96) {
         warnings.push(
-          `Dimensions ${w}x${h} are below Gmail's recommended minimum of 96x96`
+          `Dimensions ${w}x${h} below Gmail minimum of 96x96`
         );
       }
     }
@@ -276,8 +284,26 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   // <text> elements work but paths are more portable
   if (/<text[\s>]/i.test(trimmed)) {
     warnings.push(
-      "Contains <text> elements (converting to paths improves portability)"
+      "Contains <text> elements (converting to paths improves cross-client portability)"
     );
+  }
+
+  // =============================================
+  // Apple Mail compatibility warnings
+  // =============================================
+
+  // Apple Mail renders at various sizes (14pt in list, 30pt in message header).
+  // Complex SVGs with very fine detail may not render well at small sizes.
+  const pathCount = (trimmed.match(/<path[\s>]/gi) || []).length;
+  if (pathCount > 500) {
+    warnings.push(
+      `High path count (${pathCount}) may render poorly at Apple Mail's smaller display sizes (14pt)`
+    );
+  }
+
+  // Check for transforms that might cause rendering differences across clients
+  if (/<animate/i.test(trimmed) || /<set[\s>]/i.test(trimmed)) {
+    errors.push("Contains animation elements (not allowed in BIMI SVGs)");
   }
 
   return {

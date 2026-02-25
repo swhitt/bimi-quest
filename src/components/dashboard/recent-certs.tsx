@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "@/components/ui/hover-card";
 import { format, formatDistanceToNow } from "date-fns";
 
 interface RecentCert {
@@ -40,10 +45,27 @@ export function RecentCerts({ certs }: RecentCertsProps) {
               >
                 <div className="flex items-center gap-3">
                   {cert.logotypeSvg ? (
-                    <div
-                      className="h-8 w-8 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                      dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
-                    />
+                    <HoverCard openDelay={300} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <div
+                          className="h-8 w-8 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
+                          dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                        />
+                      </HoverCardTrigger>
+                      <HoverCardContent side="right" className="w-56 p-3">
+                        <div className="flex flex-col items-center gap-2">
+                          <div
+                            className="size-32 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
+                            dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                          />
+                          <div className="text-center">
+                            <div className="font-medium text-sm">
+                              {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
+                            </div>
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   ) : (
                     <div className="h-8 w-8 shrink-0 rounded border bg-muted" />
                   )}

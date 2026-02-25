@@ -22,6 +22,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format, formatDistanceToNow } from "date-fns";
 import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "@/components/ui/hover-card";
+import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -149,11 +154,32 @@ export function CertificatesTable({
             </div>
           );
         }
+        const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
+        const domain = row.original.sanList[0] || row.original.subjectCn;
         return (
-          <div
-            className="size-10 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
+          <HoverCard openDelay={300} closeDelay={100}>
+            <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <div
+                className="size-10 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            </HoverCardTrigger>
+            <HoverCardContent side="right" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-col items-center gap-3">
+                <div
+                  className="size-36 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
+                  dangerouslySetInnerHTML={{ __html: svg }}
+                />
+                <div className="text-center space-y-0.5">
+                  <div className="font-medium text-sm">{org}</div>
+                  {domain && <div className="text-xs text-muted-foreground">{domain}</div>}
+                  {row.original.issuerOrg && (
+                    <div className="text-xs text-muted-foreground">CA: {row.original.issuerOrg}</div>
+                  )}
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
         );
       },
     },
