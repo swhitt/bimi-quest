@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const commitSha = process.env.NEXT_PUBLIC_COMMIT_SHA;
+
 export function Footer() {
   return (
     <footer className="border-t bg-muted/30 mt-auto">
@@ -10,6 +12,11 @@ export function Footer() {
             Certificate Transparency
           </a>{" "}
           logs.
+          {commitSha && (
+            <span className="ml-2 text-[10px] opacity-40 font-mono" title={commitSha}>
+              {commitSha.slice(0, 7)}
+            </span>
+          )}
         </p>
         <nav className="flex items-center gap-4">
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalFilterBar } from "@/components/global-filter-bar";
+import { UpdateBanner } from "@/components/update-banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -60,6 +61,7 @@ export default function RootLayout({
             <GlobalFilterBar />
             <main className="container mx-auto px-4 py-6 flex-1">{children}</main>
             <Footer />
+            <UpdateBanner />
           </TooltipProvider>
         </ThemeProvider>
       </body>
