@@ -706,16 +706,29 @@ export function CertificateDetail({ id }: { id: string }) {
           />
           <Row label="CT Log Index" value={cert.ctLogIndex} />
           <Row label="CT Log" value="Gorgon (DigiCert)" />
-          {cert.crtshId && (
+          <div className="flex gap-4">
+            <span className="w-40 shrink-0 text-muted-foreground">crt.sh</span>
+            <a
+              href={`https://crt.sh/?q=${cert.fingerprintSha256}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm hover:underline"
+            >
+              View on crt.sh
+            </a>
+          </div>
+          {data.pairedCert && (
             <div className="flex gap-4">
-              <span className="w-40 shrink-0 text-muted-foreground">crt.sh</span>
+              <span className="w-40 shrink-0 text-muted-foreground">
+                crt.sh ({cert.isPrecert ? "final cert" : "precert"})
+              </span>
               <a
-                href={`https://crt.sh/?id=${cert.crtshId}`}
+                href={`https://crt.sh/?q=${data.pairedCert.fingerprintSha256}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm hover:underline"
               >
-                crt.sh/?id={cert.crtshId}
+                View {cert.isPrecert ? "final certificate" : "precertificate"} on crt.sh
               </a>
             </div>
           )}
