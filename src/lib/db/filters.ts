@@ -5,39 +5,41 @@ import { certificates } from "./schema";
 const HEX_RE = /^[0-9a-f]+$/i;
 const MIN_HASH_PREFIX = 8;
 
+interface ResolvedCert {
+  id: number | null;
+  fingerprint: string | null;
+  error: { message: string; status: number } | null;
+}
+
 /**
- * Resolve a certificate URL param (numeric ID or SHA-256 fingerprint prefix) to a row ID.
- * Returns { id, error } where error is { message, status } on failure.
+ * Resolve a certificate URL param (numeric ID or SHA-256 fingerprint prefix) to a row ID + fingerprint.
  */
-export async function resolveCertParam(
-  param: string
-): Promise<{ id: number | null; error: { message: string; status: number } | null }> {
+export async function resolveCertParam(param: string): Promise<ResolvedCert> {
+  const cols = { id: certificates.id, fingerprint: certificates.fingerprintSha256 };
+
   if (/^\d+$/.test(param)) {
-    return { id: parseInt(param), error: null };
+    const [row] = await db.select(cols).from(certificates).where(eq(certificates.id, parseInt(param))).limit(1);
+    return row
+      ? { id: row.id, fingerprint: row.fingerprint, error: null }
+      : { id: null, fingerprint: null, error: null };
   }
 
   if (HEX_RE.test(param) && param.length >= MIN_HASH_PREFIX) {
     const prefix = param.toLowerCase();
     if (prefix.length === 64) {
-      const [row] = await db
-        .select({ id: certificates.id })
-        .from(certificates)
-        .where(eq(certificates.fingerprintSha256, prefix))
-        .limit(1);
-      return row ? { id: row.id, error: null } : { id: null, error: null };
+      const [row] = await db.select(cols).from(certificates).where(eq(certificates.fingerprintSha256, prefix)).limit(1);
+      return row
+        ? { id: row.id, fingerprint: row.fingerprint, error: null }
+        : { id: null, fingerprint: null, error: null };
     }
-    const matches = await db
-      .select({ id: certificates.id })
-      .from(certificates)
-      .where(like(certificates.fingerprintSha256, `${prefix}%`))
-      .limit(2);
-    if (matches.length === 1) return { id: matches[0].id, error: null };
+    const matches = await db.select(cols).from(certificates).where(like(certificates.fingerprintSha256, `${prefix}%`)).limit(2);
+    if (matches.length === 1) return { id: matches[0].id, fingerprint: matches[0].fingerprint, error: null };
     if (matches.length > 1)
-      return { id: null, error: { message: "Ambiguous hash prefix, please provide more characters", status: 400 } };
-    return { id: null, error: null };
+      return { id: null, fingerprint: null, error: { message: "Ambiguous hash prefix, please provide more characters", status: 400 } };
+    return { id: null, fingerprint: null, error: null };
   }
 
-  return { id: null, error: { message: "Invalid certificate ID or hash", status: 400 } };
+  return { id: null, fingerprint: null, error: { message: "Invalid certificate ID or hash", status: 400 } };
 }
 
 /**

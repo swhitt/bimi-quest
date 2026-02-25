@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { permanentRedirect, notFound } from "next/navigation";
+import { resolveCertParam } from "@/lib/db/filters";
 import { CertificateDetail } from "./certificate-detail";
 
 interface Props {
@@ -17,5 +19,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CertificateDetailPage({ params }: Props) {
   const { id } = await params;
-  return <CertificateDetail id={id} />;
+
+  // Redirect non-canonical URLs (numeric IDs or short prefixes) to full fingerprint
+  const { fingerprint, error } = await resolveCertParam(id);
+  if (error) notFound();
+  if (!fingerprint) notFound();
+  if (id !== fingerprint) permanentRedirect(`/certificates/${fingerprint}`);
+
+  return <CertificateDetail id={fingerprint} />;
 }
