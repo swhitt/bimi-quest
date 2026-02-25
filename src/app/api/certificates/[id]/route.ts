@@ -76,6 +76,8 @@ export async function GET(
       pairedCert: pairedCert || null,
       chain,
       bimiStates,
+    }, {
+      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
     });
   } catch (error) {
     console.error("Certificate detail API error:", error);

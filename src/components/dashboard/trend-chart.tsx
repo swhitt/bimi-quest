@@ -100,6 +100,7 @@ export function TrendChart({ data, selectedCA }: TrendChartProps) {
       </CardHeader>
       <CardContent>
         {pivoted.length > 0 ? (
+          <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
               data={pivoted}
@@ -148,6 +149,7 @@ export function TrendChart({ data, selectedCA }: TrendChartProps) {
               })}
             </BarChart>
           </ResponsiveContainer>
+          </div>
         ) : (
           <div className="flex h-[300px] items-center justify-center text-muted-foreground">
             No trend data available yet.

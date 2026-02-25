@@ -13,8 +13,12 @@ interface DashboardData {
   caCerts: number;
   marketShare: string;
   uniqueOrgs: number;
+  newLast30d: number;
+  caNewLast30d: number;
+  expiringCount: number;
   caBreakdown: { ca: string | null; total: number }[];
   monthlyTrend: { month: string; ca: string | null; count: number }[];
+  markTypeBreakdown: { markType: string | null; count: number }[];
   recentCerts: {
     id: number;
     serialNumber: string;
@@ -34,17 +38,37 @@ export function DashboardContent() {
   const { buildApiParams, ca } = useGlobalFilters();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const apiQuery = buildApiParams();
 
   useEffect(() => {
+    setError(null);
     setLoading(true);
     fetch(`/api/dashboard?${apiQuery}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then(setData)
-      .catch(console.error)
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load dashboard"))
       .finally(() => setLoading(false));
-  }, [apiQuery]);
+  }, [apiQuery, retryKey]);
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3">
+        <p className="text-destructive">{error}</p>
+        <button
+          className="text-sm underline text-muted-foreground hover:text-foreground"
+          onClick={() => setRetryKey((k) => k + 1)}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading || !data) {
     return (
@@ -62,6 +86,9 @@ export function DashboardContent() {
         caCerts={data.caCerts}
         marketShare={data.marketShare}
         uniqueOrgs={data.uniqueOrgs}
+        newLast30d={data.newLast30d || 0}
+        caNewLast30d={data.caNewLast30d || 0}
+        expiringCount={data.expiringCount || 0}
       />
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { format, formatDistanceToNow } from "date-fns";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
+import { sanitizeSvg } from "@/lib/sanitize-svg";
 
 interface CertData {
   certificate: {
@@ -171,13 +172,22 @@ export function CertificateDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <Link href="/" className="hover:text-foreground">Dashboard</Link>
+        <span>/</span>
+        <Link href="/certificates" className="hover:text-foreground">Certificates</Link>
+        <span>/</span>
+        <span className="text-foreground">{cert.subjectOrg || cert.subjectCn || cert.sanList[0] || `#${cert.id}`}</span>
+      </nav>
+
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           {cert.logotypeSvg && (
             <div
               className="h-16 w-16 shrink-0 rounded-lg border bg-white p-1.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-              dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+              dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
             />
           )}
           <div>
@@ -191,7 +201,7 @@ export function CertificateDetail({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap shrink-0 items-center gap-2">
           {cert.isPrecert && (
             <Badge variant="secondary" className="text-amber-600 dark:text-amber-400" title="This is a precertificate">
               Precert
@@ -272,7 +282,7 @@ export function CertificateDetail({ id }: { id: string }) {
                 className={`flex h-40 w-40 shrink-0 items-center justify-center rounded-lg border p-3 ${
                   svgBgDark ? "bg-zinc-900" : "bg-white"
                 }`}
-                dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
               />
               <div className="flex-1 space-y-3">
                 {bimiCheck?.certSvgSizeBytes && (
@@ -398,11 +408,11 @@ export function CertificateDetail({ id }: { id: string }) {
                         </>
                       )}
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-4">
                       <div className="text-center">
                         <div
                           className="h-20 w-20 rounded-lg border bg-white p-1.5 mx-auto overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                          dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
                         />
                         <span className="text-xs text-muted-foreground mt-1 block">
                           Cert ({bimiCheck.certSvgSizeBytes ? `${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)}KB` : "?"})
@@ -547,9 +557,11 @@ export function CertificateDetail({ id }: { id: string }) {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {cert.sanList.map((san) => (
-                <Badge key={san} variant="outline">
-                  {san}
-                </Badge>
+                <Link key={san} href={`/validate?domain=${encodeURIComponent(san)}`}>
+                  <Badge variant="outline" className="hover:bg-secondary cursor-pointer">
+                    {san}
+                  </Badge>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -683,7 +695,19 @@ export function CertificateDetail({ id }: { id: string }) {
           />
           <Row label="CT Log Index" value={cert.ctLogIndex} />
           <Row label="CT Log" value="Gorgon (DigiCert)" />
-          {cert.crtshId && <Row label="crt.sh ID" value={cert.crtshId} />}
+          {cert.crtshId && (
+            <div className="flex gap-4">
+              <span className="w-40 shrink-0 text-muted-foreground">crt.sh</span>
+              <a
+                href={`https://crt.sh/?id=${cert.crtshId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm hover:underline"
+              >
+                crt.sh/?id={cert.crtshId}
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
 

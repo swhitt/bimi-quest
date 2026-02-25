@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format, formatDistanceToNow } from "date-fns";
+import { sanitizeSvg } from "@/lib/sanitize-svg";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -161,14 +162,14 @@ export function CertificatesTable({
             <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
               <div
                 className="size-10 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
-                dangerouslySetInnerHTML={{ __html: svg }}
+                dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }}
               />
             </HoverCardTrigger>
             <HoverCardContent side="right" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-col items-center gap-3">
                 <div
                   className="size-36 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                  dangerouslySetInnerHTML={{ __html: svg }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }}
                 />
                 <div className="text-center space-y-0.5">
                   <div className="font-medium text-sm">{org}</div>

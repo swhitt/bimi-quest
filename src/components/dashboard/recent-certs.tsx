@@ -9,6 +9,7 @@ import {
   HoverCardContent,
 } from "@/components/ui/hover-card";
 import { format, formatDistanceToNow } from "date-fns";
+import { sanitizeSvg } from "@/lib/sanitize-svg";
 
 interface RecentCert {
   id: number;
@@ -49,14 +50,14 @@ export function RecentCerts({ certs }: RecentCertsProps) {
                       <HoverCardTrigger asChild>
                         <div
                           className="h-8 w-8 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
-                          dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
                         />
                       </HoverCardTrigger>
                       <HoverCardContent side="right" className="w-56 p-3">
                         <div className="flex flex-col items-center gap-2">
                           <div
                             className="size-32 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                            dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
                           />
                           <div className="text-center">
                             <div className="font-medium text-sm">

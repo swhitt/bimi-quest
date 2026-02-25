@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(count()))
       .limit(10);
 
-    return NextResponse.json({ trends, topCAs });
+    return NextResponse.json({ trends, topCAs }, {
+      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+    });
   } catch (error) {
     console.error("CA trends API error:", error);
     return NextResponse.json(

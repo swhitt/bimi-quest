@@ -118,7 +118,11 @@ export function WorldMap({ data, className }: WorldMapProps) {
   }
 
   return (
-    <div className={`relative ${className || ""}`}>
+    <div
+      className={`relative ${className || ""}`}
+      role="img"
+      aria-label="Choropleth world map showing BIMI certificate distribution by country"
+    >
       <svg
         ref={svgRef}
         viewBox="0 0 960 500"

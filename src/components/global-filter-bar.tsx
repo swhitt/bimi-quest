@@ -96,7 +96,7 @@ function FilterBarInner() {
 
   return (
     <div className="border-b bg-muted/30">
-      <div className="container mx-auto flex flex-wrap items-center gap-2 px-4 py-2">
+      <div className="container mx-auto flex items-center gap-2 px-4 py-2 overflow-x-auto">
         <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
 
         <Select

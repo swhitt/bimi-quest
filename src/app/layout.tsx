@@ -17,9 +17,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BIMI Intel - Certificate Market Intelligence",
-  description:
-    "Track VMC/CMC certificate issuances across all CAs. BIMI market intelligence dashboard.",
+  title: {
+    default: "BIMI Intel - Certificate Market Intelligence",
+    template: "%s | BIMI Intel",
+  },
+  description: "Track VMC and CMC certificate issuances across all Certificate Authorities. Real-time BIMI market intelligence from CT logs.",
+  openGraph: {
+    title: "BIMI Intel - Certificate Market Intelligence",
+    description: "Track VMC and CMC certificate issuances across all Certificate Authorities.",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    types: {
+      "application/rss+xml": "/api/feed",
+    },
+  },
 };
 
 export default function RootLayout({

@@ -11,7 +11,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useGlobalFilters } from "@/lib/use-global-filters";
-import { WorldMap } from "@/components/world-map";
+import dynamic from "next/dynamic";
+
+const WorldMap = dynamic(
+  () => import("@/components/world-map").then((mod) => ({ default: mod.WorldMap })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+        Loading map...
+      </div>
+    ),
+  }
+);
 
 interface GeoEntry {
   country: string | null;
@@ -24,16 +36,37 @@ export function MapContent() {
   const { buildApiParams } = useGlobalFilters();
   const [data, setData] = useState<GeoEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const apiQuery = buildApiParams();
 
   useEffect(() => {
+    setError(null);
+    setLoading(true);
     fetch(`/api/stats/geo?${apiQuery}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((json) => setData(json.geoData || []))
-      .catch(console.error)
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load geographic data"))
       .finally(() => setLoading(false));
-  }, [apiQuery]);
+  }, [apiQuery, retryKey]);
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3">
+        <p className="text-destructive">{error}</p>
+        <button
+          className="text-sm underline text-muted-foreground hover:text-foreground"
+          onClick={() => setRetryKey((k) => k + 1)}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

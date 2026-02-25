@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MapContent } from "./map-content";
+
+export const metadata: Metadata = {
+  title: "Geographic Distribution",
+  description: "Global BIMI certificate distribution by country. See which regions are adopting BIMI.",
+};
 
 export default function MapPage() {
   return (

@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CertificatesContent } from "./certificates-content";
 import { Skeleton } from "@/components/ui/skeleton";
+
+export const metadata: Metadata = {
+  title: "Certificates",
+  description: "Browse and filter all BIMI VMC and CMC certificates discovered from Certificate Transparency logs.",
+};
 
 export default function CertificatesPage() {
   return (

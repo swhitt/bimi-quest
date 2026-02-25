@@ -59,6 +59,7 @@ export function MarketShareChart({ data, selectedCA }: MarketShareChartProps) {
       <CardContent>
         {chartData.length > 0 ? (
           <div className="flex flex-col gap-4">
+            <div role="img" aria-label="Market share pie chart showing certificate distribution by Certificate Authority">
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
@@ -93,6 +94,7 @@ export function MarketShareChart({ data, selectedCA }: MarketShareChartProps) {
                 />
               </PieChart>
             </ResponsiveContainer>
+            </div>
 
             <div className="space-y-1 px-1">
               {chartData.map((entry) => {

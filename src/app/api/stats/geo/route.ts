@@ -49,7 +49,9 @@ export async function GET(request: NextRequest) {
       .groupBy(certificates.subjectCountry)
       .orderBy(desc(count()));
 
-    return NextResponse.json({ geoData });
+    return NextResponse.json({ geoData }, {
+      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+    });
   } catch (error) {
     console.error("Geo stats API error:", error);
     return NextResponse.json(
