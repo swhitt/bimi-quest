@@ -8,7 +8,7 @@ The default view is SSL.com vs the market, but you can switch to any CA.
 
 - Scans DigiCert's Gorgon CT log for certificates with BIMI OIDs
 - Parses cert details, extracts mark types, SANs, chain info
-- Stores everything in Postgres (Neon)
+- Stores everything in Postgres ([Neon](https://neon.tech))
 - Dashboard with market share, trends, recent issuances
 - Certificate browser with filtering, search, CSV export
 - BIMI validator: enter any domain, get a full breakdown (DNS, DMARC, SVG, cert)
