@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { WorldMap } from "@/components/world-map";
 
 interface GeoEntry {
   country: string | null;
@@ -46,6 +47,17 @@ export function MapContent() {
 
   return (
     <>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Global BIMI Certificate Distribution
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WorldMap data={data.map((d) => ({ country: d.country || "", total: d.total }))} />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>
