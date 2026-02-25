@@ -55,6 +55,7 @@ interface CertRow {
   subjectOrg: string | null;
   subjectCountry: string | null;
   issuerOrg: string | null;
+  rootCaOrg: string | null;
   certType: string | null;
   markType: string | null;
   notBefore: string;
@@ -258,18 +259,30 @@ export function CertificatesTable({
       accessorKey: "issuerOrg",
       header: () => (
         <SortHeader
-          label="CA"
+          label="Issuer"
           sortKey="issuerOrg"
           currentSort={currentSort}
           currentDir={currentDir}
           onSort={handleSort}
         />
       ),
-      cell: ({ row }) => (
-        <Badge variant="secondary" className="whitespace-nowrap">
-          {row.original.issuerOrg || "Unknown"}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const issuer = row.original.issuerOrg || "Unknown";
+        const root = row.original.rootCaOrg;
+        const showRoot = root && root !== issuer;
+        return (
+          <div>
+            <Badge variant="secondary" className="whitespace-nowrap">
+              {issuer}
+            </Badge>
+            {showRoot && (
+              <span className="text-[10px] text-muted-foreground block mt-0.5">
+                Root: {root}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "certType",
