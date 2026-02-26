@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { DashboardContent } from "./dashboard-content";
-import { DomainSearch } from "@/components/domain-search";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Use the default title from layout.tsx metadata template
@@ -17,7 +16,6 @@ export default function DashboardPage() {
           Track BIMI (Brand Indicators for Message Identification) certificate adoption across all Certificate Authorities.
         </p>
       </div>
-      <DomainSearch />
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>

@@ -1,41 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
-/** Extract domain from input, handling email addresses like user@example.com */
 function extractDomain(input: string): string {
-  const trimmed = input.trim();
-  if (trimmed.includes("@")) {
-    return trimmed.split("@").pop() || trimmed;
+  let cleaned = input.trim();
+  // Handle email addresses
+  if (cleaned.includes("@")) {
+    cleaned = cleaned.split("@").pop() || cleaned;
   }
-  return trimmed;
+  // Strip protocol and path
+  cleaned = cleaned.replace(/^https?:\/\//, "").split("/")[0];
+  return cleaned.toLowerCase();
 }
 
 export function DomainSearch() {
   const [value, setValue] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const domain = extractDomain(value);
     if (!domain) return;
-    router.push(`/validate?domain=${encodeURIComponent(domain)}`);
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/resolve?domain=${encodeURIComponent(domain)}`);
+      const data = await res.json();
+      router.push(data.url);
+      setValue("");
+    } catch {
+      router.push(`/validate?domain=${encodeURIComponent(domain)}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-3 max-w-xl">
+    <form onSubmit={handleSubmit} className="relative">
       <Input
+        ref={inputRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Enter a domain to check BIMI readiness..."
-        className="h-11 text-base"
+        placeholder="Lookup hostname..."
+        className="h-8 w-44 text-xs bg-muted/50 border-transparent focus:border-border focus:w-64 transition-all duration-200 pl-7"
+        disabled={loading}
       />
-      <Button type="submit" size="lg" disabled={!value.trim()}>
-        Validate
-      </Button>
+      <svg
+        className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
     </form>
   );
 }
