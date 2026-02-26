@@ -5,11 +5,11 @@ import { ingestionCursors } from "@/lib/db/schema";
 import { getSTH } from "@/lib/ct/gorgon";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 
-// Allow up to 60s on Vercel Pro (hobby: 10s max)
-export const maxDuration = 60;
+// Vercel Pro allows up to 300s
+export const maxDuration = 300;
 
-// Vercel function timeout: process entries in chunks that fit within the limit.
-const MAX_BATCHES = 10;
+// With 300s limit and ~1s per cert (Haiku scoring), we can handle ~40 batches
+const MAX_BATCHES = 40;
 
 export async function GET(request: NextRequest) {
   // Fail-closed: reject if CRON_SECRET is not configured

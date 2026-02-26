@@ -19,7 +19,7 @@ import {
 } from "../lib/ct/parser";
 import { dispatchNewCertNotification } from "../lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "../lib/ca-display";
-import { scoreNotability } from "../lib/notability";
+import { scoreNotability, scoreNotabilityBatch, type BrandInput } from "../lib/notability";
 import { X509Certificate } from "@peculiar/x509";
 import type { CTLogEntry } from "../lib/ct/gorgon";
 
@@ -91,13 +91,6 @@ async function processEntries(
         // Fall back to issuer org if no self-signed root in chain
         if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
 
-        // Score brand notability (non-blocking: null on failure)
-        const notability = await scoreNotability(
-          bimiData.subjectOrg,
-          bimiData.sanList,
-          bimiData.subjectCountry
-        );
-
         const [inserted] = await db
           .insert(certificates)
           .values({
@@ -126,14 +119,27 @@ async function processEntries(
             ctLogIndex: entryIndex,
             ctLogName: "gorgon",
             extensionsJson: bimiData.extensionsJson,
-            notabilityScore: notability?.score,
-            notabilityReason: notability?.reason,
-            companyDescription: notability?.description,
           })
           .onConflictDoNothing({ target: certificates.fingerprintSha256 })
           .returning({ id: certificates.id, fingerprintSha256: certificates.fingerprintSha256 });
 
         if (inserted) {
+          // Score notability only for genuinely new certs
+          const notability = await scoreNotability(
+            bimiData.subjectOrg,
+            bimiData.sanList,
+            bimiData.subjectCountry
+          );
+          if (notability) {
+            await db
+              .update(certificates)
+              .set({
+                notabilityScore: notability.score,
+                notabilityReason: notability.reason,
+                companyDescription: notability.description,
+              })
+              .where(eq(certificates.id, inserted.id));
+          }
           // Store certificate chain (normalized: upsert unique certs, then link)
           for (let k = 0; k < parsed.chainPems.length; k++) {
             const chainInfo = parseChainCert(parsed.chainPems[k]);

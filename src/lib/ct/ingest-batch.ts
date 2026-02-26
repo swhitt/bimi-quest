@@ -17,7 +17,7 @@ import {
 } from "@/lib/ct/parser";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
-import { scoreNotability } from "@/lib/notability";
+import { scoreNotabilityBatch, type BrandInput, type NotabilityResult } from "@/lib/notability";
 
 const BATCH_SIZE = 256;
 
@@ -53,9 +53,72 @@ export async function processIngestBatch(
     onProgress,
   } = options;
 
+  const SCORE_BATCH_SIZE = 10;
+
   let found = 0;
   let processed = startIndex;
   let batchesRun = 0;
+
+  // Pending certs that need notability scoring + notification
+  type PendingCert = {
+    id: number;
+    fingerprintSha256: string;
+    org: string;
+    domain: string;
+    country: string | null;
+    ca: string;
+    certType: string;
+    hasLogo: boolean;
+  };
+  let pendingScores: PendingCert[] = [];
+
+  /** Flush pending scores: batch-score with Haiku, update DB, send notifications */
+  async function flushScores() {
+    if (pendingScores.length === 0) return;
+    const batch = pendingScores;
+    pendingScores = [];
+
+    const brands: BrandInput[] = batch
+      .filter((c) => c.org)
+      .map((c) => ({
+        id: String(c.id),
+        org: c.org,
+        domain: c.domain,
+        country: c.country || "unknown",
+      }));
+
+    const scores = await scoreNotabilityBatch(brands);
+
+    for (const cert of batch) {
+      const notability = scores.get(String(cert.id)) ?? null;
+      if (notability) {
+        await db
+          .update(certificates)
+          .set({
+            notabilityScore: notability.score,
+            notabilityReason: notability.reason,
+            companyDescription: notability.description,
+          })
+          .where(eq(certificates.id, cert.id));
+      }
+
+      if (notify) {
+        dispatchNewCertNotification({
+          certId: cert.id,
+          fingerprintSha256: cert.fingerprintSha256,
+          domain: cert.domain,
+          org: cert.org || "unknown",
+          ca: cert.ca,
+          certType: (cert.certType as "VMC" | "CMC") || "VMC",
+          country: cert.country,
+          notabilityScore: notability?.score,
+          notabilityReason: notability?.reason,
+          companyDescription: notability?.description,
+          hasLogo: cert.hasLogo,
+        }).catch(() => {});
+      }
+    }
+  }
 
   for (let i = startIndex; i < endIndex; ) {
     if (maxBatches > 0 && batchesRun >= maxBatches) break;
@@ -72,7 +135,6 @@ export async function processIngestBatch(
       onProgress?.(
         `Failed to fetch batch at ${i}: ${err instanceof Error ? err.message : String(err)}`
       );
-      // In bounded mode (cron), bail out. In unbounded mode (worker), let caller retry.
       if (maxBatches > 0) break;
       await throttle(2000);
       continue;
@@ -110,13 +172,6 @@ export async function processIngestBatch(
         }
         if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
 
-        // Score brand notability (non-blocking: null on failure)
-        const notability = await scoreNotability(
-          bimiData.subjectOrg,
-          bimiData.sanList,
-          bimiData.subjectCountry
-        );
-
         const [inserted] = await db
           .insert(certificates)
           .values({
@@ -145,9 +200,6 @@ export async function processIngestBatch(
             ctLogIndex: entryIndex,
             ctLogName: "gorgon",
             extensionsJson: bimiData.extensionsJson,
-            notabilityScore: notability?.score,
-            notabilityReason: notability?.reason,
-            companyDescription: notability?.description,
           })
           .onConflictDoNothing({ target: certificates.fingerprintSha256 })
           .returning({
@@ -156,7 +208,7 @@ export async function processIngestBatch(
           });
 
         if (inserted) {
-          // Store certificate chain (normalized: upsert unique certs, then link)
+          // Store certificate chain
           for (let k = 0; k < parsed.chainPems.length; k++) {
             const chainInfo = parseChainCert(parsed.chainPems[k]);
             const fingerprint = await computePemFingerprint(parsed.chainPems[k]);
@@ -192,24 +244,43 @@ export async function processIngestBatch(
 
           found++;
 
-          if (notify) {
-            dispatchNewCertNotification({
-              certId: inserted.id,
-              fingerprintSha256: inserted.fingerprintSha256,
-              domain:
-                bimiData.sanList[0] || bimiData.subjectCn || "unknown",
-              org: bimiData.subjectOrg || "unknown",
-              ca: bimiData.issuerOrg || "unknown",
-              certType: bimiData.certType || "VMC",
-              country: bimiData.subjectCountry,
-              notabilityScore: notability?.score,
-              notabilityReason: notability?.reason,
-              companyDescription: notability?.description,
-              hasLogo: !!bimiData.logotypeSvg,
-            }).catch(() => {});
+          // Queue for batch scoring + notification
+          pendingScores.push({
+            id: inserted.id,
+            fingerprintSha256: inserted.fingerprintSha256,
+            org: bimiData.subjectOrg || "unknown",
+            domain: bimiData.sanList[0] || bimiData.subjectCn || "unknown",
+            country: bimiData.subjectCountry,
+            ca: bimiData.issuerOrg || "unknown",
+            certType: bimiData.certType || "VMC",
+            hasLogo: !!bimiData.logotypeSvg,
+          });
+
+          if (pendingScores.length >= SCORE_BATCH_SIZE) {
+            await flushScores();
           }
         }
         lastSuccessIndex = entryIndex;
+
+        // Save cursor after each entry so progress survives timeouts
+        const entryCursor = entryIndex + 1;
+        await db
+          .insert(ingestionCursors)
+          .values({
+            logName: "gorgon",
+            lastIndex: entryCursor,
+            lastRun: new Date(),
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: ingestionCursors.logName,
+            set: {
+              lastIndex: entryCursor,
+              lastRun: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        processed = entryCursor;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         onProgress?.(
@@ -219,6 +290,9 @@ export async function processIngestBatch(
       }
     }
 
+    // Flush any remaining scores after this Gorgon batch
+    await flushScores();
+
     const newCursor = lastSuccessIndex + 1;
     if (newCursor > i) {
       i = newCursor;
@@ -227,29 +301,13 @@ export async function processIngestBatch(
       break;
     }
 
-    // Update cursor after each batch
-    await db
-      .insert(ingestionCursors)
-      .values({
-        logName: "gorgon",
-        lastIndex: i,
-        lastRun: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: ingestionCursors.logName,
-        set: {
-          lastIndex: i,
-          lastRun: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-    processed = i;
     batchesRun++;
 
     await throttle(150);
   }
+
+  // Flush any stragglers
+  await flushScores();
 
   return { certsFound: found, lastIndex: processed, batchesRun };
 }
