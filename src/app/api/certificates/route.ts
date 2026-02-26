@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
   const ca = params.get("ca");
   const root = params.get("root");
   const certType = params.get("type");
+  const mark = params.get("mark");
   const from = params.get("from");
   const to = params.get("to");
   const country = params.get("country");
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
     if (ca) conditions.push(eq(certificates.issuerOrg, ca));
     if (root) conditions.push(eq(certificates.rootCaOrg, root));
     if (certType) conditions.push(eq(certificates.certType, certType));
+    if (mark) conditions.push(ilike(certificates.markType, `%${mark}%`));
     const fromDate = parseDate(from);
     const toDate = parseDate(to);
     if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));

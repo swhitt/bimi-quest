@@ -25,6 +25,12 @@ const CERT_TYPES = [
   { value: "CMC", label: "CMC" },
 ];
 
+const MARK_OPTIONS = [
+  { value: "all", label: "All Marks" },
+  { value: "Government", label: "Government Mark" },
+  { value: "Registered", label: "Registered Mark" },
+];
+
 const VALIDITY_OPTIONS = [
   { value: "all", label: "Any Status" },
   { value: "valid", label: "Valid" },
@@ -104,17 +110,19 @@ function FilterBarInner() {
 
   const rootCa = searchParams.get("root") ?? "all";
   const type = searchParams.get("type") ?? "all";
+  const mark = searchParams.get("mark") ?? "all";
   const validity = searchParams.get("validity") ?? "all";
   const precert = searchParams.get("precert") ?? "all";
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
 
-  const hasFilters = ca || rootCa !== "all" || type !== "all" || validity !== "all" || precert !== "all" || dateFrom || dateTo;
+  const hasFilters = ca || rootCa !== "all" || type !== "all" || mark !== "all" || validity !== "all" || precert !== "all" || dateFrom || dateTo;
 
   const filterCount =
     (ca ? 1 : 0) +
     (rootCa !== "all" ? 1 : 0) +
     (type !== "all" ? 1 : 0) +
+    (mark !== "all" ? 1 : 0) +
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
     (dateFrom ? 1 : 0) +
@@ -171,6 +179,24 @@ function FilterBarInner() {
         {CERT_TYPES.map((t) => (
           <SelectItem key={t.value} value={t.value}>
             {t.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const markSelect = (className?: string) => (
+    <Select
+      value={mark}
+      onValueChange={(v) => updateSecondaryFilter("mark", v)}
+    >
+      <SelectTrigger size="sm" className={className ?? "w-[160px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {MARK_OPTIONS.map((m) => (
+          <SelectItem key={m.value} value={m.value}>
+            {m.label}
           </SelectItem>
         ))}
       </SelectContent>
@@ -267,6 +293,7 @@ function FilterBarInner() {
             {caSelect("w-full")}
             {rootCaSelect("w-full")}
             {typeSelect("w-full")}
+            {markSelect("w-full")}
             {validitySelect("w-full")}
             {precertSelect("w-full")}
             {dateRange(true)}
@@ -279,6 +306,7 @@ function FilterBarInner() {
           {caSelect()}
           {rootCaSelect()}
           {typeSelect()}
+          {markSelect()}
           {validitySelect()}
           {precertSelect()}
           {dateRange()}

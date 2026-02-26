@@ -19,6 +19,7 @@ export function useGlobalFilters() {
 
   const root = searchParams.get("root") || null;
   const type = searchParams.get("type") || null;
+  const mark = searchParams.get("mark") || null;
   const validity = searchParams.get("validity") || null;
   const from = searchParams.get("from") || null;
   const to = searchParams.get("to") || null;
@@ -30,6 +31,7 @@ export function useGlobalFilters() {
     if (ca) params.set("ca", ca);
     if (root) params.set("root", root);
     if (type) params.set("type", type);
+    if (mark) params.set("mark", mark);
     if (validity) params.set("validity", validity);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
@@ -43,5 +45,5 @@ export function useGlobalFilters() {
     return params.toString();
   }
 
-  return { ca, root, type, validity, from, to, country, precert, buildApiParams };
+  return { ca, root, type, mark, validity, from, to, country, precert, buildApiParams };
 }
