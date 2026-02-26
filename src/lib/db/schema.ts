@@ -7,8 +7,6 @@ import {
   integer,
   boolean,
   jsonb,
-  date,
-  unique,
   index,
 } from "drizzle-orm/pg-core";
 
@@ -63,6 +61,10 @@ export const certificates = pgTable(
       table.serialNumber,
       table.isPrecert
     ),
+    index("idx_certs_type_notbefore").on(table.certType, table.notBefore),
+    index("idx_certs_rootca_notbefore").on(table.rootCaOrg, table.notBefore),
+    index("idx_certs_type_rootca_notbefore").on(table.certType, table.rootCaOrg, table.notBefore),
+    index("idx_certs_notafter_precert").on(table.notAfter, table.isPrecert),
   ]
 );
 
@@ -121,19 +123,3 @@ export const ingestionCursors = pgTable("ingestion_cursors", {
   lastRun: timestamp("last_run", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
-
-export const caStats = pgTable(
-  "ca_stats",
-  {
-    id: serial("id").primaryKey(),
-    issuerOrg: text("issuer_org").notNull(),
-    periodStart: date("period_start").notNull(),
-    periodEnd: date("period_end").notNull(),
-    totalIssued: integer("total_issued"),
-    vmcCount: integer("vmc_count"),
-    cmcCount: integer("cmc_count"),
-    uniqueDomains: integer("unique_domains"),
-    uniqueOrgs: integer("unique_orgs"),
-  },
-  (table) => [unique().on(table.issuerOrg, table.periodStart, table.periodEnd)]
-);
