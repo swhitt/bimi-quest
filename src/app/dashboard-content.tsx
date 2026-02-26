@@ -22,23 +22,6 @@ interface DashboardData {
   caBreakdown: { ca: string | null; total: number; vmcCount: number; cmcCount: number }[];
   monthlyTrend: { month: string; ca: string | null; count: number }[];
   markTypeBreakdown: { markType: string | null; count: number }[];
-  recentCerts: {
-    id: number;
-    fingerprintSha256: string;
-    serialNumber: string;
-    subjectCn: string | null;
-    subjectOrg: string | null;
-    issuerOrg: string | null;
-    rootCaOrg: string | null;
-    certType: string | null;
-    notBefore: string;
-    subjectCountry: string | null;
-    sanList: string[];
-    logotypeSvg: string | null;
-    isPrecert: boolean | null;
-    notabilityScore: number | null;
-    companyDescription: string | null;
-  }[];
   lastUpdated: string | null;
 }
 
@@ -112,7 +95,7 @@ export function DashboardContent() {
         <TrendChart data={data.monthlyTrend} selectedCA={displayCA} />
       </div>
 
-      <RecentCerts certs={data.recentCerts} />
+      <RecentCerts />
 
       {data.lastUpdated && (
         <p className="text-xs text-muted-foreground text-right">

@@ -71,7 +71,6 @@ export async function GET(request: NextRequest) {
       [caRow],
       caBreakdown,
       monthlyTrend,
-      recentCerts,
       [uniques],
       [expiringRow],
       markTypeBreakdown,
@@ -123,32 +122,6 @@ export async function GET(request: NextRequest) {
           certificates.rootCaOrg
         )
         .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
-
-      // Recent issuances: excludeDuplicatePrecerts (in caConditions) already
-      // keeps orphan precerts and hides precerts that have a matching final cert.
-      db
-        .select({
-          id: certificates.id,
-          fingerprintSha256: certificates.fingerprintSha256,
-          serialNumber: certificates.serialNumber,
-          subjectCn: certificates.subjectCn,
-          subjectOrg: certificates.subjectOrg,
-          issuerOrg: certificates.issuerOrg,
-          rootCaOrg: certificates.rootCaOrg,
-          certType: certificates.certType,
-          notBefore: certificates.notBefore,
-          subjectCountry: certificates.subjectCountry,
-          sanList: certificates.sanList,
-          // TODO: logotypeSvg is large and should be lazy-loaded per-row in the future
-          logotypeSvg: certificates.logotypeSvg,
-          isPrecert: certificates.isPrecert,
-          notabilityScore: certificates.notabilityScore,
-          companyDescription: certificates.companyDescription,
-        })
-        .from(certificates)
-        .where(caWhere)
-        .orderBy(desc(certificates.notBefore))
-        .limit(10),
 
       // Unique orgs (with all filters)
       db
@@ -240,7 +213,6 @@ export async function GET(request: NextRequest) {
         uniqueOrgs: uniques?.uniqueOrgs || 0,
         caBreakdown,
         monthlyTrend,
-        recentCerts,
         expiringCount: expiringRow?.count || 0,
         markTypeBreakdown,
         newLast30d: newLast30dRow?.count || 0,

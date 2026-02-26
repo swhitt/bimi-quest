@@ -1,6 +1,6 @@
 # BIMI Quest
 
-Competitive intelligence tool for the BIMI certificate market. Scans CT logs for VMC/CMC issuances across all CAs and shows who's winning.
+Open-source BIMI certificate observatory. Scans CT logs for VMC/CMC issuances and provides a public dashboard for exploring the BIMI ecosystem.
 
 ## What it does
 

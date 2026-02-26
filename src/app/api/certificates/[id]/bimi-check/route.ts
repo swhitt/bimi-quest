@@ -77,6 +77,7 @@ export async function GET(
           let authorityUrl: string | null = cachedState?.bimiAuthorityUrl || null;
           let dmarcPolicy: string | null = cachedState?.dmarcPolicy || null;
           let dmarcValid: boolean | null = cachedState?.dmarcValid ?? null;
+          let dmarcRecordRaw: string | null = cachedState?.dmarcRecordRaw || null;
 
           // If no cached state, do live DNS lookups
           if (!cachedState) {
@@ -92,6 +93,7 @@ export async function GET(
             }
 
             if (dmarcLookup) {
+              dmarcRecordRaw = dmarcLookup.record.raw;
               dmarcPolicy = dmarcLookup.record.policy;
               dmarcValid = isDMARCValidForBIMI(dmarcLookup.record, dmarcLookup.isSubdomain);
             }
@@ -129,6 +131,7 @@ export async function GET(
           return {
             domain,
             bimiRecord: bimiRecordRaw,
+            dmarcRecord: dmarcRecordRaw,
             logoUrl,
             authorityUrl,
             dmarcPolicy,
@@ -144,6 +147,7 @@ export async function GET(
           return {
             domain,
             bimiRecord: null,
+            dmarcRecord: null,
             logoUrl: null,
             authorityUrl: null,
             dmarcPolicy: null,

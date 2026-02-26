@@ -96,6 +96,7 @@ interface BimiCheckResult {
   domains: {
     domain: string;
     bimiRecord: string | null;
+    dmarcRecord: string | null;
     logoUrl: string | null;
     authorityUrl: string | null;
     dmarcPolicy: string | null;
@@ -271,11 +272,9 @@ export function CertificateDetail({ id }: { id: string }) {
           )}
           {cert.certType && (
             <Badge variant="outline">
-              {cert.certType === "VMC"
-                ? "VMC (Verified Mark Certificate)"
-                : cert.certType === "CMC"
-                  ? "CMC (Common Mark Certificate)"
-                  : cert.certType}
+              <abbr title={cert.certType === "VMC" ? "Verified Mark Certificate" : cert.certType === "CMC" ? "Common Mark Certificate" : undefined} className="no-underline">
+                {cert.certType}
+              </abbr>
             </Badge>
           )}
           {cert.markType && (
@@ -407,9 +406,10 @@ export function CertificateDetail({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      {/* Logo Section - prominent display with validation */}
+      {/* Embedded Logo + Revocation Status side by side */}
+      <div className="grid gap-6 lg:grid-cols-2">
       {cert.logotypeSvg && (
-        <Card>
+        <Card className="self-start">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Embedded Logo</CardTitle>
             <div className="flex items-center gap-2">
@@ -488,15 +488,25 @@ export function CertificateDetail({ id }: { id: string }) {
         </Card>
       )}
 
+      {/* Revocation Status */}
+      <div className="self-start">
+        <RevocationStatusCard
+          revocation={revocation}
+          loading={revocationLoading}
+          onRecheck={runRevocationCheck}
+          error={revocationError}
+        />
+      </div>
+      </div>
+
       {/* BIMI error */}
       {bimiError && (
         <p className="text-destructive text-sm">{bimiError}</p>
       )}
 
-      {/* BIMI Domain Analysis + Revocation Status side by side on large screens */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* BIMI Domain Analysis - full width */}
       {bimiCheck && bimiCheck.domains.length > 0 && (
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>BIMI Domain Analysis</CardTitle>
             <Button variant="outline" size="sm" onClick={runBimiCheck} disabled={bimiLoading}>
@@ -504,112 +514,135 @@ export function CertificateDetail({ id }: { id: string }) {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {bimiCheck.domains.map((dc) => (
-              <div key={dc.domain} className="rounded-lg border p-4 space-y-3">
+            {bimiCheck.domains.map((dc) => {
+              const checks = buildBimiChecks(dc, bimiCheck);
+              const failCount = checks.filter(c => c.status === "fail").length;
+              return (
+              <div key={dc.domain} className="rounded-lg border p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{dc.domain}</span>
-                  <div className="flex gap-2">
-                    {dc.bimiRecord ? (
-                      <Badge variant="outline">BIMI Record Found</Badge>
-                    ) : (
-                      <Badge variant="destructive">No BIMI Record</Badge>
-                    )}
-                    {dc.dmarcValid === true && <Badge>DMARC OK</Badge>}
-                    {dc.dmarcValid === false && <Badge variant="destructive">DMARC Fail</Badge>}
+                  <span className="font-mono text-sm font-medium">{dc.domain}</span>
+                  <Badge
+                    variant={failCount === 0 ? "default" : "secondary"}
+                    className={failCount === 0
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                    }
+                  >
+                    {failCount === 0 ? "BIMI Ready" : `${failCount} issue${failCount > 1 ? "s" : ""}`}
+                  </Badge>
+                </div>
+
+                {/* Requirements checklist */}
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Requirements</h4>
+                  <div className="divide-y divide-border">
+                    {checks.map((check) => (
+                      <div key={check.label} className="flex items-start gap-3 py-2">
+                        <span className="mt-0.5 shrink-0">
+                          {check.status === "pass" ? (
+                            <svg className="size-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                          ) : check.status === "warn" ? (
+                            <svg className="size-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                          ) : (
+                            <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                          )}
+                        </span>
+                        <span className="w-32 shrink-0 text-sm text-muted-foreground">{check.label}</span>
+                        <span className="text-sm">{check.detail}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {dc.bimiRecord && (
-                  <div className="text-xs font-mono text-muted-foreground break-all">
-                    {dc.bimiRecord}
-                  </div>
-                )}
-
-                <div className="grid gap-2 text-sm">
-                  {dc.dmarcPolicy && (
-                    <div className="flex gap-4">
-                      <span className="w-40 shrink-0 text-muted-foreground">DMARC Policy</span>
-                      <span className={
-                        /^(quarantine|reject)$/i.test(dc.dmarcPolicy)
-                          ? "text-emerald-600 dark:text-emerald-400 font-medium"
-                          : "text-destructive font-medium"
-                      }>
-                        {dc.dmarcPolicy}
-                      </span>
+                {/* DNS Records */}
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">DNS Records</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="mb-1 flex items-baseline gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">BIMI TXT</span>
+                        <span className="font-mono text-xs text-muted-foreground/70">default._bimi.{dc.domain}</span>
+                      </div>
+                      <pre className="overflow-x-auto rounded-md bg-background p-2.5 font-mono text-xs text-foreground whitespace-pre-wrap break-all">
+                        {dc.bimiRecord ?? "No record found"}
+                      </pre>
                     </div>
-                  )}
-                  {dc.logoUrl && <Row label="Logo URL" value={dc.logoUrl} mono />}
-                  {dc.authorityUrl && <Row label="Authority URL" value={dc.authorityUrl} mono />}
+                    <div>
+                      <div className="mb-1 flex items-baseline gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">DMARC TXT</span>
+                        <span className="font-mono text-xs text-muted-foreground/70">_dmarc.{dc.domain}</span>
+                      </div>
+                      <pre className="overflow-x-auto rounded-md bg-background p-2.5 font-mono text-xs text-foreground whitespace-pre-wrap break-all">
+                        {dc.dmarcRecord ?? "No record found"}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Logo comparison */}
                 {dc.webSvgFound && cert.logotypeSvg && (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Logo Comparison:</span>
-                      {dc.svgMatch === true && (
-                        <Badge className="bg-emerald-600 hover:bg-emerald-700">Match</Badge>
-                      )}
-                      {dc.svgMatch === false && (
-                        <>
-                          <Badge variant="destructive">Mismatch</Badge>
-                          {dc.webSvgSource && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 text-xs"
-                              onClick={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
-                            >
-                              {showDiff === dc.domain ? "Hide Diff" : "View Diff"}
-                            </Button>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Logo Comparison</h4>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-sm font-medium">Certificate SVG</span>
+                          {bimiCheck.certSvgValidation && (
+                            <Badge variant={bimiCheck.certSvgValidation.valid ? "default" : "destructive"} className="text-xs">
+                              {bimiCheck.certSvgValidation.valid ? "Valid" : `${bimiCheck.certSvgValidation.errors.length} errors`}
+                            </Badge>
                           )}
-                        </>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-4">
-                      <div className="text-center">
+                        </div>
                         <div
-                          className="flex h-20 w-20 items-center justify-center rounded-lg border bg-white p-1.5 mx-auto overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
+                          className="flex h-24 items-center justify-center rounded-md border bg-white p-2 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
                           dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
                         />
-                        <span className="text-xs text-muted-foreground mt-1 block">
-                          Cert ({bimiCheck.certSvgSizeBytes ? `${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)}KB` : "?"})
+                        <span className="text-xs text-muted-foreground mt-1 block text-center">
+                          {bimiCheck.certSvgSizeBytes ? `${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
                         </span>
                       </div>
-                      <div className="text-center">
-                        <div className="h-20 w-20 rounded-lg border bg-white p-1.5 mx-auto overflow-hidden">
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-sm font-medium">Web SVG</span>
+                          <div className="flex items-center gap-2">
+                            {dc.svgMatch === true && <Badge className="bg-emerald-600 hover:bg-emerald-700 text-xs">Match</Badge>}
+                            {dc.svgMatch === false && <Badge variant="destructive" className="text-xs">Mismatch</Badge>}
+                            {dc.webSvgValidation && (
+                              <Badge variant={dc.webSvgValidation.valid ? "default" : "destructive"} className="text-xs">
+                                {dc.webSvgValidation.valid ? "Valid" : `${dc.webSvgValidation.errors.length} errors`}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex h-24 items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
                           {dc.logoUrl && (
                             <img
                               src={`/api/proxy/svg?url=${encodeURIComponent(dc.logoUrl)}`}
                               alt="Web BIMI logo"
-                              className="h-full w-full object-contain"
+                              className="max-h-full max-w-full object-contain"
                             />
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground mt-1 block">
-                          Web ({dc.webSvgSizeBytes ? `${(dc.webSvgSizeBytes / 1024).toFixed(1)}KB` : "?"})
+                        <span className="text-xs text-muted-foreground mt-1 block text-center">
+                          {dc.webSvgSizeBytes ? `${(dc.webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
                         </span>
                       </div>
                     </div>
 
-                    {/* SVG source diff */}
-                    {showDiff === dc.domain && dc.webSvgSource && (
-                      <SVGDiffViewer
-                        certSvg={cert.logotypeSvg}
-                        webSvg={dc.webSvgSource}
-                      />
-                    )}
-
-                    {/* Web SVG validation */}
-                    {dc.webSvgValidation && (
-                      <div className="text-sm">
-                        <span className="font-medium">Web SVG: </span>
-                        {dc.webSvgValidation.valid ? (
-                          <span className="text-emerald-600 dark:text-emerald-400">Valid SVG Tiny PS</span>
-                        ) : (
-                          <span className="text-destructive">
-                            Invalid: {dc.webSvgValidation.errors.join("; ")}
-                          </span>
+                    {dc.svgMatch === false && dc.webSvgSource && (
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
+                        >
+                          {showDiff === dc.domain ? "Hide Diff" : "View Diff"}
+                        </Button>
+                        {showDiff === dc.domain && (
+                          <div className="mt-2">
+                            <SVGDiffViewer certSvg={cert.logotypeSvg} webSvg={dc.webSvgSource} />
+                          </div>
                         )}
                       </div>
                     )}
@@ -622,23 +655,13 @@ export function CertificateDetail({ id }: { id: string }) {
                   </p>
                 )}
               </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}
 
-      {/* Revocation Status */}
-      <div className={bimiCheck && bimiCheck.domains.length > 0 ? "self-start" : "lg:col-span-3"}>
-        <RevocationStatusCard
-          revocation={revocation}
-          loading={revocationLoading}
-          onRecheck={runRevocationCheck}
-          error={revocationError}
-        />
-      </div>
-      </div>
-
-      {/* Certificate Details - crt.sh style */}
+      {/* Certificate Details - parsed X.509 fields */}
       <Card>
         <CardHeader>
           <CardTitle>Certificate Details</CardTitle>
@@ -813,6 +836,74 @@ export function CertificateDetail({ id }: { id: string }) {
   );
 }
 
+function buildBimiChecks(
+  dc: BimiCheckResult["domains"][number],
+  bimiCheck: BimiCheckResult,
+): { label: string; status: "pass" | "warn" | "fail"; detail: string }[] {
+  const checks: { label: string; status: "pass" | "warn" | "fail"; detail: string }[] = [];
+
+  // 1. BIMI DNS Record
+  if (dc.bimiRecord) {
+    checks.push({ label: "BIMI Record", status: "pass", detail: "Valid v=BIMI1 record found" });
+  } else {
+    checks.push({ label: "BIMI Record", status: "fail", detail: `No record at default._bimi.${dc.domain}` });
+  }
+
+  // 2. DMARC Policy
+  if (dc.dmarcValid === true) {
+    checks.push({ label: "DMARC Policy", status: "pass", detail: `${dc.dmarcPolicy} (meets BIMI requirements)` });
+  } else if (dc.dmarcValid === false) {
+    checks.push({ label: "DMARC Policy", status: "fail", detail: dc.dmarcPolicy ? `Policy "${dc.dmarcPolicy}" does not meet BIMI requirements (need quarantine or reject)` : "No DMARC record found" });
+  } else {
+    checks.push({ label: "DMARC Policy", status: "warn", detail: "Could not check" });
+  }
+
+  // 3. Certificate
+  const cv = bimiCheck.certValidity;
+  if (cv.isExpired) {
+    checks.push({ label: "Certificate", status: "fail", detail: `${cv.certType ?? "BIMI"} expired ${Math.abs(cv.daysRemaining)} days ago` });
+  } else if (cv.isNotYetValid) {
+    checks.push({ label: "Certificate", status: "fail", detail: `${cv.certType ?? "BIMI"} not yet valid` });
+  } else if (cv.daysRemaining <= 30) {
+    checks.push({ label: "Certificate", status: "warn", detail: `${cv.certType ?? "BIMI"}, expires in ${cv.daysRemaining} days` });
+  } else {
+    checks.push({ label: "Certificate", status: "pass", detail: `${cv.certType ?? "BIMI"}, expires in ${cv.daysRemaining} days` });
+  }
+
+  // 4. Certificate SVG
+  if (bimiCheck.certSvgValidation) {
+    if (bimiCheck.certSvgValidation.valid) {
+      checks.push({ label: "Cert SVG", status: "pass", detail: "Valid SVG Tiny PS" });
+    } else {
+      checks.push({ label: "Cert SVG", status: "fail", detail: bimiCheck.certSvgValidation.errors.join("; ") });
+    }
+  }
+
+  // 5. Web SVG
+  if (dc.logoUrl) {
+    if (dc.webSvgFound) {
+      if (dc.webSvgValidation?.valid) {
+        checks.push({ label: "Web SVG", status: "pass", detail: `Valid${dc.webSvgSizeBytes ? `, ${(dc.webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}` });
+      } else if (dc.webSvgValidation) {
+        checks.push({ label: "Web SVG", status: "fail", detail: dc.webSvgValidation.errors.join("; ") });
+      } else {
+        checks.push({ label: "Web SVG", status: "pass", detail: "Found" });
+      }
+    } else {
+      checks.push({ label: "Web SVG", status: "fail", detail: "Could not fetch from logo URL" });
+    }
+  }
+
+  // 6. Logo match
+  if (dc.svgMatch === true) {
+    checks.push({ label: "Logo Match", status: "pass", detail: "Certificate and web SVGs match" });
+  } else if (dc.svgMatch === false) {
+    checks.push({ label: "Logo Match", status: "fail", detail: "Certificate and web SVGs differ" });
+  }
+
+  return checks;
+}
+
 function Row({
   label,
   value,
@@ -880,7 +971,7 @@ function RevocationStatusCard({
             No OCSP or CRL endpoints found in this certificate&apos;s extensions.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          <div className="grid gap-4">
             {/* OCSP */}
             <div className="rounded-lg border p-4 space-y-2">
               <div className="flex items-center justify-between">
@@ -955,10 +1046,10 @@ function RevocationStatusCard({
   );
 }
 
-// crt.sh-style certificate detail helpers
+// Certificate detail formatting helpers
 
 function formatSerial(serial: string): string {
-  // Format as colon-separated hex pairs like crt.sh
+  // Format as colon-separated hex pairs
   const hex = serial.replace(/^0x/i, "").toLowerCase();
   return hex.match(/.{1,2}/g)?.join(":") || serial;
 }

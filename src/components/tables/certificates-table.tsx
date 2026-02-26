@@ -42,11 +42,11 @@ import {
   ArrowDown,
   Search,
   Download,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
 } from "lucide-react";
+import {
+  PaginationBar,
+  type Pagination,
+} from "@/components/pagination-bar";
 
 interface CertRow {
   id: number;
@@ -67,13 +67,6 @@ interface CertRow {
   isPrecert: boolean | null;
   notabilityScore: number | null;
   companyDescription: string | null;
-}
-
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
 }
 
 interface CertificatesTableProps {
@@ -288,7 +281,7 @@ export function CertificatesTable({
               <Badge variant="secondary" className="whitespace-nowrap">
                 {issuer}
               </Badge>
-              <span className="text-xs text-muted-foreground">{certType}</span>
+              <abbr className="text-xs text-muted-foreground no-underline" title={certType === "VMC" ? "Verified Mark Certificate" : certType === "CMC" ? "Common Mark Certificate" : undefined}>{certType}</abbr>
               {row.original.markType?.includes("Government") && (
                 <span title="Government Mark" className="text-blue-600 dark:text-blue-400">
                   <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
@@ -363,6 +356,33 @@ export function CertificatesTable({
         );
       },
     },
+    {
+      accessorKey: "ctLogTimestamp",
+      meta: { className: "hidden lg:table-cell" },
+      header: () => (
+        <SortHeader
+          label="CT Date"
+          sortKey="ctLogTimestamp"
+          currentSort={currentSort}
+          currentDir={currentDir}
+          onSort={handleSort}
+        />
+      ),
+      cell: ({ row }) => {
+        if (!row.original.ctLogTimestamp) return "-";
+        const date = new Date(row.original.ctLogTimestamp);
+        return (
+          <div title={format(date, "PPP pp")}>
+            <span className="text-sm">
+              {format(date, "yyyy-MM-dd")}
+            </span>
+            <span className="text-xs text-muted-foreground block">
+              {formatDistanceToNow(date, { addSuffix: true })}
+            </span>
+          </div>
+        );
+      },
+    },
   ];
 
   const table = useReactTable({
@@ -396,7 +416,7 @@ export function CertificatesTable({
           size="sm"
           onClick={() => {
             const csvHeader =
-              "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,Serial Number";
+              "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
             const csvRows = data.map((r) =>
               [
                 `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
@@ -407,6 +427,7 @@ export function CertificatesTable({
                 r.subjectCountry || "",
                 r.notBefore || "",
                 r.notAfter || "",
+                r.ctLogTimestamp || "",
                 r.serialNumber || "",
               ].join(",")
             );
@@ -425,7 +446,10 @@ export function CertificatesTable({
         </Button>
       </div>
 
-      <PaginationBar pagination={pagination} updateParams={updateParams} />
+      <PaginationBar
+        pagination={pagination}
+        onPageChange={(page) => updateParams({ page: String(page) })}
+      />
 
       {/* Table */}
       <div className="rounded-lg border overflow-x-auto">
@@ -489,85 +513,10 @@ export function CertificatesTable({
         </Table>
       </div>
 
-      <PaginationBar pagination={pagination} updateParams={updateParams} />
-    </div>
-  );
-}
-
-function PaginationBar({
-  pagination,
-  updateParams,
-}: {
-  pagination: Pagination;
-  updateParams: (updates: Record<string, string | null>) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
-        {pagination.total.toLocaleString()} certificates
-      </p>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={pagination.page <= 1}
-          onClick={() => updateParams({ page: "1" })}
-        >
-          <ChevronsLeft className="size-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={pagination.page <= 1}
-          onClick={() =>
-            updateParams({ page: String(pagination.page - 1) })
-          }
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        <span className="text-sm tabular-nums flex items-center gap-1">
-          <input
-            type="text"
-            inputMode="numeric"
-            className="w-10 text-center text-sm tabular-nums bg-transparent border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
-            defaultValue={pagination.page}
-            key={pagination.page}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const val = Math.max(1, Math.min(pagination.totalPages, parseInt((e.target as HTMLInputElement).value) || 1));
-                updateParams({ page: String(val) });
-              }
-            }}
-            onBlur={(e) => {
-              const val = Math.max(1, Math.min(pagination.totalPages, parseInt(e.target.value) || 1));
-              if (val !== pagination.page) {
-                updateParams({ page: String(val) });
-              }
-            }}
-          />
-          <span className="text-muted-foreground">/ {pagination.totalPages}</span>
-        </span>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={pagination.page >= pagination.totalPages}
-          onClick={() =>
-            updateParams({ page: String(pagination.page + 1) })
-          }
-        >
-          <ChevronRight className="size-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={pagination.page >= pagination.totalPages}
-          onClick={() =>
-            updateParams({ page: String(pagination.totalPages) })
-          }
-        >
-          <ChevronsRight className="size-4" />
-        </Button>
-      </div>
+      <PaginationBar
+        pagination={pagination}
+        onPageChange={(page) => updateParams({ page: String(page) })}
+      />
     </div>
   );
 }

@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
     const sortColumns: Record<string, any> = {
       notBefore: certificates.notBefore,
       notAfter: certificates.notAfter,
+      ctLogTimestamp: certificates.ctLogTimestamp,
       subjectCn: certificates.subjectCn,
       issuerOrg: certificates.issuerOrg,
       subjectOrg: certificates.subjectOrg,

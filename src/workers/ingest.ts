@@ -10,7 +10,7 @@ import {
   extractBIMIData,
   pemToDer,
 } from "@/lib/ct/parser";
-import { scoreNotability } from "@/lib/notability";
+import { scoreNotabilityBatch, type BrandInput } from "@/lib/notability";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { X509Certificate } from "@peculiar/x509";
 
@@ -265,7 +265,8 @@ async function rescore(maxCerts = 0) {
   const label = maxCerts > 0 ? `newest ${maxCerts}` : "all";
   console.log(`Scoring notability for ${label} unscored certificates...\n`);
 
-  const BATCH = 50;
+  const DB_BATCH = 50;
+  const SCORE_BATCH = 10;
   let offset = 0;
   let scored = 0;
 
@@ -277,37 +278,52 @@ async function rescore(maxCerts = 0) {
       FROM certificates
       WHERE notability_score IS NULL
       ORDER BY id DESC
-      LIMIT ${BATCH} OFFSET ${offset}
+      LIMIT ${DB_BATCH} OFFSET ${offset}
     `;
     if (rows.length === 0) break;
 
-    for (const row of rows) {
+    // Process in batches of SCORE_BATCH for efficient Haiku calls
+    for (let i = 0; i < rows.length; i += SCORE_BATCH) {
       if (maxCerts > 0 && scored >= maxCerts) break;
-      const { id, subject_org, san_list, subject_country } = row as {
-        id: number;
-        subject_org: string | null;
-        san_list: string[];
-        subject_country: string | null;
-      };
 
-      const result = await scoreNotability(subject_org, san_list || [], subject_country);
-      if (result) {
-        await sql`
-          UPDATE certificates SET
-            notability_score = ${result.score},
-            notability_reason = ${result.reason},
-            company_description = ${result.description}
-          WHERE id = ${id}
-        `;
-        scored++;
-        const label = subject_org || (san_list && san_list[0]) || "unknown";
-        console.log(`  Scored ${scored}: ${label} = ${result.score}/10`);
+      const remaining = maxCerts > 0 ? maxCerts - scored : SCORE_BATCH;
+      const chunk = rows.slice(i, i + Math.min(SCORE_BATCH, remaining));
+
+      const brands: BrandInput[] = chunk
+        .map((row) => {
+          const r = row as { id: number; subject_org: string | null; san_list: string[]; subject_country: string | null };
+          return {
+            id: String(r.id),
+            org: r.subject_org || "",
+            domain: r.san_list?.[0] || "unknown",
+            country: r.subject_country || "unknown",
+          };
+        })
+        .filter((b) => b.org);
+
+      const results = await scoreNotabilityBatch(brands);
+
+      for (const row of chunk) {
+        const r = row as { id: number; subject_org: string | null; san_list: string[]; subject_country: string | null };
+        const result = results.get(String(r.id));
+        if (result) {
+          await sql`
+            UPDATE certificates SET
+              notability_score = ${result.score},
+              notability_reason = ${result.reason},
+              company_description = ${result.description}
+            WHERE id = ${r.id}
+          `;
+          scored++;
+          const name = r.subject_org || r.san_list?.[0] || "unknown";
+          console.log(`  Scored ${scored}: ${name} = ${result.score}/10`);
+        }
       }
 
       await throttle(100);
     }
 
-    offset += BATCH;
+    offset += DB_BATCH;
   }
 
   console.log(`\n\nRescore complete. Scored ${scored} certificates.`);
