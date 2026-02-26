@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { format, formatDistanceToNow } from "date-fns";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
@@ -332,6 +331,74 @@ export function CertificateDetail({ id }: { id: string }) {
         </Card>
       )}
 
+      {/* Certificate Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificate Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-40 shrink-0 text-muted-foreground">Fingerprint (SHA-256)</span>
+            <code className="break-all text-xs font-mono flex-1">{cert.fingerprintSha256}</code>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs shrink-0"
+              onClick={() => copyToClipboard(cert.fingerprintSha256, "fingerprint")}
+            >
+              {copied === "fingerprint" ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-3">
+              <Row label="Serial Number" value={formatSerial(cert.serialNumber)} mono />
+              <Row label="Issued" value={format(new Date(cert.notBefore), "PPP")} />
+              <div className="flex gap-4">
+                <span className="w-40 shrink-0 text-muted-foreground">Expires</span>
+                <span className={isExpired ? "text-destructive font-medium" : ""}>
+                  {format(new Date(cert.notAfter), "PPP")}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Row label="Issuer" value={cert.issuerOrg || cert.issuerCn} />
+              <Row
+                label="Subject"
+                value={[cert.subjectOrg, cert.subjectCountry].filter(Boolean).join(", ") || cert.subjectCn}
+              />
+              {cert.sanList.length > 0 && (
+                <div className="flex gap-4">
+                  <span className="w-40 shrink-0 text-muted-foreground">SANs</span>
+                  <span className="break-all">
+                    {cert.sanList.map((san, i) => (
+                      <span key={san}>
+                        {i > 0 && ", "}
+                        <Link
+                          href={`/validate?domain=${encodeURIComponent(san)}`}
+                          className="text-primary hover:underline"
+                        >
+                          {san}
+                        </Link>
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              )}
+              <div className="flex gap-4">
+                <span className="w-40 shrink-0 text-muted-foreground">CT Log</span>
+                <span>
+                  Gorgon (DigiCert)
+                  {cert.ctLogIndex && <span className="text-muted-foreground"> #{cert.ctLogIndex}</span>}
+                  {cert.ctLogTimestamp && (
+                    <span className="text-muted-foreground"> · {format(new Date(cert.ctLogTimestamp), "PPP pp")}</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Logo Section - prominent display with validation */}
       {cert.logotypeSvg && (
         <Card>
@@ -551,46 +618,6 @@ export function CertificateDetail({ id }: { id: string }) {
         </Card>
       )}
 
-      {/* Certificate Validity */}
-      {bimiCheck?.certValidity && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Certificate Health</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatusCard
-                label="Expiry"
-                ok={!bimiCheck.certValidity.isExpired && !bimiCheck.certValidity.isNotYetValid}
-                value={
-                  bimiCheck.certValidity.isExpired
-                    ? `Expired ${formatDistanceToNow(new Date(cert.notAfter))} ago`
-                    : bimiCheck.certValidity.isNotYetValid
-                      ? `Valid in ${formatDistanceToNow(new Date(cert.notBefore))}`
-                      : `${bimiCheck.certValidity.daysRemaining} days remaining`
-                }
-                title={`${format(new Date(cert.notBefore), "PPP")} — ${format(new Date(cert.notAfter), "PPP")}`}
-              />
-              <StatusCard
-                label="Mark Type"
-                ok={!!cert.markType}
-                value={cert.markType || "Not specified"}
-              />
-              <StatusCard
-                label="Cert Type"
-                ok={!!cert.certType}
-                value={cert.certType || "Unknown"}
-              />
-              <StatusCard
-                label="Embedded Logo"
-                ok={!!cert.logotypeSvg}
-                value={cert.logotypeSvg ? "Present" : "Missing"}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Revocation Status */}
       <RevocationStatusCard
         revocation={revocation}
@@ -606,9 +633,7 @@ export function CertificateDetail({ id }: { id: string }) {
         </CardHeader>
         <CardContent>
           <div className="font-mono text-sm space-y-0.5 overflow-x-auto">
-            <CertLine label="Version" value="3 (0x2)" indent={2} />
             <CertLine label="Serial Number" value={formatSerial(cert.serialNumber)} indent={2} />
-            <CertLine label="Signature Algorithm" value="sha256WithRSAEncryption" indent={2} muted />
             <div className="pt-1" />
             <CertSection title="Issuer" indent={2}>
               {cert.issuerCn && <CertLine label="commonName" value={cert.issuerCn} indent={3} />}
@@ -727,39 +752,6 @@ export function CertificateDetail({ id }: { id: string }) {
           </CardContent>
         </Card>
       )}
-
-      {/* Identifiers & CT Log */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Identifiers</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-40 shrink-0 text-muted-foreground">Fingerprint (SHA-256)</span>
-            <code className="break-all text-xs font-mono">{cert.fingerprintSha256}</code>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() => copyToClipboard(cert.fingerprintSha256, "fingerprint")}
-            >
-              {copied === "fingerprint" ? "Copied" : "Copy"}
-            </Button>
-          </div>
-          <Row label="Serial Number" value={cert.serialNumber} mono />
-          <Separator className="my-2" />
-          <Row
-            label="CT Log Timestamp"
-            value={
-              cert.ctLogTimestamp
-                ? format(new Date(cert.ctLogTimestamp), "PPP pp")
-                : null
-            }
-          />
-          <Row label="CT Log Index" value={cert.ctLogIndex} />
-          <Row label="CT Log" value="Gorgon (DigiCert)" />
-        </CardContent>
-      </Card>
 
       {/* Raw PEM */}
       <Card>
@@ -1027,20 +1019,6 @@ function CertSection({
         {title}:
       </div>
       {children}
-    </div>
-  );
-}
-
-function StatusCard({ label, ok, value, title }: { label: string; ok: boolean; value: string; title?: string }) {
-  return (
-    <div
-      className={`rounded-lg border p-3 ${ok ? "border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/20" : "border-destructive/30 bg-destructive/5"}`}
-      title={title}
-    >
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-sm font-medium ${ok ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
-        {value}
-      </div>
     </div>
   );
 }
