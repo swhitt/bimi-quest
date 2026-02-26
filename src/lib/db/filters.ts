@@ -2,6 +2,15 @@ import { sql, eq, like } from "drizzle-orm";
 import { db } from "./index";
 import { certificates } from "./schema";
 
+/**
+ * Safely parse a date string, returning null for invalid/missing values.
+ */
+export function parseDate(value: string | null): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 const HEX_RE = /^[0-9a-f]+$/i;
 const MIN_HASH_PREFIX = 8;
 
@@ -49,11 +58,8 @@ export async function resolveCertParam(param: string): Promise<ResolvedCert> {
 export function excludeDuplicatePrecerts() {
   return sql`NOT (
     ${certificates.isPrecert} = true
-    AND EXISTS (
-      SELECT 1 FROM certificates c2
-      WHERE c2.serial_number = ${certificates.serialNumber}
-        AND c2.id != ${certificates.id}
-        AND c2.is_precert = false
+    AND ${certificates.serialNumber} IN (
+      SELECT serial_number FROM certificates WHERE is_precert = false
     )
   )`;
 }

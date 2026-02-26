@@ -6,7 +6,7 @@ import { buildPrecertCondition } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const months = parseInt(params.get("months") || "12");
+  const months = Math.max(1, parseInt(params.get("months") ?? "", 10) || 12);
   const ca = params.get("ca");
   const root = params.get("root");
   const cutoff = new Date();

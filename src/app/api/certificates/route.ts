@@ -13,13 +13,13 @@ import {
   sql,
   or,
 } from "drizzle-orm";
-import { buildPrecertCondition } from "@/lib/db/filters";
+import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
 
-  const page = parseInt(params.get("page") || "1");
-  const limit = Math.min(parseInt(params.get("limit") || "50"), 100);
+  const page = Math.max(1, parseInt(params.get("page") ?? "", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(params.get("limit") ?? "", 10) || 50));
   const offset = (page - 1) * limit;
 
   const ca = params.get("ca");
@@ -39,8 +39,10 @@ export async function GET(request: NextRequest) {
     if (ca) conditions.push(eq(certificates.issuerOrg, ca));
     if (root) conditions.push(eq(certificates.rootCaOrg, root));
     if (certType) conditions.push(eq(certificates.certType, certType));
-    if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
-    if (to) conditions.push(lte(certificates.notBefore, new Date(to)));
+    const fromDate = parseDate(from);
+    const toDate = parseDate(to);
+    if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
+    if (toDate) conditions.push(lte(certificates.notBefore, toDate));
     if (country) conditions.push(eq(certificates.subjectCountry, country));
 
     if (search) {
@@ -90,6 +92,7 @@ export async function GET(request: NextRequest) {
           notAfter: certificates.notAfter,
           sanList: certificates.sanList,
           ctLogTimestamp: certificates.ctLogTimestamp,
+          // TODO: logotypeSvg is large and should be lazy-loaded per-row in the future
           logotypeSvg: certificates.logotypeSvg,
           isPrecert: certificates.isPrecert,
           notabilityScore: certificates.notabilityScore,

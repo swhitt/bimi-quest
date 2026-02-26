@@ -13,12 +13,12 @@ import {
   parseCTLogEntry,
   hasBIMIOID,
   extractBIMIData,
-  parseChainFromExtraData,
   parseChainCert,
+  extractDnField,
+  computePemFingerprint,
 } from "../lib/ct/parser";
 import { dispatchNewCertNotification } from "../lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "../lib/ca-display";
-import { extractDnField } from "../lib/ct/parser";
 import { scoreNotability } from "../lib/notability";
 import { X509Certificate } from "@peculiar/x509";
 import type { CTLogEntry } from "../lib/ct/gorgon";
@@ -230,25 +230,6 @@ async function processEntries(
   }
 
   return found;
-}
-
-async function computePemFingerprint(pem: string): Promise<string> {
-  const b64 = pem
-    .replace(/-----BEGIN CERTIFICATE-----/g, "")
-    .replace(/-----END CERTIFICATE-----/g, "")
-    .replace(/\s/g, "");
-  let der: Uint8Array;
-  if (typeof Buffer !== "undefined") {
-    der = new Uint8Array(Buffer.from(b64, "base64"));
-  } else {
-    const binary = atob(b64);
-    der = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) der[i] = binary.charCodeAt(i);
-  }
-  const hash = await crypto.subtle.digest("SHA-256", der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 async function backfill() {
@@ -524,7 +505,7 @@ async function rescore(maxCerts = 0) {
         `;
         scored++;
         const label = subject_org || (san_list && san_list[0]) || "unknown";
-        process.stdout.write(`\r  Scored ${scored}: ${label} = ${result.score}/10`);
+        console.log(`  Scored ${scored}: ${label} = ${result.score}/10`);
       }
 
       // Small delay to avoid rate limits

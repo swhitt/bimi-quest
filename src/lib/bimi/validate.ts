@@ -2,6 +2,7 @@ import { lookupBIMIRecord, type BIMIRecord } from "./dns";
 import { lookupDMARC, isDMARCValidForBIMI, type DMARCRecord } from "./dmarc";
 import { validateSVGTinyPS, type SVGValidationResult } from "./svg";
 import { safeFetch } from "@/lib/net/safe-fetch";
+import { extractDnField } from "@/lib/ct/parser";
 
 export interface ChainValidationResult {
   chainValid: boolean;
@@ -274,14 +275,6 @@ function parsePemBasicInfo(
   }
 }
 
-function extractDnField(dn: string, field: string): string | null {
-  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(?:^|,)\\s*${escaped}=((?:[^,\\\\]|\\\\.)*)`, "i");
-  const match = dn.match(regex);
-  if (!match) return null;
-  return match[1].replace(/\\(.)/g, "$1").trim();
-}
-
 /**
  * Validate the internal consistency of a PEM certificate chain.
  * Checks: issuer/subject chaining, signature verification, expiry, basicConstraints.
@@ -351,11 +344,9 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
           );
         }
 
-        // Verify signature: cert[i] should be signed by cert[i+1]
         try {
-          // @peculiar/x509 verify() returns a Promise<boolean>
-          // We can't await here in a sync context, so we use the raw
-          // SubjectPublicKeyInfo comparison as a lightweight check
+          // Note: Only checks the public key is present. Full cryptographic signature
+          // verification is not performed - chain validation is structural only.
           const issuerSpki = issuer.publicKey.rawData;
           if (!issuerSpki || issuerSpki.byteLength === 0) {
             chainErrors.push(`Intermediate #${i + 1} has no public key`);

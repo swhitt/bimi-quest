@@ -13,26 +13,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "domain required" }, { status: 400 });
   }
 
-  const [cert] = await db
-    .select({
-      fingerprintSha256: certificates.fingerprintSha256,
-    })
-    .from(certificates)
-    .where(
-      sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE lower(s) = ${domain.toLowerCase()})`
-    )
-    .orderBy(desc(certificates.notBefore), asc(certificates.isPrecert))
-    .limit(1);
+  try {
+    const [cert] = await db
+      .select({
+        fingerprintSha256: certificates.fingerprintSha256,
+      })
+      .from(certificates)
+      .where(
+        sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE lower(s) = ${domain.toLowerCase()})`
+      )
+      .orderBy(desc(certificates.notBefore), asc(certificates.isPrecert))
+      .limit(1);
 
-  if (cert) {
+    if (cert) {
+      return NextResponse.json({
+        url: `/certificates/${cert.fingerprintSha256.slice(0, 12)}`,
+        found: true,
+      });
+    }
+
     return NextResponse.json({
-      url: `/certificates/${cert.fingerprintSha256.slice(0, 12)}`,
-      found: true,
+      url: `/validate?domain=${encodeURIComponent(domain)}`,
+      found: false,
     });
+  } catch (err) {
+    console.error("Resolve API error:", err);
+    return NextResponse.json(
+      { error: "Failed to resolve domain" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({
-    url: `/validate?domain=${encodeURIComponent(domain)}`,
-    found: false,
-  });
 }

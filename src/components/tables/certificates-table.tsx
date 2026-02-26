@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -121,6 +121,12 @@ export function CertificatesTable({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Pre-sanitize SVGs once so column renderers don't re-sanitize on every render
+  const sanitizedData = useMemo(
+    () => data.map(c => ({ ...c, logotypeSvg: c.logotypeSvg ? sanitizeSvg(c.logotypeSvg) : null })),
+    [data]
+  );
+
   const currentSort = searchParams.get("sort") || "notBefore";
   const currentDir = searchParams.get("dir") || "desc";
 
@@ -174,14 +180,14 @@ export function CertificatesTable({
             <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
               <div
                 className="size-10 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
-                dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }}
+                dangerouslySetInnerHTML={{ __html: svg }}
               />
             </HoverCardTrigger>
             <HoverCardContent side="right" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-col items-center gap-3">
                 <div
                   className="size-36 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                  dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }}
+                  dangerouslySetInnerHTML={{ __html: svg }}
                 />
                 <div className="text-center space-y-0.5">
                   <div className="font-medium text-sm">{org}</div>
@@ -355,7 +361,7 @@ export function CertificatesTable({
   ];
 
   const table = useReactTable({
-    data,
+    data: sanitizedData,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -413,6 +419,8 @@ export function CertificatesTable({
           Export
         </Button>
       </div>
+
+      <PaginationBar pagination={pagination} updateParams={updateParams} />
 
       {/* Table */}
       <div className="rounded-lg border overflow-x-auto">
@@ -476,54 +484,84 @@ export function CertificatesTable({
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {pagination.total.toLocaleString()} certificates
-        </p>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={pagination.page <= 1}
-            onClick={() => updateParams({ page: "1" })}
-          >
-            <ChevronsLeft className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={pagination.page <= 1}
-            onClick={() =>
-              updateParams({ page: String(pagination.page - 1) })
-            }
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm px-3 tabular-nums">
-            {pagination.page} / {pagination.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() =>
-              updateParams({ page: String(pagination.page + 1) })
-            }
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() =>
-              updateParams({ page: String(pagination.totalPages) })
-            }
-          >
-            <ChevronsRight className="size-4" />
-          </Button>
-        </div>
+      <PaginationBar pagination={pagination} updateParams={updateParams} />
+    </div>
+  );
+}
+
+function PaginationBar({
+  pagination,
+  updateParams,
+}: {
+  pagination: Pagination;
+  updateParams: (updates: Record<string, string | null>) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <p className="text-sm text-muted-foreground">
+        {pagination.total.toLocaleString()} certificates
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={pagination.page <= 1}
+          onClick={() => updateParams({ page: "1" })}
+        >
+          <ChevronsLeft className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={pagination.page <= 1}
+          onClick={() =>
+            updateParams({ page: String(pagination.page - 1) })
+          }
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="text-sm tabular-nums flex items-center gap-1">
+          <input
+            type="text"
+            inputMode="numeric"
+            className="w-10 text-center text-sm tabular-nums bg-transparent border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
+            defaultValue={pagination.page}
+            key={pagination.page}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const val = Math.max(1, Math.min(pagination.totalPages, parseInt((e.target as HTMLInputElement).value) || 1));
+                updateParams({ page: String(val) });
+              }
+            }}
+            onBlur={(e) => {
+              const val = Math.max(1, Math.min(pagination.totalPages, parseInt(e.target.value) || 1));
+              if (val !== pagination.page) {
+                updateParams({ page: String(val) });
+              }
+            }}
+          />
+          <span className="text-muted-foreground">/ {pagination.totalPages}</span>
+        </span>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={pagination.page >= pagination.totalPages}
+          onClick={() =>
+            updateParams({ page: String(pagination.page + 1) })
+          }
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={pagination.page >= pagination.totalPages}
+          onClick={() =>
+            updateParams({ page: String(pagination.totalPages) })
+          }
+        >
+          <ChevronsRight className="size-4" />
+        </Button>
       </div>
     </div>
   );

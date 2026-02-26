@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, eq, and, gte, lte, count, desc } from "drizzle-orm";
-import { buildPrecertCondition } from "@/lib/db/filters";
+import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -19,8 +19,10 @@ export async function GET(request: NextRequest) {
     if (ca) conditions.push(eq(certificates.issuerOrg, ca));
     if (root) conditions.push(eq(certificates.rootCaOrg, root));
     if (certType) conditions.push(eq(certificates.certType, certType));
-    if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
-    if (to) conditions.push(lte(certificates.notBefore, new Date(to)));
+    const fromDate = parseDate(from);
+    const toDate = parseDate(to);
+    if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
+    if (toDate) conditions.push(lte(certificates.notBefore, toDate));
     if (validity === "valid")
       conditions.push(gte(certificates.notAfter, new Date()));
     if (validity === "expired")

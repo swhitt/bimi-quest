@@ -128,6 +128,8 @@ export function CertificateDetail({ id }: { id: string }) {
   const [showDiff, setShowDiff] = useState<string | null>(null);
   const [revocation, setRevocation] = useState<RevocationResult | null>(null);
   const [revocationLoading, setRevocationLoading] = useState(false);
+  const [bimiError, setBimiError] = useState<string | null>(null);
+  const [revocationError, setRevocationError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/certificates/${id}`)
@@ -142,19 +144,27 @@ export function CertificateDetail({ id }: { id: string }) {
 
   const runBimiCheck = useCallback(() => {
     setBimiLoading(true);
+    setBimiError(null);
     fetch(`/api/certificates/${id}/bimi-check`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`BIMI check failed (${res.status})`);
+        return res.json();
+      })
       .then(setBimiCheck)
-      .catch(() => {})
+      .catch((err) => setBimiError(err instanceof Error ? err.message : "Failed to run BIMI check"))
       .finally(() => setBimiLoading(false));
   }, [id]);
 
   const runRevocationCheck = useCallback(() => {
     setRevocationLoading(true);
+    setRevocationError(null);
     fetch(`/api/certificates/${id}/revocation`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Revocation check failed (${res.status})`);
+        return res.json();
+      })
       .then(setRevocation)
-      .catch(() => {})
+      .catch((err) => setRevocationError(err instanceof Error ? err.message : "Failed to check revocation status"))
       .finally(() => setRevocationLoading(false));
   }, [id]);
 
@@ -403,6 +413,11 @@ export function CertificateDetail({ id }: { id: string }) {
         </Card>
       )}
 
+      {/* BIMI error */}
+      {bimiError && (
+        <p className="text-destructive text-sm">{bimiError}</p>
+      )}
+
       {/* BIMI Domain Analysis */}
       {bimiCheck && bimiCheck.domains.length > 0 && (
         <Card>
@@ -581,6 +596,7 @@ export function CertificateDetail({ id }: { id: string }) {
         revocation={revocation}
         loading={revocationLoading}
         onRecheck={runRevocationCheck}
+        error={revocationError}
       />
 
       {/* Certificate Details - crt.sh style */}
@@ -831,10 +847,12 @@ function RevocationStatusCard({
   revocation,
   loading,
   onRecheck,
+  error,
 }: {
   revocation: RevocationResult | null;
   loading: boolean;
   onRecheck: () => void;
+  error: string | null;
 }) {
   // Show the card even while loading (with skeleton state)
   const hasAnyData = revocation?.ocsp || revocation?.crl;
@@ -848,6 +866,9 @@ function RevocationStatusCard({
         </Button>
       </CardHeader>
       <CardContent>
+        {error && (
+          <p className="text-destructive text-sm mb-3">{error}</p>
+        )}
         {loading && !revocation ? (
           <p className="text-sm text-muted-foreground">Checking OCSP and CRL status...</p>
         ) : !hasAnyData ? (

@@ -14,7 +14,7 @@ interface DashboardData {
   totalCerts: number;
   caCerts: number;
   activeCerts: number;
-  marketShare: string;
+  marketShare: number | null;
   uniqueOrgs: number;
   newLast30d: number;
   caNewLast30d: number;

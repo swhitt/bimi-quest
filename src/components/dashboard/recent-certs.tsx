@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,15 +36,21 @@ interface RecentCertsProps {
 }
 
 export function RecentCerts({ certs }: RecentCertsProps) {
+  // Pre-sanitize SVGs once to avoid re-sanitizing on every render
+  const sanitizedCerts = useMemo(
+    () => certs.map(c => ({ ...c, logotypeSvg: c.logotypeSvg ? sanitizeSvg(c.logotypeSvg) : null })),
+    [certs]
+  );
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Recent Issuances</CardTitle>
       </CardHeader>
       <CardContent>
-        {certs.length > 0 ? (
+        {sanitizedCerts.length > 0 ? (
           <div className="space-y-3">
-            {certs.map((cert) => (
+            {sanitizedCerts.map((cert) => (
               <Link
                 key={cert.id}
                 href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
@@ -55,14 +62,14 @@ export function RecentCerts({ certs }: RecentCertsProps) {
                       <HoverCardTrigger asChild>
                         <div
                           className="h-10 w-10 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
-                          dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
+                          dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
                         />
                       </HoverCardTrigger>
                       <HoverCardContent side="right" className="w-56 p-3">
                         <div className="flex flex-col items-center gap-2">
                           <div
                             className="size-32 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                            dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
+                            dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
                           />
                           <div className="text-center">
                             <div className="font-medium text-sm">

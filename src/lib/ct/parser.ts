@@ -435,17 +435,27 @@ function sha256Hex(str: string): string {
   return createHash("sha256").update(str).digest("hex");
 }
 
+/** Strip PEM headers and base64-decode to raw DER bytes */
+export function pemToDer(pem: string): Uint8Array {
+  const b64 = pem
+    .replace(/-----BEGIN CERTIFICATE-----/g, "")
+    .replace(/-----END CERTIFICATE-----/g, "")
+    .replace(/\s/g, "");
+  return base64ToBuffer(b64);
+}
+
+/** Compute SHA-256 fingerprint of a PEM-encoded certificate */
+export async function computePemFingerprint(pem: string): Promise<string> {
+  const der = pemToDer(pem);
+  return sha256(der);
+}
+
 /** Parse a chain cert minimally to extract subject/issuer DNs */
 export function parseChainCert(
   pem: string
 ): { subjectDn: string; issuerDn: string; notBefore: Date; notAfter: Date } | null {
   try {
-    // Convert PEM to DER
-    const b64 = pem
-      .replace(/-----BEGIN CERTIFICATE-----/g, "")
-      .replace(/-----END CERTIFICATE-----/g, "")
-      .replace(/\s/g, "");
-    const der = base64ToBuffer(b64);
+    const der = pemToDer(pem);
     const cert = new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
     return {
       subjectDn: cert.subject,

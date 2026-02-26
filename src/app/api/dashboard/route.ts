@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
-import { buildPrecertCondition } from "@/lib/db/filters";
+import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
 
 // Conditions without CA/root filters (for the "total" denominator)
 function buildGlobalConditions(params: URLSearchParams) {
   const conditions = [buildPrecertCondition(params.get("precert"))];
   const certType = params.get("type");
-  const from = params.get("from");
-  const to = params.get("to");
+  const fromDate = parseDate(params.get("from"));
+  const toDate = parseDate(params.get("to"));
   const validity = params.get("validity");
 
   if (certType) conditions.push(eq(certificates.certType, certType));
-  if (from) conditions.push(gte(certificates.notBefore, new Date(from)));
-  if (to) conditions.push(lte(certificates.notBefore, new Date(to)));
+  if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
+  if (toDate) conditions.push(lte(certificates.notBefore, toDate));
   if (validity === "valid")
     conditions.push(gte(certificates.notAfter, new Date()));
   if (validity === "expired")
@@ -139,6 +139,7 @@ export async function GET(request: NextRequest) {
           notBefore: certificates.notBefore,
           subjectCountry: certificates.subjectCountry,
           sanList: certificates.sanList,
+          // TODO: logotypeSvg is large and should be lazy-loaded per-row in the future
           logotypeSvg: certificates.logotypeSvg,
           isPrecert: certificates.isPrecert,
           notabilityScore: certificates.notabilityScore,
@@ -227,8 +228,8 @@ export async function GET(request: NextRequest) {
     const hasCAFilter = selectedCA || selectedRoot;
     const marketShare =
       hasCAFilter && totalCerts > 0
-        ? ((caCerts / totalCerts) * 100).toFixed(1)
-        : "100.0";
+        ? parseFloat(((caCerts / totalCerts) * 100).toFixed(1))
+        : null;
 
     return NextResponse.json(
       {

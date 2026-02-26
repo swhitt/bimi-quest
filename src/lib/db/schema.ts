@@ -50,7 +50,20 @@ export const certificates = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
-  (table) => [index("idx_certificates_serial_number").on(table.serialNumber)]
+  (table) => [
+    index("idx_certificates_serial_number").on(table.serialNumber),
+    index("idx_certificates_not_before").on(table.notBefore),
+    index("idx_certificates_not_after").on(table.notAfter),
+    index("idx_certificates_root_ca_org").on(table.rootCaOrg),
+    index("idx_certificates_issuer_org").on(table.issuerOrg),
+    index("idx_certificates_cert_type").on(table.certType),
+    index("idx_certificates_subject_country").on(table.subjectCountry),
+    index("idx_certificates_is_precert").on(table.isPrecert),
+    index("idx_certificates_serial_precert").on(
+      table.serialNumber,
+      table.isPrecert
+    ),
+  ]
 );
 
 export const chainCerts = pgTable("chain_certs", {
@@ -63,12 +76,20 @@ export const chainCerts = pgTable("chain_certs", {
   notAfter: timestamp("not_after", { withTimezone: true }),
 });
 
-export const certificateChainLinks = pgTable("certificate_chain_links", {
-  id: serial("id").primaryKey(),
-  leafCertId: integer("leaf_cert_id").notNull().references(() => certificates.id),
-  chainCertId: integer("chain_cert_id").notNull().references(() => chainCerts.id),
-  chainPosition: integer("chain_position").notNull(),
-});
+export const certificateChainLinks = pgTable(
+  "certificate_chain_links",
+  {
+    id: serial("id").primaryKey(),
+    leafCertId: integer("leaf_cert_id")
+      .notNull()
+      .references(() => certificates.id),
+    chainCertId: integer("chain_cert_id")
+      .notNull()
+      .references(() => chainCerts.id),
+    chainPosition: integer("chain_position").notNull(),
+  },
+  (table) => [index("idx_chain_links_leaf_cert_id").on(table.leafCertId)]
+);
 
 export const domainBimiState = pgTable("domain_bimi_state", {
   id: serial("id").primaryKey(),

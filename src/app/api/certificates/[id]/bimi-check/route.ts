@@ -166,7 +166,12 @@ export async function GET(
         certSvgSizeBytes: cert.logotypeSvg ? new TextEncoder().encode(cert.logotypeSvg).length : null,
         domains: domainChecks,
       },
-      { headers: rl.headers }
+      {
+        headers: {
+          ...rl.headers,
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      }
     );
   } catch (error) {
     console.error("BIMI check API error:", error);

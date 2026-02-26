@@ -8,7 +8,7 @@ interface KPICardsProps {
   totalCerts: number;
   caCerts: number;
   activeCerts: number;
-  marketShare: string;
+  marketShare: number | null;
   uniqueOrgs: number;
   newLast30d: number;
   caNewLast30d: number;
@@ -84,7 +84,7 @@ export function KPICards({
           <CardTitle className="text-sm font-medium">Market Share</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{marketShare}%</div>
+          <div className="text-2xl font-bold">{marketShare != null ? `${marketShare}%` : "100%"}</div>
           <p className="text-xs text-muted-foreground">{selectedCA} vs market</p>
         </CardContent>
       </Card>

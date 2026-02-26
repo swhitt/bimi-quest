@@ -84,7 +84,8 @@ export async function scoreNotability(
       reason: (input.reason || "").slice(0, 200),
       description: (input.description || "").slice(0, 200),
     };
-  } catch {
+  } catch (err) {
+    console.warn("scoreNotability failed:", err instanceof Error ? err.message : String(err));
     return null;
   }
 }

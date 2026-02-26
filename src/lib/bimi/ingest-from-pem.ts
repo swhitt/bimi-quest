@@ -61,13 +61,15 @@ export async function ingestFromPem(
         notabilityScore: notability?.score,
         notabilityReason: notability?.reason,
         companyDescription: notability?.description,
+        rootCaOrg: normalizeIssuerOrg(bimiData.issuerOrg),
         discoverySource: source,
       })
       .onConflictDoNothing({ target: certificates.fingerprintSha256 })
       .returning({ fingerprintSha256: certificates.fingerprintSha256 });
 
     return inserted?.fingerprintSha256 ?? null;
-  } catch {
+  } catch (err) {
+    console.error("ingestFromPem failed:", err instanceof Error ? err.message : String(err));
     return null;
   }
 }
