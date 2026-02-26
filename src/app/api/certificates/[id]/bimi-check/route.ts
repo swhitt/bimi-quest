@@ -5,13 +5,17 @@ import { eq } from "drizzle-orm";
 import { validateSVGTinyPS } from "@/lib/bimi/svg";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { lookupDMARC, isDMARCValidForBIMI } from "@/lib/bimi/dmarc";
-import { isPrivateHostname } from "@/lib/net/hostname";
+import { safeFetch } from "@/lib/net/safe-fetch";
 import { resolveCertParam } from "@/lib/db/filters";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = getClientIP(_request);
+  const rl = checkRateLimit(`bimi-check:${ip}`, { windowMs: 60_000, max: 20 });
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
   const { id: rawId } = await params;
 
   try {
@@ -99,11 +103,8 @@ export async function GET(
 
           // Fetch and validate the web SVG if we have a logo URL
           if (logoUrl) {
-            const parsedLogo = new URL(logoUrl);
-            if (isPrivateHostname(parsedLogo.hostname)) {
-              // Skip fetch to prevent SSRF against internal hosts
-            } else try {
-              const res = await fetch(logoUrl, {
+            try {
+              const res = await safeFetch(logoUrl, {
                 headers: {
                   "User-Agent": "bimi-intel/1.0 (BIMI Validator)",
                   Accept: "image/svg+xml",
@@ -157,13 +158,16 @@ export async function GET(
       })
     );
 
-    return NextResponse.json({
-      certSvgValidation,
-      certValidity,
-      certSvgHash: cert.logotypeSvgHash,
-      certSvgSizeBytes: cert.logotypeSvg ? new TextEncoder().encode(cert.logotypeSvg).length : null,
-      domains: domainChecks,
-    });
+    return NextResponse.json(
+      {
+        certSvgValidation,
+        certValidity,
+        certSvgHash: cert.logotypeSvgHash,
+        certSvgSizeBytes: cert.logotypeSvg ? new TextEncoder().encode(cert.logotypeSvg).length : null,
+        domains: domainChecks,
+      },
+      { headers: rl.headers }
+    );
   } catch (error) {
     console.error("BIMI check API error:", error);
     return NextResponse.json(

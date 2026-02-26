@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isPrivateHostname } from "@/lib/net/hostname";
+import { safeFetch } from "@/lib/net/safe-fetch";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 // In-memory LRU cache for SVG content
 const cache = new Map<string, { content: string; contentType: string; timestamp: number }>();
@@ -23,31 +24,29 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // Rate limit
+  const ip = getClientIP(request);
+  const rl = checkRateLimit(`svg-proxy:${ip}`, { windowMs: 60_000, max: 30 });
+  if (!rl.allowed) return rateLimitResponse({ ...corsHeaders(request), ...rl.headers });
+
   const url = request.nextUrl.searchParams.get("url");
 
   if (!url) {
-    return NextResponse.json({ error: "url parameter required" }, { status: 400 });
+    return NextResponse.json({ error: "url parameter required" }, { status: 400, headers: rl.headers });
   }
 
-  // Validate URL: HTTPS only, no private/internal hosts
+  // Validate URL: HTTPS only
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(url);
     if (parsedUrl.protocol !== "https:") {
       return NextResponse.json(
         { error: "Only HTTPS URLs are allowed" },
-        { status: 400, headers: corsHeaders(request) }
+        { status: 400, headers: { ...corsHeaders(request), ...rl.headers } }
       );
     }
   } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400, headers: corsHeaders(request) });
-  }
-
-  if (isPrivateHostname(parsedUrl.hostname)) {
-    return NextResponse.json(
-      { error: "Requests to private/internal hosts are not allowed" },
-      { status: 400, headers: corsHeaders(request) }
-    );
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400, headers: { ...corsHeaders(request), ...rl.headers } });
   }
 
   // Check cache
@@ -56,6 +55,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(cached.content, {
       headers: {
         ...corsHeaders(request),
+        ...rl.headers,
         "Content-Type": cached.contentType,
         "Cache-Control": "public, max-age=86400",
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; bimi-intel/1.0; +https://bimi-intel.vercel.app)",
@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(content, {
       headers: {
         ...corsHeaders(request),
+        ...rl.headers,
         "Content-Type": "image/svg+xml",
         "Cache-Control": "public, max-age=86400",
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest) {
     console.error("SVG proxy error:", error);
     return NextResponse.json(
       { error: "Failed to fetch SVG" },
-      { status: 502, headers: corsHeaders(request) }
+      { status: 502, headers: { ...corsHeaders(request), ...rl.headers } }
     );
   }
 }

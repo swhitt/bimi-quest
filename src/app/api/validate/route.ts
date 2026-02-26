@@ -1,29 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateDomain } from "@/lib/bimi/validate";
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
-
-// In-memory rate limiter: IP -> array of request timestamps
-const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 10;
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
-  // Rate limit by IP
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const now = Date.now();
-  const timestamps = rateLimitMap.get(ip) ?? [];
-  // Discard entries outside the window
-  const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  if (recent.length >= RATE_LIMIT_MAX) {
-    rateLimitMap.set(ip, recent);
-    return NextResponse.json(
-      { error: "Too many requests. Try again later." },
-      { status: 429 }
-    );
-  }
-  recent.push(now);
-  rateLimitMap.set(ip, recent);
+  const ip = getClientIP(request);
+  const rl = checkRateLimit(`validate:${ip}`, { windowMs: 60_000, max: 10 });
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
 
   try {
     const body = await request.json();
@@ -58,7 +41,10 @@ export async function POST(request: NextRequest) {
 
     // Strip rawPem from the response (internal use only)
     const { rawPem: _, ...certWithoutPem } = result.certificate;
-    return NextResponse.json({ ...result, certificate: certWithoutPem });
+    return NextResponse.json(
+      { ...result, certificate: certWithoutPem },
+      { headers: rl.headers }
+    );
   } catch (error) {
     console.error("Validate API error:", error);
     return NextResponse.json(

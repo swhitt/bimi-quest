@@ -7,13 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 
+interface ChainValidation {
+  chainValid: boolean;
+  chainErrors: string[];
+  chainLength: number;
+}
+
 interface ValidationResult {
   domain: string;
   timestamp: string;
   bimi: { found: boolean; record: { raw: string; version: string; logoUrl: string | null; authorityUrl: string | null } | null };
   dmarc: { found: boolean; record: { raw: string; policy: string; pct: number } | null; validForBIMI: boolean };
   svg: { found: boolean; url: string | null; validation: { valid: boolean; errors: string[]; warnings: string[] } | null; sizeBytes: number | null };
-  certificate: { found: boolean; certType: string | null; issuer: string | null; validFrom: string | null; validTo: string | null; isExpired: boolean | null };
+  certificate: {
+    found: boolean;
+    certType: string | null;
+    issuer: string | null;
+    validFrom: string | null;
+    validTo: string | null;
+    isExpired: boolean | null;
+    chain: ChainValidation | null;
+  };
   overallValid: boolean;
   errors: string[];
 }
@@ -221,6 +235,23 @@ export function ValidateContent() {
                         value={result.certificate.isExpired ? "Expired" : "Active"}
                       />
                     )}
+                    {result.certificate.chain && (
+                      <>
+                        <Row
+                          label="Chain"
+                          value={
+                            result.certificate.chain.chainValid
+                              ? `Valid (${result.certificate.chain.chainLength} cert${result.certificate.chain.chainLength !== 1 ? "s" : ""})`
+                              : `Issues found (${result.certificate.chain.chainLength} cert${result.certificate.chain.chainLength !== 1 ? "s" : ""})`
+                          }
+                        />
+                        {result.certificate.chain.chainErrors.map((e, i) => (
+                          <div key={i} className="text-destructive ml-40 text-xs">
+                            &#x2022; {e}
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 }
                 guidance={
@@ -271,6 +302,9 @@ export function ValidateContent() {
                   </div>
                 }
               />
+
+              {/* Client Compatibility */}
+              {result.svg.validation && <ClientCompatibility result={result} />}
             </div>
           </div>
         </div>
@@ -347,6 +381,137 @@ function Row({ label, value }: { label: string; value: string | null | undefined
       <span className="sm:w-40 sm:shrink-0 text-muted-foreground text-xs sm:text-sm">{label}</span>
       <span className="break-all">{value || "-"}</span>
     </div>
+  );
+}
+
+function ClientCompatibility({ result }: { result: ValidationResult }) {
+  const [open, setOpen] = useState(false);
+
+  const warnings = result.svg.validation?.warnings ?? [];
+  const errors = result.svg.validation?.errors ?? [];
+  const hasVMC = result.certificate.found && result.certificate.certType === "VMC";
+  const hasCMC = result.certificate.found && result.certificate.certType === "CMC";
+  const hasCert = hasVMC || hasCMC;
+
+  const missingDimensions = warnings.some((w) => w.includes("Missing explicit width/height"));
+  const smallDimensions = warnings.some((w) => w.includes("below Gmail minimum"));
+  const highPathCount = warnings.some((w) => w.includes("High path count"));
+  const hasAnimation = errors.some((e) => e.includes("animation"));
+
+  type Support = "full" | "partial" | "none" | "unknown";
+
+  const clients: {
+    name: string;
+    support: Support;
+    certReq: string;
+    notes: string[];
+  }[] = [
+    {
+      name: "Gmail",
+      support: hasCert && !missingDimensions && !smallDimensions ? "full" : hasCert ? "partial" : "none",
+      certReq: "VMC or CMC",
+      notes: [
+        ...(missingDimensions ? ["Requires explicit width/height attributes"] : []),
+        ...(smallDimensions ? ["Minimum 96x96 dimensions required"] : []),
+        ...(!hasCert ? ["Requires a valid VMC or CMC certificate"] : []),
+      ],
+    },
+    {
+      name: "Apple Mail",
+      support: hasCert && !highPathCount ? "full" : hasCert ? "partial" : "none",
+      certReq: "VMC or CMC",
+      notes: [
+        ...(highPathCount ? ["High path count may render poorly at small display sizes (14pt)"] : []),
+        ...(hasAnimation ? ["Animations not supported"] : []),
+        ...(!hasCert ? ["Requires a valid VMC or CMC certificate"] : []),
+        "Renders at 14pt (list) and 30pt (message header)",
+      ],
+    },
+    {
+      name: "Yahoo Mail",
+      support: result.bimi.found && result.svg.found ? "full" : "partial",
+      certReq: "Optional (shows without cert)",
+      notes: [
+        "Less strict SVG validation than Gmail",
+        "Will show logo even without a VMC/CMC (self-asserted BIMI)",
+      ],
+    },
+    {
+      name: "Outlook / Hotmail",
+      support: "none",
+      certReq: "N/A",
+      notes: ["Microsoft does not currently support BIMI"],
+    },
+  ];
+
+  const supportBadge = (s: Support) => {
+    switch (s) {
+      case "full":
+        return <Badge variant="default" className="text-xs">Supported</Badge>;
+      case "partial":
+        return <Badge className="text-xs bg-amber-600 hover:bg-amber-700 text-white">Partial</Badge>;
+      case "none":
+        return <Badge variant="destructive" className="text-xs">No</Badge>;
+      default:
+        return <Badge variant="secondary" className="text-xs">Unknown</Badge>;
+    }
+  };
+
+  return (
+    <Card className="relative sm:pl-6">
+      <div className="absolute left-3 top-4 sm:left-[-0.5rem] sm:top-4 z-10">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-4 ring-background bg-muted text-muted-foreground">
+          5
+        </div>
+      </div>
+      <CardHeader className="flex flex-row items-center gap-3 pb-2 pl-12 sm:pl-8">
+        <Badge variant="secondary">INFO</Badge>
+        <div>
+          <CardTitle className="text-lg">Client Compatibility</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">How your BIMI setup works across email clients</p>
+        </div>
+      </CardHeader>
+      <CardContent className="pl-12 sm:pl-8">
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-sm text-primary hover:underline font-medium"
+        >
+          {open ? "Hide compatibility matrix" : "Show compatibility matrix"}
+        </button>
+        {open && (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 pr-4 font-medium">Client</th>
+                  <th className="py-2 pr-4 font-medium">BIMI Support</th>
+                  <th className="py-2 pr-4 font-medium">Cert Required</th>
+                  <th className="py-2 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((c) => (
+                  <tr key={c.name} className="border-b last:border-0">
+                    <td className="py-2 pr-4 font-medium">{c.name}</td>
+                    <td className="py-2 pr-4">{supportBadge(c.support)}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{c.certReq}</td>
+                    <td className="py-2">
+                      {c.notes.length > 0 && (
+                        <ul className="space-y-0.5 text-muted-foreground">
+                          {c.notes.map((n, i) => (
+                            <li key={i} className="text-xs">&#x2022; {n}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

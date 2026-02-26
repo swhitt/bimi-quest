@@ -4,6 +4,8 @@ import { certificates, chainCerts, certificateChainLinks } from "@/lib/db/schema
 import { eq } from "drizzle-orm";
 import { resolveCertParam } from "@/lib/db/filters";
 import { isPrivateHostname } from "@/lib/net/hostname";
+import { safeFetch } from "@/lib/net/safe-fetch";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import {
   buildOcspRequest,
   parseOcspResponse,
@@ -23,6 +25,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = getClientIP(_request);
+  const rl = checkRateLimit(`revocation:${ip}`, { windowMs: 60_000, max: 20 });
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
   const { id: rawId } = await params;
 
   try {
@@ -72,7 +77,7 @@ export async function GET(
     return NextResponse.json(
       { ocsp: ocspResult, crl: crlResult },
       {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+        headers: { ...rl.headers, "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
       }
     );
   } catch (err) {
@@ -115,7 +120,7 @@ async function checkOcsp(
       serialNumberHex,
     });
 
-    const response = await fetch(ocspUrl, {
+    const response = await safeFetch(ocspUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/ocsp-request",
@@ -164,7 +169,7 @@ async function checkCrl(
   }
 
   try {
-    const response = await fetch(crlUrl, {
+    const response = await safeFetch(crlUrl, {
       headers: { Accept: "application/pkix-crl, application/x-pkcs7-crl" },
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
