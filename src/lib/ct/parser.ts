@@ -347,7 +347,7 @@ function extractMarkType(cert: X509Certificate): string | null {
 }
 
 /** Derive cert type (VMC or CMC) from mark type */
-function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
+export function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
   if (!markType) return null;
   const vmcTypes = ["Registered Mark", "Government Mark"];
   if (vmcTypes.some((t) => markType.includes(t))) return "VMC";

@@ -12,10 +12,10 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 
 ## Key Paths
 - `src/lib/db/` - Database schema and connection (lazy singleton)
-- `src/lib/ct/` - CT log client (gorgon.ts), cert parser (parser.ts), crt.sh client
+- `src/lib/ct/` - CT log client (gorgon.ts), cert parser (parser.ts), shared ingestion loop (ingest-batch.ts), crt.sh client
 - `src/lib/bimi/` - DNS, DMARC, SVG validation, full validation orchestrator
-- `src/lib/notifications/` - Discord webhooks, notification dispatcher
-- `src/workers/ingest.ts` - Standalone ingestion worker (backfill/stream modes)
+- `src/lib/notifications/` - Discord webhooks, notification dispatcher (only notifies for notability score >= 5)
+- `src/workers/ingest.ts` - Standalone ingestion worker (backfill/stream/reparse/rescore/check modes)
 - `src/app/api/` - API routes (dashboard, certificates, validate, proxy/svg, stats)
 - `src/components/` - Dashboard widgets, tables, UI components
 
@@ -35,6 +35,9 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 
 ## Important Notes
 - DB connection is lazy (via Proxy) to avoid build-time errors when DATABASE_URL is unset
-- The ingestion worker uses relative imports (not @/ aliases) since it runs via tsx
+- The ingestion worker runs via tsx which resolves @/ aliases from tsconfig paths
+- Both cron and worker use `processIngestBatch` from `src/lib/ct/ingest-batch.ts` (single source of truth)
+- Worker keeps a raw `neon()` sql template tag for utility modes (reparse, rescore, check) that use raw SQL
 - BIMI OIDs: 1.3.6.1.5.5.7.1.12 (logotype), 1.3.6.1.4.1.53087.1.13 (mark type)
 - Uint8Array -> ArrayBuffer conversions are needed for @peculiar/x509 with strict TS
+- `deriveCertType` in parser.ts is the canonical source for VMC/CMC classification

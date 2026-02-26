@@ -1,27 +1,18 @@
 import "dotenv/config";
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
-import {
-  certificates,
-  chainCerts,
-  certificateChainLinks,
-  ingestionCursors,
-} from "../lib/db/schema";
-import { getSTH, getEntries, throttle } from "../lib/ct/gorgon";
+import { ingestionCursors } from "@/lib/db/schema";
+import { db } from "@/lib/db";
+import { getSTH, getEntries, throttle } from "@/lib/ct/gorgon";
 import {
   parseCTLogEntry,
   hasBIMIOID,
   extractBIMIData,
-  parseChainCert,
-  extractDnField,
-  computePemFingerprint,
-} from "../lib/ct/parser";
-import { dispatchNewCertNotification } from "../lib/notifications/dispatcher";
-import { normalizeIssuerOrg } from "../lib/ca-display";
-import { scoreNotability, scoreNotabilityBatch, type BrandInput } from "../lib/notability";
+  pemToDer,
+} from "@/lib/ct/parser";
+import { scoreNotability } from "@/lib/notability";
+import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { X509Certificate } from "@peculiar/x509";
-import type { CTLogEntry } from "../lib/ct/gorgon";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -29,214 +20,8 @@ if (!connectionString) {
   process.exit(1);
 }
 
+// Raw sql template tag for utility modes (reparse, rescore, check)
 const sql = neon(connectionString);
-const db = drizzle({ client: sql, schema: { certificates, chainCerts, certificateChainLinks, ingestionCursors } });
-
-const BATCH_SIZE = 256;
-
-async function processEntries(
-  startIndex: number,
-  endIndex: number,
-  notify: boolean
-): Promise<number> {
-  let found = 0;
-
-  for (let i = startIndex; i < endIndex; ) {
-    const batchEnd = Math.min(i + BATCH_SIZE - 1, endIndex - 1);
-    const batchLabel = `${i.toLocaleString()}-${batchEnd.toLocaleString()} of ${endIndex.toLocaleString()}`;
-    process.stdout.write(`\r  Fetching entries ${batchLabel}...`);
-
-    let response: { entries: CTLogEntry[] };
-    try {
-      response = await getEntries(i, batchEnd);
-    } catch (err) {
-      console.error(`\n  Failed to fetch batch at ${i}:`, err);
-      await throttle(2000);
-      continue;
-    }
-
-    if (response.entries.length === 0) {
-      // Server returned nothing - advance to avoid infinite loop
-      i += BATCH_SIZE;
-      continue;
-    }
-
-    let lastSuccessIndex = i - 1;
-
-    for (let j = 0; j < response.entries.length; j++) {
-      const entry = response.entries[j];
-      const entryIndex = i + j;
-
-      try {
-        const parsed = parseCTLogEntry(entry);
-        if (!parsed) continue;
-
-        if (!hasBIMIOID(parsed.cert)) continue;
-
-        // BIMI certificate found
-        const bimiData = await extractBIMIData(parsed.cert, parsed.certDer);
-        console.log(
-          `\n  BIMI cert at index ${entryIndex}: ${bimiData.subjectCn || bimiData.subjectOrg || "unknown"} (${bimiData.issuerOrg || "unknown CA"})`
-        );
-
-        // Derive root CA org from chain before inserting
-        let rootCaOrg: string | null = null;
-        for (const chainPem of parsed.chainPems) {
-          const info = parseChainCert(chainPem);
-          if (info && info.subjectDn === info.issuerDn) {
-            rootCaOrg = normalizeIssuerOrg(extractDnField(info.subjectDn, "O"));
-            break;
-          }
-        }
-        // Fall back to issuer org if no self-signed root in chain
-        if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
-
-        const [inserted] = await db
-          .insert(certificates)
-          .values({
-            fingerprintSha256: bimiData.fingerprintSha256,
-            serialNumber: bimiData.serialNumber,
-            notBefore: bimiData.notBefore,
-            notAfter: bimiData.notAfter,
-            subjectDn: bimiData.subjectDn,
-            subjectCn: bimiData.subjectCn,
-            subjectOrg: bimiData.subjectOrg,
-            subjectCountry: bimiData.subjectCountry,
-            subjectState: bimiData.subjectState,
-            subjectLocality: bimiData.subjectLocality,
-            issuerDn: bimiData.issuerDn,
-            issuerCn: bimiData.issuerCn,
-            issuerOrg: normalizeIssuerOrg(bimiData.issuerOrg),
-            rootCaOrg,
-            sanList: bimiData.sanList,
-            markType: bimiData.markType,
-            certType: bimiData.certType,
-            logotypeSvgHash: bimiData.logotypeSvgHash,
-            logotypeSvg: bimiData.logotypeSvg,
-            rawPem: bimiData.rawPem,
-            isPrecert: parsed.entryType === "precert",
-            ctLogTimestamp: new Date(parsed.timestamp),
-            ctLogIndex: entryIndex,
-            ctLogName: "gorgon",
-            extensionsJson: bimiData.extensionsJson,
-          })
-          .onConflictDoNothing({ target: certificates.fingerprintSha256 })
-          .returning({ id: certificates.id, fingerprintSha256: certificates.fingerprintSha256 });
-
-        if (inserted) {
-          // Score notability only for genuinely new certs
-          const notability = await scoreNotability(
-            bimiData.subjectOrg,
-            bimiData.sanList,
-            bimiData.subjectCountry
-          );
-          if (notability) {
-            await db
-              .update(certificates)
-              .set({
-                notabilityScore: notability.score,
-                notabilityReason: notability.reason,
-                companyDescription: notability.description,
-              })
-              .where(eq(certificates.id, inserted.id));
-          }
-          // Store certificate chain (normalized: upsert unique certs, then link)
-          for (let k = 0; k < parsed.chainPems.length; k++) {
-            const chainInfo = parseChainCert(parsed.chainPems[k]);
-            const fingerprint = await computePemFingerprint(parsed.chainPems[k]);
-            const [chainCert] = await db
-              .insert(chainCerts)
-              .values({
-                fingerprintSha256: fingerprint,
-                subjectDn: chainInfo?.subjectDn || "unknown",
-                issuerDn: chainInfo?.issuerDn || "unknown",
-                rawPem: parsed.chainPems[k],
-                notBefore: chainInfo?.notBefore,
-                notAfter: chainInfo?.notAfter,
-              })
-              .onConflictDoNothing({ target: chainCerts.fingerprintSha256 })
-              .returning({ id: chainCerts.id });
-
-            // If conflict, look up existing id
-            let chainCertId = chainCert?.id;
-            if (!chainCertId) {
-              const [existing] = await db
-                .select({ id: chainCerts.id })
-                .from(chainCerts)
-                .where(eq(chainCerts.fingerprintSha256, fingerprint))
-                .limit(1);
-              chainCertId = existing.id;
-            }
-
-            await db.insert(certificateChainLinks).values({
-              leafCertId: inserted.id,
-              chainCertId,
-              chainPosition: k + 1,
-            });
-          }
-
-          found++;
-
-          if (notify) {
-            dispatchNewCertNotification({
-              certId: inserted.id,
-              fingerprintSha256: inserted.fingerprintSha256,
-              domain: bimiData.sanList[0] || bimiData.subjectCn || "unknown",
-              org: bimiData.subjectOrg || "unknown",
-              ca: bimiData.issuerOrg || "unknown",
-              certType: bimiData.certType || "VMC",
-              country: bimiData.subjectCountry,
-              notabilityScore: notability?.score,
-              notabilityReason: notability?.reason,
-              companyDescription: notability?.description,
-            }).catch((err) =>
-              console.error("  Notification dispatch error:", err)
-            );
-          }
-        }
-        lastSuccessIndex = entryIndex;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        const cause = err instanceof Error && err.cause ? `\n    Cause: ${err.cause}` : "";
-        console.error(`\n  Error processing entry ${entryIndex}: ${msg.slice(0, 200)}${cause}`);
-        // Don't advance cursor past failed entries
-        break;
-      }
-    }
-
-    // Only advance cursor to last successfully processed entry + 1
-    const newCursor = lastSuccessIndex + 1;
-    if (newCursor > i) {
-      i = newCursor;
-    } else {
-      // Nothing succeeded in this batch, stop to avoid infinite loop
-      console.error(`\n  Batch starting at ${i} failed entirely, stopping.`);
-      break;
-    }
-
-    // Update cursor after each batch
-    await db
-      .insert(ingestionCursors)
-      .values({
-        logName: "gorgon",
-        lastIndex: i,
-        lastRun: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: ingestionCursors.logName,
-        set: {
-          lastIndex: i,
-          lastRun: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-    await throttle(150);
-  }
-
-  return found;
-}
 
 async function backfill() {
   console.log("Starting backfill mode...");
@@ -251,8 +36,13 @@ async function backfill() {
   const startIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
 
   console.log(`Resuming from index ${startIndex.toLocaleString()}`);
-  const count = await processEntries(startIndex, sth.tree_size, false);
-  console.log(`\nBackfill complete. Found ${count} BIMI certificates.`);
+  const result = await processIngestBatch({
+    startIndex,
+    endIndex: sth.tree_size,
+    notify: false,
+    onProgress: (msg) => process.stdout.write(`\r  ${msg}`),
+  });
+  console.log(`\nBackfill complete. Found ${result.certsFound} BIMI certificates.`);
 }
 
 /**
@@ -375,9 +165,14 @@ async function stream() {
         console.log(
           `New entries: ${startIndex.toLocaleString()} -> ${sth.tree_size.toLocaleString()}`
         );
-        const count = await processEntries(startIndex, sth.tree_size, true);
-        if (count > 0) {
-          console.log(`Found ${count} new BIMI certificate(s)`);
+        const result = await processIngestBatch({
+          startIndex,
+          endIndex: sth.tree_size,
+          notify: true,
+          onProgress: (msg) => process.stdout.write(`\r  ${msg}`),
+        });
+        if (result.certsFound > 0) {
+          console.log(`Found ${result.certsFound} new BIMI certificate(s)`);
         }
       }
     } catch (err) {
@@ -416,15 +211,10 @@ async function reparse() {
         mark_type: string | null;
       };
 
-      // Skip if already has both SVG and mark type
       if (logotype_svg && mark_type) continue;
 
       try {
-        const b64 = raw_pem
-          .replace(/-----BEGIN CERTIFICATE-----/g, "")
-          .replace(/-----END CERTIFICATE-----/g, "")
-          .replace(/\s/g, "");
-        const der = new Uint8Array(Buffer.from(b64, "base64"));
+        const der = pemToDer(raw_pem);
         const cert = new X509Certificate(
           der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer
         );
@@ -514,7 +304,6 @@ async function rescore(maxCerts = 0) {
         console.log(`  Scored ${scored}: ${label} = ${result.score}/10`);
       }
 
-      // Small delay to avoid rate limits
       await throttle(100);
     }
 

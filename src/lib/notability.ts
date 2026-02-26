@@ -108,10 +108,9 @@ export async function scoreNotability(
     const toolBlock = msg.content.find(
       (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
     );
-    if (!toolBlock) return null;
+    if (!toolBlock || !isNotabilityInput(toolBlock.input)) return null;
 
-    const input = toolBlock.input as NotabilityResult;
-    return normalizeResult(input);
+    return normalizeResult(toolBlock.input);
   } catch (err) {
     console.warn("scoreNotability failed:", err instanceof Error ? err.message : String(err));
     return null;
@@ -158,19 +157,25 @@ export async function scoreNotabilityBatch(
     );
     if (!toolBlock) return results;
 
-    const input = toolBlock.input as {
-      results: Array<{ id: string; score: number; reason: string; description: string }>;
-    };
+    const input = toolBlock.input as Record<string, unknown>;
+    const items = Array.isArray(input.results) ? input.results : [];
 
-    for (const r of input.results) {
+    for (const r of items) {
+      if (!isNotabilityInput(r) || typeof r.id !== "string") continue;
       const normalized = normalizeResult(r);
-      if (normalized) results.set(r.id, normalized);
+      results.set(r.id, normalized);
     }
   } catch (err) {
     console.warn("scoreNotabilityBatch failed:", err instanceof Error ? err.message : String(err));
   }
 
   return results;
+}
+
+function isNotabilityInput(v: unknown): v is { score: number; reason: string; description: string; [key: string]: unknown } {
+  if (typeof v !== "object" || v === null) return false;
+  const obj = v as Record<string, unknown>;
+  return typeof obj.score === "number" && typeof obj.reason === "string" && typeof obj.description === "string";
 }
 
 function normalizeResult(input: { score: number; reason: string; description: string }): NotabilityResult {

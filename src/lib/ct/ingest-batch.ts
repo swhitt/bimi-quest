@@ -21,6 +21,17 @@ import { scoreNotabilityBatch, type BrandInput, type NotabilityResult } from "@/
 
 const BATCH_SIZE = 256;
 
+interface PendingCert {
+  id: number;
+  fingerprintSha256: string;
+  org: string;
+  domain: string;
+  country: string | null;
+  ca: string;
+  certType: "VMC" | "CMC" | null;
+  hasLogo: boolean;
+}
+
 export interface IngestBatchOptions {
   startIndex: number;
   endIndex: number;
@@ -36,6 +47,52 @@ export interface IngestBatchResult {
   certsFound: number;
   lastIndex: number;
   batchesRun: number;
+}
+
+/** Batch-score pending certs with Haiku, update DB, and send notifications for notable ones. */
+async function flushScores(batch: PendingCert[], notify: boolean): Promise<void> {
+  const brands: BrandInput[] = batch
+    .filter((c) => c.org)
+    .map((c) => ({
+      id: String(c.id),
+      org: c.org,
+      domain: c.domain,
+      country: c.country || "unknown",
+    }));
+
+  const scores = await scoreNotabilityBatch(brands);
+
+  for (const cert of batch) {
+    const notability = scores.get(String(cert.id)) ?? null;
+    if (notability) {
+      await db
+        .update(certificates)
+        .set({
+          notabilityScore: notability.score,
+          notabilityReason: notability.reason,
+          companyDescription: notability.description,
+        })
+        .where(eq(certificates.id, cert.id));
+    }
+
+    // Only notify for notable brands (score >= 5) to avoid Discord spam
+    const score = notability?.score ?? 0;
+    if (notify && score >= 5) {
+      dispatchNewCertNotification({
+        certId: cert.id,
+        fingerprintSha256: cert.fingerprintSha256,
+        domain: cert.domain,
+        org: cert.org || "unknown",
+        ca: cert.ca,
+        certType: cert.certType ?? "VMC",
+        country: cert.country,
+        notabilityScore: notability?.score,
+        notabilityReason: notability?.reason,
+        companyDescription: notability?.description,
+        hasLogo: cert.hasLogo,
+      }).catch(() => {});
+    }
+  }
 }
 
 /**
@@ -58,68 +115,13 @@ export async function processIngestBatch(
   let found = 0;
   let processed = startIndex;
   let batchesRun = 0;
-
-  // Pending certs that need notability scoring + notification
-  type PendingCert = {
-    id: number;
-    fingerprintSha256: string;
-    org: string;
-    domain: string;
-    country: string | null;
-    ca: string;
-    certType: string;
-    hasLogo: boolean;
-  };
   let pendingScores: PendingCert[] = [];
 
-  /** Flush pending scores: batch-score with Haiku, update DB, send notifications */
-  async function flushScores() {
+  async function flush() {
     if (pendingScores.length === 0) return;
     const batch = pendingScores;
     pendingScores = [];
-
-    const brands: BrandInput[] = batch
-      .filter((c) => c.org)
-      .map((c) => ({
-        id: String(c.id),
-        org: c.org,
-        domain: c.domain,
-        country: c.country || "unknown",
-      }));
-
-    const scores = await scoreNotabilityBatch(brands);
-
-    for (const cert of batch) {
-      const notability = scores.get(String(cert.id)) ?? null;
-      if (notability) {
-        await db
-          .update(certificates)
-          .set({
-            notabilityScore: notability.score,
-            notabilityReason: notability.reason,
-            companyDescription: notability.description,
-          })
-          .where(eq(certificates.id, cert.id));
-      }
-
-      // Only notify for notable brands (score >= 5) to avoid Discord spam
-      const score = notability?.score ?? 0;
-      if (notify && score >= 5) {
-        dispatchNewCertNotification({
-          certId: cert.id,
-          fingerprintSha256: cert.fingerprintSha256,
-          domain: cert.domain,
-          org: cert.org || "unknown",
-          ca: cert.ca,
-          certType: (cert.certType as "VMC" | "CMC") || "VMC",
-          country: cert.country,
-          notabilityScore: notability?.score,
-          notabilityReason: notability?.reason,
-          companyDescription: notability?.description,
-          hasLogo: cert.hasLogo,
-        }).catch(() => {});
-      }
-    }
+    await flushScores(batch, notify);
   }
 
   for (let i = startIndex; i < endIndex; ) {
@@ -254,12 +256,12 @@ export async function processIngestBatch(
             domain: bimiData.sanList[0] || bimiData.subjectCn || "unknown",
             country: bimiData.subjectCountry,
             ca: bimiData.issuerOrg || "unknown",
-            certType: bimiData.certType || "VMC",
+            certType: bimiData.certType,
             hasLogo: !!bimiData.logotypeSvg,
           });
 
           if (pendingScores.length >= SCORE_BATCH_SIZE) {
-            await flushScores();
+            await flush();
           }
         }
         lastSuccessIndex = entryIndex;
@@ -293,7 +295,7 @@ export async function processIngestBatch(
     }
 
     // Flush any remaining scores after this Gorgon batch
-    await flushScores();
+    await flush();
 
     const newCursor = lastSuccessIndex + 1;
     if (newCursor > i) {
@@ -309,7 +311,7 @@ export async function processIngestBatch(
   }
 
   // Flush any stragglers
-  await flushScores();
+  await flush();
 
   return { certsFound: found, lastIndex: processed, batchesRun };
 }

@@ -1,8 +1,9 @@
+import { X509Certificate, BasicConstraintsExtension, SubjectAlternativeNameExtension } from "@peculiar/x509";
 import { lookupBIMIRecord, type BIMIRecord } from "./dns";
 import { lookupDMARC, isDMARCValidForBIMI, type DMARCRecord } from "./dmarc";
 import { validateSVGTinyPS, type SVGValidationResult } from "./svg";
 import { safeFetch } from "@/lib/net/safe-fetch";
-import { extractDnField } from "@/lib/ct/parser";
+import { extractDnField, pemToDer, deriveCertType } from "@/lib/ct/parser";
 
 export interface ChainValidationResult {
   chainValid: boolean;
@@ -223,33 +224,20 @@ function parsePemBasicInfo(
   issuer: string;
   notBefore: Date;
   notAfter: Date;
-  certType: string | null;
+  certType: "VMC" | "CMC" | null;
   markType: string | null;
   sans: string[];
 } | null {
   try {
-    const { X509Certificate } = require("@peculiar/x509");
-    const b64 = pem
-      .replace(/-----BEGIN CERTIFICATE-----/g, "")
-      .replace(/-----END CERTIFICATE-----/g, "")
-      .replace(/\s/g, "");
-    const der = Buffer.from(b64, "base64");
-    const cert = new X509Certificate(der);
+    const der = pemToDer(pem);
+    const cert = new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
 
-    // Mark type is a subject DN field, not a standalone extension
     const MARK_TYPE_OID = "1.3.6.1.4.1.53087.1.13";
     const markType = extractDnField(cert.subject, MARK_TYPE_OID);
+    const certType = deriveCertType(markType);
 
-    let certType: string | null = null;
-    if (markType) {
-      const vmcTypes = ["Registered Mark", "Government Mark"];
-      certType = vmcTypes.some((t) => markType.includes(t)) ? "VMC" : "CMC";
-    }
-
-    // Extract Subject Alternative Names (DNS names)
     const sans: string[] = [];
     try {
-      const { SubjectAlternativeNameExtension } = require("@peculiar/x509");
       const sanExt = cert.getExtension(SubjectAlternativeNameExtension);
       if (sanExt) {
         for (const name of sanExt.names.items) {
@@ -282,7 +270,6 @@ function parsePemBasicInfo(
  */
 function validateCertificateChain(pem: string): ChainValidationResult | null {
   try {
-    const { X509Certificate, BasicConstraintsExtension } = require("@peculiar/x509");
     const chainErrors: string[] = [];
 
     // Extract all PEM blocks
@@ -295,11 +282,8 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
 
     // Parse all certs
     const certs = pemBlocks.map((block) => {
-      const b64 = block
-        .replace(/-----BEGIN CERTIFICATE-----/g, "")
-        .replace(/-----END CERTIFICATE-----/g, "")
-        .replace(/\s/g, "");
-      return new X509Certificate(Buffer.from(b64, "base64"));
+      const der = pemToDer(block);
+      return new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
     });
 
     if (certs.length === 1) {
