@@ -65,6 +65,8 @@ export const certificates = pgTable(
     index("idx_certs_rootca_notbefore").on(table.rootCaOrg, table.notBefore),
     index("idx_certs_type_rootca_notbefore").on(table.certType, table.rootCaOrg, table.notBefore),
     index("idx_certs_notafter_precert").on(table.notAfter, table.isPrecert),
+    index("idx_certificates_san_list_gin").using("gin", table.sanList),
+    index("idx_certificates_subject_org").on(table.subjectOrg),
   ]
 );
 

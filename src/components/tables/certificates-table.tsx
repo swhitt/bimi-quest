@@ -28,9 +28,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
-import { format, formatDistanceToNow } from "date-fns";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { UtcTime } from "@/components/ui/utc-time";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -48,7 +48,7 @@ import {
   type Pagination,
 } from "@/components/pagination-bar";
 
-interface CertRow {
+export interface CertRow {
   id: number;
   serialNumber: string;
   fingerprintSha256: string;
@@ -72,6 +72,8 @@ interface CertRow {
 interface CertificatesTableProps {
   data: CertRow[];
   pagination: Pagination;
+  basePath?: string;
+  showSearch?: boolean;
 }
 
 function SortHeader({
@@ -110,6 +112,8 @@ function SortHeader({
 export function CertificatesTable({
   data,
   pagination,
+  basePath = "/certificates",
+  showSearch = true,
 }: CertificatesTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -133,9 +137,9 @@ export function CertificatesTable({
           params.set(key, value);
         }
       }
-      router.push(`/certificates?${params.toString()}`);
+      router.push(`${basePath}?${params.toString()}`);
     },
-    [router, searchParams]
+    [router, searchParams, basePath]
   );
 
   const handleSort = useCallback(
@@ -315,17 +319,7 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         if (!row.original.notBefore) return "-";
-        const date = new Date(row.original.notBefore);
-        return (
-          <div title={format(date, "PPP pp")}>
-            <span className="text-sm">
-              {format(date, "yyyy-MM-dd")}
-            </span>
-            <span className="text-xs text-muted-foreground block">
-              {formatDistanceToNow(date, { addSuffix: true })}
-            </span>
-          </div>
-        );
+        return <UtcTime date={row.original.notBefore} relative />;
       },
     },
     {
@@ -342,18 +336,8 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         if (!row.original.notAfter) return "-";
-        const date = new Date(row.original.notAfter);
-        const isExpired = date < new Date();
-        return (
-          <div title={format(date, "PPP pp")}>
-            <span className={isExpired ? "text-destructive text-sm" : "text-sm"}>
-              {format(date, "yyyy-MM-dd")}
-            </span>
-            <span className={`text-xs block ${isExpired ? "text-destructive" : "text-muted-foreground"}`}>
-              {formatDistanceToNow(date, { addSuffix: true })}
-            </span>
-          </div>
-        );
+        const isExpired = new Date(row.original.notAfter) < new Date();
+        return <UtcTime date={row.original.notAfter} relative expired={isExpired} />;
       },
     },
     {
@@ -370,17 +354,7 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         if (!row.original.ctLogTimestamp) return "-";
-        const date = new Date(row.original.ctLogTimestamp);
-        return (
-          <div title={format(date, "PPP pp")}>
-            <span className="text-sm">
-              {format(date, "yyyy-MM-dd")}
-            </span>
-            <span className="text-xs text-muted-foreground block">
-              {formatDistanceToNow(date, { addSuffix: true })}
-            </span>
-          </div>
-        );
+        return <UtcTime date={row.original.ctLogTimestamp} relative />;
       },
     },
   ];
@@ -397,54 +371,56 @@ export function CertificatesTable({
   return (
     <div className="space-y-4">
       {/* Search bar */}
-      <div className="flex items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
-          <HostnameAutocomplete
-            value={searchInput}
-            onChange={setSearchInput}
-            onSelect={(val) => {
-              setSearchInput(val);
-              updateParams({ search: val, page: "1" });
+      {showSearch && (
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
+            <HostnameAutocomplete
+              value={searchInput}
+              onChange={setSearchInput}
+              onSelect={(val) => {
+                setSearchInput(val);
+                updateParams({ search: val, page: "1" });
+              }}
+              placeholder="Search domains, orgs..."
+              inputClassName="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const csvHeader =
+                "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
+              const csvRows = data.map((r) =>
+                [
+                  `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
+                  r.sanList[0] || r.subjectCn || "",
+                  `"${r.sanList.join("; ")}"`,
+                  r.issuerOrg || "",
+                  r.certType || "",
+                  r.subjectCountry || "",
+                  r.notBefore || "",
+                  r.notAfter || "",
+                  r.ctLogTimestamp || "",
+                  r.serialNumber || "",
+                ].join(",")
+              );
+              const csv = [csvHeader, ...csvRows].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "bimi-certificates.csv";
+              a.click();
+              URL.revokeObjectURL(url);
             }}
-            placeholder="Search domains, orgs..."
-            inputClassName="pl-9"
-          />
+          >
+            <Download className="size-4" />
+            Export
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const csvHeader =
-              "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
-            const csvRows = data.map((r) =>
-              [
-                `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
-                r.sanList[0] || r.subjectCn || "",
-                `"${r.sanList.join("; ")}"`,
-                r.issuerOrg || "",
-                r.certType || "",
-                r.subjectCountry || "",
-                r.notBefore || "",
-                r.notAfter || "",
-                r.ctLogTimestamp || "",
-                r.serialNumber || "",
-              ].join(",")
-            );
-            const csv = [csvHeader, ...csvRows].join("\n");
-            const blob = new Blob([csv], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "bimi-certificates.csv";
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-        >
-          <Download className="size-4" />
-          Export
-        </Button>
-      </div>
+      )}
 
       <PaginationBar
         pagination={pagination}

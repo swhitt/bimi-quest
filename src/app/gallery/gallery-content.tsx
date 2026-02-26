@@ -93,7 +93,11 @@ export function GalleryContent() {
               <Skeleton key={i} className="h-48 w-full rounded-xl" />
             ))
           : data.logos.map((logo) => {
-              const searchTerm = logo.domain || logo.org;
+              const linkHref = logo.org
+                ? `/orgs/${encodeURIComponent(logo.org)}`
+                : logo.domain
+                  ? `/hosts/${encodeURIComponent(logo.domain)}`
+                  : null;
               const content = (
                 <Card className="h-full transition-colors hover:border-primary/40">
                   <CardContent className="flex flex-col items-center gap-2 p-3">
@@ -127,10 +131,10 @@ export function GalleryContent() {
                 </Card>
               );
 
-              return searchTerm ? (
+              return linkHref ? (
                 <Link
                   key={logo.svgHash}
-                  href={`/certificates?search=${encodeURIComponent(searchTerm)}`}
+                  href={linkHref}
                 >
                   {content}
                 </Link>

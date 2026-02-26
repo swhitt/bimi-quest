@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { computeDiff, type DiffLine } from "@/lib/diff";
 
 interface CertData {
@@ -264,15 +265,15 @@ export function CertificateDetail({ id }: { id: string }) {
             </Badge>
           )}
           {isExpired ? (
-            <Badge variant="destructive" title={format(new Date(cert.notAfter), "PPP")}>
+            <Badge variant="destructive" title={formatUtcFull(cert.notAfter)}>
               Expired {formatDistanceToNow(new Date(cert.notAfter), { addSuffix: true })}
             </Badge>
           ) : notYetValid ? (
-            <Badge variant="secondary" title={format(new Date(cert.notBefore), "PPP")}>
+            <Badge variant="secondary" title={formatUtcFull(cert.notBefore)}>
               Valid {formatDistanceToNow(new Date(cert.notBefore), { addSuffix: true })}
             </Badge>
           ) : (
-            <Badge className="bg-emerald-600 hover:bg-emerald-700" title={format(new Date(cert.notAfter), "PPP")}>
+            <Badge className="bg-emerald-600 hover:bg-emerald-700" title={formatUtcFull(cert.notAfter)}>
               Expires {formatDistanceToNow(new Date(cert.notAfter), { addSuffix: true })}
             </Badge>
           )}
@@ -319,6 +320,15 @@ export function CertificateDetail({ id }: { id: string }) {
               <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
             </a>
           )}
+          <a
+            href={`https://search.censys.io/certificates/${cert.fingerprintSha256}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            Censys
+            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+          </a>
         </div>
       </div>
 
@@ -343,44 +353,63 @@ export function CertificateDetail({ id }: { id: string }) {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-3">
               <Row label="Serial Number" value={formatSerial(cert.serialNumber)} mono />
-              <Row label="Issued" value={format(new Date(cert.notBefore), "PPP")} />
+              <div className="flex gap-4">
+                <span className="w-40 shrink-0 text-muted-foreground">Issued</span>
+                <UtcTime date={cert.notBefore} />
+              </div>
               <div className="flex gap-4">
                 <span className="w-40 shrink-0 text-muted-foreground">Expires</span>
-                <span className={isExpired ? "text-destructive font-medium" : ""}>
-                  {format(new Date(cert.notAfter), "PPP")}
-                </span>
+                <UtcTime date={cert.notAfter} expired={isExpired} />
               </div>
             </div>
             <div className="space-y-3">
               <Row label="Issuer" value={cert.issuerOrg || cert.issuerCn} />
-              <Row
-                label="Subject"
-                value={[cert.subjectOrg, cert.subjectCountry].filter(Boolean).join(", ") || cert.subjectCn}
-              />
+              <div className="flex gap-4">
+                <span className="w-40 shrink-0 text-muted-foreground">Subject</span>
+                <span className="break-all">
+                  {cert.subjectOrg ? (
+                    <>
+                      <Link href={`/orgs/${encodeURIComponent(cert.subjectOrg)}`} className="text-primary hover:underline">
+                        {cert.subjectOrg}
+                      </Link>
+                      {cert.subjectCountry && `, ${cert.subjectCountry}`}
+                    </>
+                  ) : (
+                    cert.subjectCn
+                  )}
+                </span>
+              </div>
               {cert.sanList.length > 0 && (
                 <div className="flex gap-4">
                   <span className="w-40 shrink-0 text-muted-foreground">SANs</span>
                   <span className="break-all">
                     {cert.sanList.map((san, i) => {
                       const otherCount = data.sanCertCounts?.[san] ?? 0;
+                      const totalCount = otherCount > 0 ? otherCount + 1 : 0;
                       return (
-                        <span key={san}>
-                          {i > 0 && ", "}
+                        <span key={san} className="inline-flex items-center">
+                          {i > 0 && <span className="mx-1 text-muted-foreground">,</span>}
                           <Link
-                            href={`/validate?domain=${encodeURIComponent(san)}`}
-                            className="text-primary hover:underline"
+                            href={`/hosts/${encodeURIComponent(san)}`}
+                            className="inline-flex items-baseline gap-1 text-primary hover:underline"
                           >
                             {san}
+                            {totalCount > 1 && (
+                              <span className="text-xs text-muted-foreground font-normal no-underline">
+                                · {totalCount} certs
+                              </span>
+                            )}
                           </Link>
-                          {otherCount > 0 && (
-                            <Link
-                              href={`/certificates?search=${encodeURIComponent(san)}`}
-                              className="ml-1 text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
-                              title={`View ${otherCount} other certificate${otherCount !== 1 ? "s" : ""} for ${san}`}
-                            >
-                              (+{otherCount})
-                            </Link>
-                          )}
+                          <Link
+                            href={`/domains/${encodeURIComponent(san)}`}
+                            className="ml-1.5 inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
+                            aria-label={`Run BIMI check for ${san}`}
+                            title={`Run BIMI check for ${san}`}
+                          >
+                            <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                            </svg>
+                          </Link>
                         </span>
                       );
                     })}
@@ -393,7 +422,10 @@ export function CertificateDetail({ id }: { id: string }) {
                   Gorgon (DigiCert)
                   {cert.ctLogIndex && <span className="text-muted-foreground"> #{cert.ctLogIndex}</span>}
                   {cert.ctLogTimestamp && (
-                    <span className="text-muted-foreground"> · {format(new Date(cert.ctLogTimestamp), "PPP pp zzz")} ({formatDistanceToNow(new Date(cert.ctLogTimestamp), { addSuffix: true })})</span>
+                    <span className="text-muted-foreground">
+                      {" · "}<UtcTime date={cert.ctLogTimestamp} showTime />
+                      <span> ({formatDistanceToNow(new Date(cert.ctLogTimestamp), { addSuffix: true })})</span>
+                    </span>
                   )}
                 </span>
               </div>
@@ -528,26 +560,45 @@ export function CertificateDetail({ id }: { id: string }) {
                   </Badge>
                 </div>
 
-                {/* Requirements checklist */}
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Requirements</h4>
-                  <div className="divide-y divide-border">
-                    {checks.map((check) => (
-                      <div key={check.label} className="flex items-start gap-3 py-2">
-                        <span className="mt-0.5 shrink-0">
-                          {check.status === "pass" ? (
-                            <svg className="size-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-                          ) : check.status === "warn" ? (
-                            <svg className="size-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                          ) : (
-                            <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
-                          )}
-                        </span>
-                        <span className="w-32 shrink-0 text-sm text-muted-foreground">{check.label}</span>
-                        <span className="text-sm">{check.detail}</span>
-                      </div>
-                    ))}
+                {/* Requirements + Logo Comparison side by side */}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
+                  {/* Requirements checklist */}
+                  <div className="rounded-md border bg-muted/30 p-3 min-w-0">
+                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Requirements</h4>
+                    <div className="divide-y divide-border">
+                      {checks.map((check) => (
+                        <div key={check.label} className="flex items-start gap-3 py-2">
+                          <span className="mt-0.5 shrink-0">
+                            {check.status === "pass" ? (
+                              <svg className="size-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                            ) : check.status === "warn" ? (
+                              <svg className="size-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                            ) : (
+                              <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                            )}
+                          </span>
+                          <span className="w-32 shrink-0 text-sm text-muted-foreground">{check.label}</span>
+                          <span className="text-sm">{check.detail}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+
+                  {dc.webSvgFound && cert.logotypeSvg && (
+                    <LogoComparison
+                      certSvgHtml={sanitizedSvg!}
+                      certSvgSizeBytes={bimiCheck.certSvgSizeBytes}
+                      certSvgValidation={bimiCheck.certSvgValidation}
+                      certSvgSource={cert.logotypeSvg}
+                      logoUrl={dc.logoUrl}
+                      webSvgSizeBytes={dc.webSvgSizeBytes}
+                      webSvgValidation={dc.webSvgValidation}
+                      webSvgSource={dc.webSvgSource}
+                      svgMatch={dc.svgMatch}
+                      showDiff={showDiff === dc.domain}
+                      onToggleDiff={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
+                    />
+                  )}
                 </div>
 
                 {/* DNS Records */}
@@ -574,76 +625,6 @@ export function CertificateDetail({ id }: { id: string }) {
                     </div>
                   </div>
                 </div>
-
-                {/* Logo comparison */}
-                {dc.webSvgFound && cert.logotypeSvg && (
-                  <div className="rounded-md border bg-muted/30 p-3">
-                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Logo Comparison</h4>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="text-sm font-medium">Certificate SVG</span>
-                          {bimiCheck.certSvgValidation && (
-                            <Badge variant={bimiCheck.certSvgValidation.valid ? "default" : "destructive"} className="text-xs">
-                              {bimiCheck.certSvgValidation.valid ? "Valid" : `${bimiCheck.certSvgValidation.errors.length} errors`}
-                            </Badge>
-                          )}
-                        </div>
-                        <div
-                          className="flex h-24 items-center justify-center rounded-md border bg-white p-2 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
-                          dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
-                        />
-                        <span className="text-xs text-muted-foreground mt-1 block text-center">
-                          {bimiCheck.certSvgSizeBytes ? `${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="text-sm font-medium">Web SVG</span>
-                          <div className="flex items-center gap-2">
-                            {dc.svgMatch === true && <Badge className="bg-emerald-600 hover:bg-emerald-700 text-xs">Match</Badge>}
-                            {dc.svgMatch === false && <Badge variant="destructive" className="text-xs">Mismatch</Badge>}
-                            {dc.webSvgValidation && (
-                              <Badge variant={dc.webSvgValidation.valid ? "default" : "destructive"} className="text-xs">
-                                {dc.webSvgValidation.valid ? "Valid" : `${dc.webSvgValidation.errors.length} errors`}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex h-24 items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
-                          {dc.logoUrl && (
-                            <img
-                              src={`/api/proxy/svg?url=${encodeURIComponent(dc.logoUrl)}`}
-                              alt="Web BIMI logo"
-                              className="max-h-full max-w-full object-contain"
-                            />
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground mt-1 block text-center">
-                          {dc.webSvgSizeBytes ? `${(dc.webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    {dc.svgMatch === false && dc.webSvgSource && (
-                      <div className="mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs"
-                          onClick={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
-                        >
-                          {showDiff === dc.domain ? "Hide Diff" : "View Diff"}
-                        </Button>
-                        {showDiff === dc.domain && (
-                          <div className="mt-2">
-                            <SVGDiffViewer certSvg={cert.logotypeSvg} webSvg={dc.webSvgSource} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {dc.logoUrl && !dc.webSvgFound && (
                   <p className="text-sm text-muted-foreground">
@@ -693,20 +674,17 @@ export function CertificateDetail({ id }: { id: string }) {
                 <CertSection title="Subject Alternative Names" indent={2}>
                   {cert.sanList.map((san) => {
                     const otherCount = data.sanCertCounts[san] ?? 0;
+                    const totalCount = otherCount > 0 ? otherCount + 1 : 0;
                     return (
                       <div key={san} className="pl-[3.5rem]">
-                        <Link href={`/validate?domain=${encodeURIComponent(san)}`} className="text-primary hover:underline">
+                        <Link href={`/hosts/${encodeURIComponent(san)}`} className="text-primary hover:underline">
                           DNS:{san}
+                          {totalCount > 1 && (
+                            <span className="ml-1 text-xs text-muted-foreground font-normal no-underline">
+                              · {totalCount} certs
+                            </span>
+                          )}
                         </Link>
-                        {otherCount > 0 && (
-                          <Link
-                            href={`/certificates?search=${encodeURIComponent(san)}`}
-                            className="ml-1 text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
-                            title={`View ${otherCount} other certificate${otherCount !== 1 ? "s" : ""} for ${san}`}
-                          >
-                            (+{otherCount})
-                          </Link>
-                        )}
                       </div>
                     );
                   })}
@@ -760,8 +738,8 @@ export function CertificateDetail({ id }: { id: string }) {
                   copied={copied}
                   onCopy={copyToClipboard}
                 />
-                <div className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(cert.notBefore), "MMM d, yyyy")} - {format(new Date(cert.notAfter), "MMM d, yyyy")}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  <UtcTime date={cert.notBefore} /> <span>–</span> <UtcTime date={cert.notAfter} />
                 </div>
               </div>
               {/* Chain certs */}
@@ -784,8 +762,8 @@ export function CertificateDetail({ id }: { id: string }) {
                       onCopy={copyToClipboard}
                     />
                     {c.notBefore && c.notAfter && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(c.notBefore), "MMM d, yyyy")} - {format(new Date(c.notAfter), "MMM d, yyyy")}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <UtcTime date={c.notBefore} /> <span>–</span> <UtcTime date={c.notAfter} />
                       </div>
                     )}
                   </div>
@@ -998,13 +976,13 @@ function RevocationStatusCard({
                   {revocation.ocsp.thisUpdate && (
                     <div className="flex gap-2">
                       <span className="text-muted-foreground shrink-0">This Update:</span>
-                      <span>{format(new Date(revocation.ocsp.thisUpdate), "PPP pp zzz")}</span>
+                      <UtcTime date={revocation.ocsp.thisUpdate} showTime />
                     </div>
                   )}
                   {revocation.ocsp.nextUpdate && (
                     <div className="flex gap-2">
                       <span className="text-muted-foreground shrink-0">Next Update:</span>
-                      <span>{format(new Date(revocation.ocsp.nextUpdate), "PPP pp zzz")}</span>
+                      <UtcTime date={revocation.ocsp.nextUpdate} showTime />
                     </div>
                   )}
                   {revocation.ocsp.errorMessage && (
@@ -1032,13 +1010,13 @@ function RevocationStatusCard({
                   {revocation.crl.thisUpdate && (
                     <div className="flex gap-2">
                       <span className="text-muted-foreground shrink-0">This Update:</span>
-                      <span>{format(new Date(revocation.crl.thisUpdate), "PPP pp zzz")}</span>
+                      <UtcTime date={revocation.crl.thisUpdate} showTime />
                     </div>
                   )}
                   {revocation.crl.nextUpdate && (
                     <div className="flex gap-2">
                       <span className="text-muted-foreground shrink-0">Next Update:</span>
-                      <span>{format(new Date(revocation.crl.nextUpdate), "PPP pp zzz")}</span>
+                      <UtcTime date={revocation.crl.nextUpdate} showTime />
                     </div>
                   )}
                   {revocation.crl.errorMessage && (
@@ -1159,11 +1137,106 @@ function CopyableFingerprint({
   );
 }
 
-/**
- * Unified line-by-line diff of two SVG sources.
- * Lines only in A (cert) get a red background, lines only in B (web) get green,
- * unchanged lines are dimmed for context.
- */
+interface SvgValidation {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+function LogoComparison({
+  certSvgHtml,
+  certSvgSizeBytes,
+  certSvgValidation,
+  certSvgSource,
+  logoUrl,
+  webSvgSizeBytes,
+  webSvgValidation,
+  webSvgSource,
+  svgMatch,
+  showDiff,
+  onToggleDiff,
+}: {
+  certSvgHtml: string;
+  certSvgSizeBytes: number | null;
+  certSvgValidation: SvgValidation | null;
+  certSvgSource: string;
+  logoUrl: string | null;
+  webSvgSizeBytes: number | null;
+  webSvgValidation: SvgValidation | null;
+  webSvgSource: string | null;
+  svgMatch: boolean | null;
+  showDiff: boolean;
+  onToggleDiff: () => void;
+}) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-3">
+      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Logo Comparison</h4>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-medium">Cert SVG</span>
+            {certSvgValidation && (
+              <Badge variant={certSvgValidation.valid ? "default" : "destructive"} className="text-xs px-1.5 py-0">
+                {certSvgValidation.valid ? "Valid" : `${certSvgValidation.errors.length} err`}
+              </Badge>
+            )}
+          </div>
+          <div
+            className="flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
+            dangerouslySetInnerHTML={{ __html: certSvgHtml }}
+          />
+          <span className="text-[10px] text-muted-foreground mt-1 block text-center">
+            {certSvgSizeBytes ? `${(certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
+          </span>
+        </div>
+        <div>
+          <div className="mb-1.5 flex items-center justify-between gap-1">
+            <span className="text-xs font-medium">Web SVG</span>
+            <div className="flex items-center gap-1">
+              {svgMatch === true && <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px] px-1.5 py-0">Match</Badge>}
+              {svgMatch === false && <Badge variant="destructive" className="text-xs px-1.5 py-0">Mismatch</Badge>}
+              {webSvgValidation && (
+                <Badge variant={webSvgValidation.valid ? "default" : "destructive"} className="text-xs px-1.5 py-0">
+                  {webSvgValidation.valid ? "Valid" : `${webSvgValidation.errors.length} err`}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
+            {logoUrl && (
+              <img
+                src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
+                alt="Web BIMI logo"
+                className="max-h-full max-w-full object-contain"
+              />
+            )}
+          </div>
+          <span className="text-[10px] text-muted-foreground mt-1 block text-center">
+            {webSvgSizeBytes ? `${(webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
+          </span>
+        </div>
+      </div>
+      {svgMatch === false && webSvgSource && (
+        <div className="mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs"
+            onClick={onToggleDiff}
+          >
+            {showDiff ? "Hide Diff" : "View Diff"}
+          </Button>
+          {showDiff && (
+            <div className="mt-2">
+              <SVGDiffViewer certSvg={certSvgSource} webSvg={webSvgSource} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SVGDiffViewer({ certSvg, webSvg }: { certSvg: string; webSvg: string }) {
   const certLines = certSvg.split("\n");
   const webLines = webSvg.split("\n");

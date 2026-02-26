@@ -15,28 +15,18 @@ function extractDomain(input: string): string {
 
 export function DomainSearch() {
   const [value, setValue] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function handleSelect(input: string, type: "domain" | "org") {
+  function handleSelect(input: string, type: "domain" | "org") {
     const domain = extractDomain(input);
     if (!domain) return;
 
-    setLoading(true);
-    try {
-      if (type === "org") {
-        router.push(`/certificates?search=${encodeURIComponent(input)}`);
-      } else {
-        const res = await fetch(`/api/resolve?domain=${encodeURIComponent(domain)}`);
-        const data = await res.json();
-        router.push(data.url);
-      }
-      setValue("");
-    } catch {
-      router.push(`/validate?domain=${encodeURIComponent(domain)}`);
-    } finally {
-      setLoading(false);
+    if (type === "org") {
+      router.push(`/orgs/${encodeURIComponent(input)}`);
+    } else {
+      router.push(`/hosts/${encodeURIComponent(domain)}`);
     }
+    setValue("");
   }
 
   return (
@@ -57,7 +47,6 @@ export function DomainSearch() {
         onSelect={handleSelect}
         placeholder="Lookup hostname..."
         inputClassName="h-8 w-44 text-xs bg-muted/50 border-transparent focus:border-border focus:w-64 transition-all duration-200 pl-7"
-        disabled={loading}
       />
     </div>
   );

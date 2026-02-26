@@ -86,7 +86,7 @@ export async function GET(
       const excludeIds = [certId, ...(pairedCert ? [pairedCert.id] : [])];
       if (domains.length > 0) {
         const result = await db.execute(sql`
-          SELECT s AS san, count(*)::int AS cnt
+          SELECT s AS san, count(DISTINCT serial_number)::int AS cnt
           FROM certificates, unnest(san_list) AS s
           WHERE s IN (${sql.join(domains.map(d => sql`${d}`), sql`, `)})
             AND id NOT IN (${sql.join(excludeIds.map(id => sql`${id}`), sql`, `)})

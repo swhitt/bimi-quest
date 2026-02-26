@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
   const to = params.get("to");
   const country = params.get("country");
   const search = params.get("search");
+  const host = params.get("host");
+  const org = params.get("org");
   const sortBy = params.get("sort") || "notBefore";
   const sortDir = params.get("dir") || "desc";
   const validity = params.get("validity");
@@ -47,6 +49,8 @@ export async function GET(request: NextRequest) {
     if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
     if (toDate) conditions.push(lte(certificates.notBefore, toDate));
     if (country) conditions.push(eq(certificates.subjectCountry, country));
+    if (host) conditions.push(sql`${certificates.sanList} @> ARRAY[${host.toLowerCase()}]::text[]`);
+    if (org) conditions.push(sql`LOWER(${certificates.subjectOrg}) = LOWER(${org})`);
 
     if (search) {
       conditions.push(
