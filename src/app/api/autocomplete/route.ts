@@ -15,12 +15,8 @@ export async function GET(request: NextRequest) {
 
   const pattern = `%${q}%`;
 
-  // Search SANs and orgs in parallel, ranked by most recent cert
-  const results = await db.execute<{
-    label: string;
-    type: string;
-    count: number;
-  }>(sql`
+  // Search SANs and orgs in parallel, ranked by cert count
+  const result = await db.execute(sql`
     (
       SELECT s.domain AS label, 'domain' AS type, COUNT(*)::int AS count
       FROM certificates, unnest(san_list) AS s(domain)
@@ -33,7 +29,7 @@ export async function GET(request: NextRequest) {
     )
     UNION ALL
     (
-      SELECT DISTINCT subject_org AS label, 'org' AS type, COUNT(*)::int AS count
+      SELECT subject_org AS label, 'org' AS type, COUNT(*)::int AS count
       FROM certificates
       WHERE lower(subject_org) LIKE ${pattern}
       GROUP BY subject_org
@@ -42,7 +38,7 @@ export async function GET(request: NextRequest) {
     )
   `);
 
-  return NextResponse.json(results, {
+  return NextResponse.json(result.rows, {
     headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
   });
 }

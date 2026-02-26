@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { desc, sql } from "drizzle-orm";
+import { asc, desc, sql } from "drizzle-orm";
 
 /**
  * Resolve a domain to its newest certificate, or fall back to validate.
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     .where(
       sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE lower(s) = ${domain.toLowerCase()})`
     )
-    .orderBy(desc(certificates.notBefore))
+    .orderBy(desc(certificates.notBefore), asc(certificates.isPrecert))
     .limit(1);
 
   if (cert) {
