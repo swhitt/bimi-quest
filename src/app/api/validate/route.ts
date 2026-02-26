@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateDomain } from "@/lib/bimi/validate";
+import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 
 // In-memory rate limiter: IP -> array of request timestamps
 const rateLimitMap = new Map<string, number[]>();
@@ -49,7 +50,15 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await validateDomain(domain);
-    return NextResponse.json(result);
+
+    // If we found a valid cert, try to ingest it (fire-and-forget)
+    if (result.certificate.found && result.certificate.rawPem) {
+      ingestFromPem(result.certificate.rawPem, "validation").catch(() => {});
+    }
+
+    // Strip rawPem from the response (internal use only)
+    const { rawPem: _, ...certWithoutPem } = result.certificate;
+    return NextResponse.json({ ...result, certificate: certWithoutPem });
   } catch (error) {
     console.error("Validate API error:", error);
     return NextResponse.json(

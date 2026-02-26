@@ -484,24 +484,28 @@ async function reparse() {
  * Score notability for all certs that don't have a score yet.
  * Uses Claude Haiku to assess brand recognition.
  */
-async function rescore() {
-  console.log("Scoring notability for unscored certificates...\n");
+async function rescore(maxCerts = 0) {
+  const label = maxCerts > 0 ? `newest ${maxCerts}` : "all";
+  console.log(`Scoring notability for ${label} unscored certificates...\n`);
 
   const BATCH = 50;
   let offset = 0;
   let scored = 0;
 
   while (true) {
+    if (maxCerts > 0 && scored >= maxCerts) break;
+
     const rows = await sql`
       SELECT id, subject_org, san_list, subject_country
       FROM certificates
       WHERE notability_score IS NULL
-      ORDER BY id
+      ORDER BY id DESC
       LIMIT ${BATCH} OFFSET ${offset}
     `;
     if (rows.length === 0) break;
 
     for (const row of rows) {
+      if (maxCerts > 0 && scored >= maxCerts) break;
       const { id, subject_org, san_list, subject_country } = row as {
         id: number;
         subject_org: string | null;
@@ -544,7 +548,8 @@ if (mode === "stream") {
 } else if (mode === "check") {
   checkIntegrity().catch(console.error);
 } else if (mode === "rescore") {
-  rescore().catch(console.error);
+  const limit = parseInt(process.argv[3] || "0", 10);
+  rescore(limit).catch(console.error);
 } else {
   backfill().catch(console.error);
 }

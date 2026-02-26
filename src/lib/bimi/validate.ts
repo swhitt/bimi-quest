@@ -29,6 +29,7 @@ export interface BIMIValidationResult {
     validFrom: Date | null;
     validTo: Date | null;
     isExpired: boolean | null;
+    rawPem: string | null;
   };
   overallValid: boolean;
   errors: string[];
@@ -119,6 +120,7 @@ export async function validateDomain(
     validFrom: null,
     validTo: null,
     isExpired: null,
+    rawPem: null,
   };
 
   if (bimiRecord?.authorityUrl) {
@@ -144,6 +146,7 @@ export async function validateDomain(
               validFrom: certInfo.notBefore,
               validTo: certInfo.notAfter,
               isExpired: certInfo.notAfter < now,
+              rawPem: pemText,
             };
             if (certInfo.notAfter < now) {
               errors.push("BIMI certificate is expired");

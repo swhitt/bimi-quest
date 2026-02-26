@@ -45,6 +45,8 @@ export const certificates = pgTable(
     notabilityScore: integer("notability_score"),
     notabilityReason: text("notability_reason"),
     companyDescription: text("company_description"),
+    // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
+    discoverySource: text("discovery_source").default("ct-gorgon"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 import { format, formatDistanceToNow } from "date-fns";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
@@ -214,8 +214,10 @@ export function CertificatesTable({
           row.original.sanList[0] ||
           "Unknown";
         const domain = row.original.sanList[0] || row.original.subjectCn;
-        const serial = row.original.serialNumber;
         const score = row.original.notabilityScore;
+        const country = row.original.subjectCountry;
+        const sans = row.original.sanList;
+        const extraSans = sans.length > 1 ? sans.slice(1) : [];
         return (
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -226,45 +228,33 @@ export function CertificatesTable({
               >
                 {org}
               </Link>
-              {score != null && score >= 7 && (
+              {score != null && (
                 <span className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                  score >= 9 ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"
+                  score >= 9 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    : score >= 7 ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                    : "bg-muted text-muted-foreground"
                 }`} title={row.original.companyDescription || undefined}>
                   ★ {score}
                 </span>
               )}
+              {country && (
+                <span className="shrink-0 text-[10px] text-muted-foreground font-mono">
+                  {country}
+                </span>
+              )}
             </div>
             <span className="text-xs text-muted-foreground block truncate">
-              {row.original.companyDescription || domain}
-              {!row.original.companyDescription && domain && " · "}
-              {!row.original.companyDescription && (
-                <span className="font-mono italic" title={serial}>
-                  ({serial.slice(0, 8)})
+              {domain}
+              {extraSans.length > 0 && (
+                <span className="text-muted-foreground/60" title={sans.join(", ")}>
+                  {" "}+{extraSans.length} more
                 </span>
               )}
             </span>
-          </div>
-        );
-      },
-    },
-    {
-      id: "sans",
-      header: "SANs",
-      meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) => {
-        const sans = row.original.sanList;
-        if (sans.length <= 1) return null;
-        return (
-          <div className="flex flex-wrap gap-1 max-w-[200px]">
-            {sans.slice(0, 3).map((san) => (
-              <Badge key={san} variant="outline" className="text-xs font-normal">
-                {san}
-              </Badge>
-            ))}
-            {sans.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{sans.length - 3}
-              </Badge>
+            {row.original.companyDescription && (
+              <span className="text-[10px] text-muted-foreground/60 block truncate">
+                {row.original.companyDescription}
+              </span>
             )}
           </div>
         );
@@ -274,7 +264,7 @@ export function CertificatesTable({
       accessorKey: "issuerOrg",
       header: () => (
         <SortHeader
-          label="Issuer"
+          label="CA / Type"
           sortKey="issuerOrg"
           currentSort={currentSort}
           currentDir={currentDir}
@@ -285,11 +275,20 @@ export function CertificatesTable({
         const issuer = displayIssuerOrg(row.original.issuerOrg);
         const root = displayRootCa(row.original.rootCaOrg);
         const showRoot = row.original.rootCaOrg && root !== issuer;
+        const certType = row.original.certType || "BIMI";
         return (
-          <div>
-            <Badge variant="secondary" className="whitespace-nowrap">
-              {issuer}
-            </Badge>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <Badge variant="secondary" className="whitespace-nowrap">
+                {issuer}
+              </Badge>
+              <span className="text-xs text-muted-foreground">{certType}</span>
+              {row.original.isPrecert && (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400" title="Precertificate">
+                  Pre
+                </span>
+              )}
+            </div>
             {showRoot && (
               <span className="text-[10px] text-muted-foreground block mt-0.5">
                 Root: {root}
@@ -298,30 +297,6 @@ export function CertificatesTable({
           </div>
         );
       },
-    },
-    {
-      accessorKey: "certType",
-      header: "Type",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <Badge variant="outline">{row.original.certType || "BIMI"}</Badge>
-          {row.original.isPrecert && (
-            <Badge variant="secondary" className="text-[10px] px-1 py-0 text-amber-600 dark:text-amber-400" title="Precertificate only (final certificate not yet logged)">
-              Precert
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "subjectCountry",
-      header: "Country",
-      meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) => (
-        <span className="font-mono text-sm">
-          {row.original.subjectCountry || "-"}
-        </span>
-      ),
     },
     {
       accessorKey: "notBefore",
@@ -386,25 +361,23 @@ export function CertificatesTable({
   });
 
   const searchValue = searchParams.get("search") || "";
+  const [searchInput, setSearchInput] = useState(searchValue);
 
   return (
     <div className="space-y-4">
       {/* Search bar */}
       <div className="flex items-center gap-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search domains, orgs..."
-            className="pl-9"
-            defaultValue={searchValue}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                updateParams({
-                  search: (e.target as HTMLInputElement).value,
-                  page: "1",
-                });
-              }
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
+          <HostnameAutocomplete
+            value={searchInput}
+            onChange={setSearchInput}
+            onSelect={(val) => {
+              setSearchInput(val);
+              updateParams({ search: val, page: "1" });
             }}
+            placeholder="Search domains, orgs..."
+            inputClassName="pl-9"
           />
         </div>
         <Button

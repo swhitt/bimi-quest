@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 
 interface ValidationResult {
   domain: string;
@@ -46,8 +46,9 @@ export function ValidateContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleValidate() {
-    if (!domain.trim()) return;
+  async function handleValidate(overrideDomain?: string) {
+    const target = (overrideDomain || domain).trim();
+    if (!target) return;
     setLoading(true);
     setError(null);
     setResult(null);
@@ -56,12 +57,12 @@ export function ValidateContent() {
       const res = await fetch("/api/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: domain.trim() }),
+        body: JSON.stringify({ domain: target }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Validation failed");
       setResult(data);
-      window.history.replaceState(null, "", `/validate?domain=${encodeURIComponent(domain.trim())}`);
+      window.history.replaceState(null, "", `/validate?domain=${encodeURIComponent(target)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Validation failed");
     } finally {
@@ -81,14 +82,17 @@ export function ValidateContent() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-3">
-            <Input
-              placeholder="example.com"
+            <HostnameAutocomplete
               value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleValidate()}
-              className="max-w-md"
+              onChange={setDomain}
+              onSelect={(val) => {
+                setDomain(val);
+                handleValidate(val);
+              }}
+              placeholder="example.com"
+              className="max-w-md flex-1"
             />
-            <Button onClick={handleValidate} disabled={loading}>
+            <Button onClick={() => handleValidate()} disabled={loading}>
               {loading ? "Validating..." : "Validate"}
             </Button>
           </div>
