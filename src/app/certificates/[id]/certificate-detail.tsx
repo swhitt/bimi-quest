@@ -67,6 +67,7 @@ interface CertData {
     dmarcValid: boolean | null;
     svgTinyPsValid: boolean | null;
   }[];
+  sanCertCounts: Record<string, number>;
 }
 
 interface RevocationCheck {
@@ -381,17 +382,29 @@ export function CertificateDetail({ id }: { id: string }) {
                 <div className="flex gap-4">
                   <span className="w-40 shrink-0 text-muted-foreground">SANs</span>
                   <span className="break-all">
-                    {cert.sanList.map((san, i) => (
-                      <span key={san}>
-                        {i > 0 && ", "}
-                        <Link
-                          href={`/validate?domain=${encodeURIComponent(san)}`}
-                          className="text-primary hover:underline"
-                        >
-                          {san}
-                        </Link>
-                      </span>
-                    ))}
+                    {cert.sanList.map((san, i) => {
+                      const otherCount = data.sanCertCounts?.[san] || 0;
+                      return (
+                        <span key={san}>
+                          {i > 0 && ", "}
+                          <Link
+                            href={`/validate?domain=${encodeURIComponent(san)}`}
+                            className="text-primary hover:underline"
+                          >
+                            {san}
+                          </Link>
+                          {otherCount > 0 && (
+                            <Link
+                              href={`/certificates?search=${encodeURIComponent(san)}`}
+                              className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+                              title={`View ${otherCount} other certificate${otherCount !== 1 ? "s" : ""} for ${san}`}
+                            >
+                              (+{otherCount})
+                            </Link>
+                          )}
+                        </span>
+                      );
+                    })}
                   </span>
                 </div>
               )}
@@ -699,13 +712,24 @@ export function CertificateDetail({ id }: { id: string }) {
               <>
                 <div className="pt-1" />
                 <CertSection title="Subject Alternative Names" indent={2}>
-                  {cert.sanList.map((san) => (
-                    <div key={san} className="pl-[3.5rem]">
-                      <Link href={`/validate?domain=${encodeURIComponent(san)}`} className="text-primary hover:underline">
-                        DNS:{san}
-                      </Link>
-                    </div>
-                  ))}
+                  {cert.sanList.map((san) => {
+                    const otherCount = data.sanCertCounts?.[san] || 0;
+                    return (
+                      <div key={san} className="pl-[3.5rem]">
+                        <Link href={`/validate?domain=${encodeURIComponent(san)}`} className="text-primary hover:underline">
+                          DNS:{san}
+                        </Link>
+                        {otherCount > 0 && (
+                          <Link
+                            href={`/certificates?search=${encodeURIComponent(san)}`}
+                            className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            (+{otherCount})
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })}
                 </CertSection>
               </>
             )}
