@@ -49,15 +49,21 @@ interface WorldMapProps {
   className?: string;
 }
 
+let topoCache: Topology | null = null;
+
 export function WorldMap({ data, className }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [topology, setTopology] = useState<Topology | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
   useEffect(() => {
+    if (topoCache) { setTopology(topoCache); return; }
     fetch("/world-110m.json")
       .then((res) => res.json())
-      .then((topo: Topology) => setTopology(topo))
+      .then((topo: Topology) => {
+        topoCache = topo;
+        setTopology(topo);
+      })
       .catch(console.error);
   }, []);
 

@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import { KPICards } from "@/components/dashboard/kpi-cards";
-import { MarketShareChart } from "@/components/dashboard/market-share-chart";
-import { TrendChart } from "@/components/dashboard/trend-chart";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { formatDistanceToNow } from "date-fns";
 import { displayIssuerOrg } from "@/lib/ca-display";
+
+const TrendChart = dynamic(
+  () => import("@/components/dashboard/trend-chart").then((m) => ({ default: m.TrendChart })),
+  { loading: () => <Skeleton className="h-[300px]" /> }
+);
+const MarketShareChart = dynamic(
+  () => import("@/components/dashboard/market-share-chart").then((m) => ({ default: m.MarketShareChart })),
+  { loading: () => <Skeleton className="h-[300px]" /> }
+);
 
 interface DashboardData {
   selectedCA: string;
