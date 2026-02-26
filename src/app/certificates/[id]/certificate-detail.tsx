@@ -493,9 +493,10 @@ export function CertificateDetail({ id }: { id: string }) {
         <p className="text-destructive text-sm">{bimiError}</p>
       )}
 
-      {/* BIMI Domain Analysis */}
+      {/* BIMI Domain Analysis + Revocation Status side by side on large screens */}
+      <div className="grid gap-6 lg:grid-cols-3">
       {bimiCheck && bimiCheck.domains.length > 0 && (
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>BIMI Domain Analysis</CardTitle>
             <Button variant="outline" size="sm" onClick={runBimiCheck} disabled={bimiLoading}>
@@ -627,12 +628,15 @@ export function CertificateDetail({ id }: { id: string }) {
       )}
 
       {/* Revocation Status */}
-      <RevocationStatusCard
-        revocation={revocation}
-        loading={revocationLoading}
-        onRecheck={runRevocationCheck}
-        error={revocationError}
-      />
+      <div className={bimiCheck && bimiCheck.domains.length > 0 ? "self-start" : "lg:col-span-3"}>
+        <RevocationStatusCard
+          revocation={revocation}
+          loading={revocationLoading}
+          onRecheck={runRevocationCheck}
+          error={revocationError}
+        />
+      </div>
+      </div>
 
       {/* Certificate Details - crt.sh style */}
       <Card>
@@ -876,7 +880,7 @@ function RevocationStatusCard({
             No OCSP or CRL endpoints found in this certificate&apos;s extensions.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {/* OCSP */}
             <div className="rounded-lg border p-4 space-y-2">
               <div className="flex items-center justify-between">
