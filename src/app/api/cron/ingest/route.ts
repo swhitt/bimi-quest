@@ -20,6 +20,7 @@ import {
 } from "@/lib/ct/parser";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
+import { scoreNotability } from "@/lib/notability";
 
 // Vercel cron jobs send this header for authentication
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -116,6 +117,12 @@ export async function GET(request: NextRequest) {
           }
           if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
 
+          const notability = await scoreNotability(
+            bimiData.subjectOrg,
+            bimiData.sanList,
+            bimiData.subjectCountry
+          );
+
           const [inserted] = await db
             .insert(certificates)
             .values({
@@ -144,6 +151,9 @@ export async function GET(request: NextRequest) {
               ctLogIndex: entryIndex,
               ctLogName: "gorgon",
               extensionsJson: bimiData.extensionsJson,
+              notabilityScore: notability?.score,
+              notabilityReason: notability?.reason,
+              companyDescription: notability?.description,
             })
             .onConflictDoNothing({ target: certificates.fingerprintSha256 })
             .returning({
@@ -197,6 +207,9 @@ export async function GET(request: NextRequest) {
               ca: bimiData.issuerOrg || "unknown",
               certType: bimiData.certType || "VMC",
               country: bimiData.subjectCountry,
+              notabilityScore: notability?.score,
+              notabilityReason: notability?.reason,
+              companyDescription: notability?.description,
             }).catch(() => {});
           }
           lastSuccessIndex = entryIndex;

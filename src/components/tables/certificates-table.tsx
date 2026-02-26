@@ -65,6 +65,8 @@ interface CertRow {
   ctLogTimestamp: string | null;
   logotypeSvg: string | null;
   isPrecert: boolean | null;
+  notabilityScore: number | null;
+  companyDescription: string | null;
 }
 
 interface Pagination {
@@ -213,21 +215,33 @@ export function CertificatesTable({
           "Unknown";
         const domain = row.original.sanList[0] || row.original.subjectCn;
         const serial = row.original.serialNumber;
+        const score = row.original.notabilityScore;
         return (
           <div className="min-w-0">
-            <Link
-              href={`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`}
-              className="font-medium hover:underline block truncate"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {org}
-            </Link>
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`}
+                className="font-medium hover:underline block truncate"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {org}
+              </Link>
+              {score != null && score >= 7 && (
+                <span className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                  score >= 9 ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"
+                }`} title={row.original.companyDescription || undefined}>
+                  ★ {score}
+                </span>
+              )}
+            </div>
             <span className="text-xs text-muted-foreground block truncate">
-              {domain}
-              {domain && " · "}
-              <span className="font-mono italic" title={serial}>
-                ({serial.slice(0, 8)})
-              </span>
+              {row.original.companyDescription || domain}
+              {!row.original.companyDescription && domain && " · "}
+              {!row.original.companyDescription && (
+                <span className="font-mono italic" title={serial}>
+                  ({serial.slice(0, 8)})
+                </span>
+              )}
             </span>
           </div>
         );

@@ -11,12 +11,14 @@
     "ingest:stream": "tsx src/workers/ingest.ts stream",
     "ingest:check": "tsx src/workers/ingest.ts check",
     "ingest:reparse": "tsx src/workers/ingest.ts reparse",
+    "ingest:rescore": "tsx src/workers/ingest.ts rescore",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@neondatabase/serverless": "^1.0.2",
     "@peculiar/x509": "^1.14.3",
     "@tanstack/react-table": "^8.21.3",

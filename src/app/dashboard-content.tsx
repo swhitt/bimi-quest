@@ -36,6 +36,8 @@ interface DashboardData {
     sanList: string[];
     logotypeSvg: string | null;
     isPrecert: boolean | null;
+    notabilityScore: number | null;
+    companyDescription: string | null;
   }[];
   lastUpdated: string | null;
 }

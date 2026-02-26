@@ -8,6 +8,9 @@ export interface NewCertEvent {
   ca: string;
   certType: "VMC" | "CMC";
   country: string | null;
+  notabilityScore?: number | null;
+  notabilityReason?: string | null;
+  companyDescription?: string | null;
 }
 
 /** Send notifications to all configured channels for a new certificate */

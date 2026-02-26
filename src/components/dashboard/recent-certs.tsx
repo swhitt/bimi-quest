@@ -26,6 +26,8 @@ interface RecentCert {
   sanList: string[];
   logotypeSvg: string | null;
   isPrecert: boolean | null;
+  notabilityScore: number | null;
+  companyDescription: string | null;
 }
 
 interface RecentCertsProps {
@@ -74,11 +76,18 @@ export function RecentCerts({ certs }: RecentCertsProps) {
                     <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
                   )}
                   <div className="space-y-1">
-                    <div className="font-medium">
+                    <div className="font-medium flex items-center gap-2">
                       {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
+                      {cert.notabilityScore != null && cert.notabilityScore >= 7 && (
+                        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          cert.notabilityScore >= 9 ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"
+                        }`} title={cert.companyDescription || undefined}>
+                          ★ {cert.notabilityScore}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {cert.sanList[0] || cert.subjectCn}
+                      {cert.companyDescription || cert.sanList[0] || cert.subjectCn}
                       {cert.subjectCountry && ` · ${cert.subjectCountry}`}
                       {" · "}
                       <span className="font-mono italic text-xs" title={cert.serialNumber}>

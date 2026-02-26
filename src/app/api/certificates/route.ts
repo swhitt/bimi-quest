@@ -92,6 +92,8 @@ export async function GET(request: NextRequest) {
           ctLogTimestamp: certificates.ctLogTimestamp,
           logotypeSvg: certificates.logotypeSvg,
           isPrecert: certificates.isPrecert,
+          notabilityScore: certificates.notabilityScore,
+          companyDescription: certificates.companyDescription,
         })
         .from(certificates)
         .where(where)

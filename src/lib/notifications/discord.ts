@@ -7,6 +7,9 @@ export interface DiscordCertPayload {
   certId: number;
   fingerprintSha256: string;
   baseUrl: string;
+  notabilityScore?: number | null;
+  notabilityReason?: string | null;
+  companyDescription?: string | null;
 }
 
 // CA brand colors for Discord embeds
@@ -41,6 +44,15 @@ export async function sendDiscordNotification(
       { name: "Type", value: payload.certType, inline: true },
       ...(payload.country
         ? [{ name: "Country", value: payload.country, inline: true }]
+        : []),
+      ...(payload.notabilityScore && payload.notabilityScore >= 5
+        ? [
+            {
+              name: "Notable",
+              value: `${"★".repeat(Math.min(5, Math.round(payload.notabilityScore / 2)))} ${payload.notabilityScore}/10${payload.companyDescription ? ` · ${payload.companyDescription}` : ""}`,
+              inline: false,
+            },
+          ]
         : []),
     ],
     url: certUrl,

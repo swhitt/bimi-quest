@@ -37,6 +37,9 @@ interface CertData {
     ctLogIndex: string | null;
     extensionsJson: Record<string, string> | null;
     crtshId: string | null;
+    notabilityScore: number | null;
+    notabilityReason: string | null;
+    companyDescription: string | null;
   };
   pairedCert: {
     id: number;
@@ -218,6 +221,23 @@ export function CertificateDetail({ id }: { id: string }) {
               {cert.subjectCountry && ` · ${cert.subjectCountry}`}
               {cert.issuerOrg && ` · Issued by ${cert.issuerOrg}`}
             </p>
+            {cert.companyDescription && (
+              <p className="text-sm text-muted-foreground/70 mt-0.5">{cert.companyDescription}</p>
+            )}
+            {cert.notabilityScore != null && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  cert.notabilityScore >= 8 ? "bg-amber-500/15 text-amber-500" :
+                  cert.notabilityScore >= 5 ? "bg-blue-500/15 text-blue-500" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {"★".repeat(Math.round(cert.notabilityScore / 2))} {cert.notabilityScore}/10
+                </span>
+                {cert.notabilityReason && (
+                  <span className="text-xs text-muted-foreground">{cert.notabilityReason}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap shrink-0 items-center gap-2">

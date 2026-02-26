@@ -19,6 +19,7 @@ import {
 import { dispatchNewCertNotification } from "../lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "../lib/ca-display";
 import { extractDnField } from "../lib/ct/parser";
+import { scoreNotability } from "../lib/notability";
 import { X509Certificate } from "@peculiar/x509";
 import type { CTLogEntry } from "../lib/ct/gorgon";
 
@@ -90,6 +91,13 @@ async function processEntries(
         // Fall back to issuer org if no self-signed root in chain
         if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
 
+        // Score brand notability (non-blocking: null on failure)
+        const notability = await scoreNotability(
+          bimiData.subjectOrg,
+          bimiData.sanList,
+          bimiData.subjectCountry
+        );
+
         const [inserted] = await db
           .insert(certificates)
           .values({
@@ -118,6 +126,9 @@ async function processEntries(
             ctLogIndex: entryIndex,
             ctLogName: "gorgon",
             extensionsJson: bimiData.extensionsJson,
+            notabilityScore: notability?.score,
+            notabilityReason: notability?.reason,
+            companyDescription: notability?.description,
           })
           .onConflictDoNothing({ target: certificates.fingerprintSha256 })
           .returning({ id: certificates.id, fingerprintSha256: certificates.fingerprintSha256 });
@@ -169,6 +180,9 @@ async function processEntries(
               ca: bimiData.issuerOrg || "unknown",
               certType: bimiData.certType || "VMC",
               country: bimiData.subjectCountry,
+              notabilityScore: notability?.score,
+              notabilityReason: notability?.reason,
+              companyDescription: notability?.description,
             }).catch((err) =>
               console.error("  Notification dispatch error:", err)
             );
@@ -466,6 +480,59 @@ async function reparse() {
   console.log(`\n\nRe-parse complete. Updated ${updated} certificates.`);
 }
 
+/**
+ * Score notability for all certs that don't have a score yet.
+ * Uses Claude Haiku to assess brand recognition.
+ */
+async function rescore() {
+  console.log("Scoring notability for unscored certificates...\n");
+
+  const BATCH = 50;
+  let offset = 0;
+  let scored = 0;
+
+  while (true) {
+    const rows = await sql`
+      SELECT id, subject_org, san_list, subject_country
+      FROM certificates
+      WHERE notability_score IS NULL
+      ORDER BY id
+      LIMIT ${BATCH} OFFSET ${offset}
+    `;
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const { id, subject_org, san_list, subject_country } = row as {
+        id: number;
+        subject_org: string | null;
+        san_list: string[];
+        subject_country: string | null;
+      };
+
+      const result = await scoreNotability(subject_org, san_list || [], subject_country);
+      if (result) {
+        await sql`
+          UPDATE certificates SET
+            notability_score = ${result.score},
+            notability_reason = ${result.reason},
+            company_description = ${result.description}
+          WHERE id = ${id}
+        `;
+        scored++;
+        const label = subject_org || (san_list && san_list[0]) || "unknown";
+        process.stdout.write(`\r  Scored ${scored}: ${label} = ${result.score}/10`);
+      }
+
+      // Small delay to avoid rate limits
+      await throttle(100);
+    }
+
+    offset += BATCH;
+  }
+
+  console.log(`\n\nRescore complete. Scored ${scored} certificates.`);
+}
+
 // Entry point
 const mode = process.argv[2] || "backfill";
 console.log(`BIMI Intel Ingestion Worker - Mode: ${mode}`);
@@ -476,6 +543,8 @@ if (mode === "stream") {
   reparse().catch(console.error);
 } else if (mode === "check") {
   checkIntegrity().catch(console.error);
+} else if (mode === "rescore") {
+  rescore().catch(console.error);
 } else {
   backfill().catch(console.error);
 }

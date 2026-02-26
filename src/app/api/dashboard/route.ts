@@ -141,6 +141,8 @@ export async function GET(request: NextRequest) {
           sanList: certificates.sanList,
           logotypeSvg: certificates.logotypeSvg,
           isPrecert: certificates.isPrecert,
+          notabilityScore: certificates.notabilityScore,
+          companyDescription: certificates.companyDescription,
         })
         .from(certificates)
         .where(caWhere)
