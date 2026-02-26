@@ -102,7 +102,9 @@ export async function processIngestBatch(
           .where(eq(certificates.id, cert.id));
       }
 
-      if (notify) {
+      // Only notify for notable brands (score >= 5) to avoid Discord spam
+      const score = notability?.score ?? 0;
+      if (notify && score >= 5) {
         dispatchNewCertNotification({
           certId: cert.id,
           fingerprintSha256: cert.fingerprintSha256,
