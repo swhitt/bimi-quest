@@ -210,6 +210,7 @@ export async function GET(request: NextRequest) {
               notabilityScore: notability?.score,
               notabilityReason: notability?.reason,
               companyDescription: notability?.description,
+              hasLogo: !!bimiData.logotypeSvg,
             }).catch(() => {});
           }
           lastSuccessIndex = entryIndex;

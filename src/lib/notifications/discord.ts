@@ -10,6 +10,7 @@ export interface DiscordCertPayload {
   notabilityScore?: number | null;
   notabilityReason?: string | null;
   companyDescription?: string | null;
+  hasLogo?: boolean;
 }
 
 // CA brand colors for Discord embeds
@@ -56,6 +57,9 @@ export async function sendDiscordNotification(
         : []),
     ],
     url: certUrl,
+    ...(payload.hasLogo
+      ? { thumbnail: { url: `${payload.baseUrl}/api/certificates/${payload.fingerprintSha256.slice(0, 12)}/logo` } }
+      : {}),
     timestamp: new Date().toISOString(),
   };
 

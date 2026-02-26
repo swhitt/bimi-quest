@@ -11,6 +11,7 @@ export interface NewCertEvent {
   notabilityScore?: number | null;
   notabilityReason?: string | null;
   companyDescription?: string | null;
+  hasLogo?: boolean;
 }
 
 /** Send notifications to all configured channels for a new certificate */
