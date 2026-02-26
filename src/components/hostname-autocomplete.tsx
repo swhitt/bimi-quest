@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Input } from "@/components/ui/input";
 
 interface Suggestion {
@@ -36,6 +36,8 @@ export function HostnameAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const baseId = useId();
+  const listboxId = `${baseId}-listbox`;
 
   const fetchSuggestions = useCallback(async (query: string) => {
     abortRef.current?.abort();
@@ -140,13 +142,22 @@ export function HostnameAutocomplete({
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-activedescendant={activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined}
       />
       {open && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-popover shadow-md overflow-hidden">
+        <div
+          id={listboxId}
+          role="listbox"
+          className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-popover shadow-md overflow-hidden"
+        >
           {suggestions.map((s, i) => (
             <button
               key={`${s.type}-${s.label}`}
+              id={`${baseId}-option-${i}`}
               type="button"
+              role="option"
+              aria-selected={i === activeIndex}
               className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors ${
                 i === activeIndex ? "bg-accent" : ""
               }`}
