@@ -383,7 +383,7 @@ export function CertificateDetail({ id }: { id: string }) {
                   <span className="w-40 shrink-0 text-muted-foreground">SANs</span>
                   <span className="break-all">
                     {cert.sanList.map((san, i) => {
-                      const otherCount = data.sanCertCounts?.[san] || 0;
+                      const otherCount = data.sanCertCounts[san] ?? 0;
                       return (
                         <span key={san}>
                           {i > 0 && ", "}
@@ -396,7 +396,7 @@ export function CertificateDetail({ id }: { id: string }) {
                           {otherCount > 0 && (
                             <Link
                               href={`/certificates?search=${encodeURIComponent(san)}`}
-                              className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+                              className="ml-1 text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
                               title={`View ${otherCount} other certificate${otherCount !== 1 ? "s" : ""} for ${san}`}
                             >
                               (+{otherCount})
@@ -713,7 +713,7 @@ export function CertificateDetail({ id }: { id: string }) {
                 <div className="pt-1" />
                 <CertSection title="Subject Alternative Names" indent={2}>
                   {cert.sanList.map((san) => {
-                    const otherCount = data.sanCertCounts?.[san] || 0;
+                    const otherCount = data.sanCertCounts[san] ?? 0;
                     return (
                       <div key={san} className="pl-[3.5rem]">
                         <Link href={`/validate?domain=${encodeURIComponent(san)}`} className="text-primary hover:underline">
@@ -722,7 +722,8 @@ export function CertificateDetail({ id }: { id: string }) {
                         {otherCount > 0 && (
                           <Link
                             href={`/certificates?search=${encodeURIComponent(san)}`}
-                            className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+                            className="ml-1 text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
+                            title={`View ${otherCount} other certificate${otherCount !== 1 ? "s" : ""} for ${san}`}
                           >
                             (+{otherCount})
                           </Link>

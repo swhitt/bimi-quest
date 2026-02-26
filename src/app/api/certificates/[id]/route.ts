@@ -45,7 +45,10 @@ export async function GET(
       .where(
         and(
           eq(certificates.serialNumber, cert.serialNumber),
-          ne(certificates.id, certId)
+          eq(certificates.issuerDn, cert.issuerDn),
+          cert.isPrecert
+            ? eq(certificates.isPrecert, false)
+            : sql`${certificates.isPrecert} = true`
         )
       )
       .limit(1);
@@ -89,7 +92,9 @@ export async function GET(
         GROUP BY s
       `);
       for (const r of result.rows) {
-        sanCertCounts[r.san as string] = r.cnt as number;
+        if (r.san != null) {
+          sanCertCounts[r.san as string] = r.cnt as number;
+        }
       }
     }
 

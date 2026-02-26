@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { sql, isNotNull } from "drizzle-orm";
+import { sql, and, isNotNull } from "drizzle-orm";
 import { log } from "@/lib/logger";
 import { CACHE_PRESETS } from "@/lib/cache";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rl = checkRateLimit(`gallery:${ip}`, { windowMs: 60_000, max: 60 });
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
+
   const params = request.nextUrl.searchParams;
 
   const page = Math.max(1, parseInt(params.get("page") ?? "", 10) || 1);
@@ -16,16 +21,19 @@ export async function GET(request: NextRequest) {
   const offset = (page - 1) * limit;
 
   try {
-    const baseWhere = isNotNull(certificates.logotypeSvgHash);
+    const baseWhere = and(
+      isNotNull(certificates.logotypeSvgHash),
+      isNotNull(certificates.logotypeSvg)
+    );
 
     const [rows, [totalRow]] = await Promise.all([
       db
         .select({
           svgHash: certificates.logotypeSvgHash,
-          svg: sql<string>`min(${certificates.logotypeSvg})`.as("svg"),
-          org: sql<string>`min(${certificates.subjectOrg})`.as("org"),
-          domain: sql<string>`min(${certificates.sanList}[1])`.as("domain"),
-          certType: sql<string>`min(${certificates.certType})`.as("cert_type"),
+          svg: sql<string>`(array_agg(${certificates.logotypeSvg} ORDER BY ${certificates.notBefore} DESC))[1]`.as("svg"),
+          org: sql<string>`(array_agg(${certificates.subjectOrg} ORDER BY ${certificates.notBefore} DESC))[1]`.as("org"),
+          domain: sql<string>`(array_agg(${certificates.sanList}[1] ORDER BY ${certificates.notBefore} DESC))[1]`.as("domain"),
+          certType: sql<string>`(array_agg(${certificates.certType} ORDER BY ${certificates.notBefore} DESC))[1]`.as("cert_type"),
           count: sql<number>`count(*)::int`.as("count"),
         })
         .from(certificates)
