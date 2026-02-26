@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { certificates } from "@/lib/db/schema";
 import { asc, desc, sql } from "drizzle-orm";
 
@@ -8,6 +9,10 @@ import { asc, desc, sql } from "drizzle-orm";
  * Returns { url: "/certificates/abc123..." } or { url: "/validate?domain=..." }
  */
 export async function GET(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rl = checkRateLimit(`resolve:${ip}`, { windowMs: 60_000, max: 60 });
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
+
   const domain = request.nextUrl.searchParams.get("domain")?.trim();
   if (!domain) {
     return NextResponse.json({ error: "domain required" }, { status: 400 });

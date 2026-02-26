@@ -67,7 +67,7 @@ export function HostnameAutocomplete({
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => fetchSuggestions(value), 150);
+    timerRef.current = setTimeout(() => fetchSuggestions(value), 200);
     return () => clearTimeout(timerRef.current);
   }, [value, fetchSuggestions]);
 

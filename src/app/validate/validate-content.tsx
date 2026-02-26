@@ -114,7 +114,7 @@ export function ValidateContent() {
       </Card>
 
       {error && (
-        <Card className="border-destructive">
+        <Card className="border-destructive" role="alert">
           <CardContent className="pt-6 text-destructive">{error}</CardContent>
         </Card>
       )}

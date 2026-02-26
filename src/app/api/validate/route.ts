@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // If we found a valid cert, try to ingest it (fire-and-forget)
     if (result.certificate.found && result.certificate.rawPem) {
-      ingestFromPem(result.certificate.rawPem, "validation").catch(() => {});
+      ingestFromPem(result.certificate.rawPem, "validation").catch((err) => console.warn("ingestFromPem failed:", err));
     }
 
     // Strip rawPem from the response (internal use only)

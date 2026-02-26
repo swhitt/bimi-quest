@@ -26,6 +26,7 @@ async function fetchWithRetry(
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, {
       headers: { "User-Agent": USER_AGENT },
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (res.ok) return res;

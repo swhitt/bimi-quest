@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { resolveCertParam } from "@/lib/db/filters";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = getClientIP(request);
+  const rl = checkRateLimit(`cert-detail:${ip}`, { windowMs: 60_000, max: 120 });
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
+
   const { id: rawId } = await params;
 
   try {

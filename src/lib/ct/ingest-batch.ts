@@ -90,7 +90,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
         notabilityReason: notability?.reason,
         companyDescription: notability?.description,
         hasLogo: cert.hasLogo,
-      }).catch(() => {});
+      }).catch((err) => console.warn("Notification dispatch failed:", err));
     }
   }
 }

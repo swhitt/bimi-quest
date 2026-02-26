@@ -47,7 +47,7 @@ function NavLinks() {
   }
 
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav aria-label="Main" className="flex items-center gap-1 text-sm">
       {navItems.map((item) => (
         <Link
           key={item.href}

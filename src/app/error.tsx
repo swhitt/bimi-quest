@@ -8,7 +8,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="flex h-64 flex-col items-center justify-center gap-3">
+    <div role="alert" className="flex h-64 flex-col items-center justify-center gap-3">
       <p className="text-destructive text-sm">Something went wrong.</p>
       <button className="text-sm underline" onClick={reset}>
         Try again

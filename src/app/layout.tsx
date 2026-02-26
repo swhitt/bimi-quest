@@ -19,6 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest"),
   title: {
     default: "BIMI Quest - Certificate Market Intelligence",
     template: "%s | BIMI Quest",
@@ -28,6 +29,13 @@ export const metadata: Metadata = {
     title: "BIMI Quest - Certificate Market Intelligence",
     description: "Track VMC and CMC certificate issuances across all Certificate Authorities.",
     type: "website",
+    siteName: "BIMI Quest",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BIMI Quest - Certificate Market Intelligence",
+    description: "Track VMC and CMC certificate issuances across all Certificate Authorities.",
   },
   robots: {
     index: true,

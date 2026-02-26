@@ -96,7 +96,7 @@ export function RecentCerts() {
       </CardHeader>
       <CardContent>
         {loading && certs.length === 0 ? (
-          <p className="text-muted-foreground py-4 text-center">Loading...</p>
+          <p className="text-muted-foreground py-4 text-center" aria-live="polite">Loading...</p>
         ) : sanitizedCerts.length > 0 ? (
           <div className="space-y-3">
             {sanitizedCerts.map((cert) => (

@@ -35,6 +35,7 @@ export function PaginationBar({
           size="icon-sm"
           disabled={pagination.page <= 1}
           onClick={() => onPageChange(1)}
+          aria-label="First page"
         >
           <ChevronsLeft className="size-4" />
         </Button>
@@ -43,6 +44,7 @@ export function PaginationBar({
           size="icon-sm"
           disabled={pagination.page <= 1}
           onClick={() => onPageChange(pagination.page - 1)}
+          aria-label="Previous page"
         >
           <ChevronLeft className="size-4" />
         </Button>
@@ -50,6 +52,7 @@ export function PaginationBar({
           <input
             type="text"
             inputMode="numeric"
+            aria-label="Current page"
             className="w-10 text-center text-sm tabular-nums bg-transparent border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
             defaultValue={pagination.page}
             key={pagination.page}
@@ -87,6 +90,7 @@ export function PaginationBar({
           size="icon-sm"
           disabled={pagination.page >= pagination.totalPages}
           onClick={() => onPageChange(pagination.page + 1)}
+          aria-label="Next page"
         >
           <ChevronRight className="size-4" />
         </Button>
@@ -95,6 +99,7 @@ export function PaginationBar({
           size="icon-sm"
           disabled={pagination.page >= pagination.totalPages}
           onClick={() => onPageChange(pagination.totalPages)}
+          aria-label="Last page"
         >
           <ChevronsRight className="size-4" />
         </Button>

@@ -134,7 +134,7 @@ function FilterBarInner() {
       value={caSlug || "all"}
       onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[140px]"}>
+      <SelectTrigger size="sm" aria-label="Filter by issuing CA" className={className ?? "w-[140px]"}>
         <SelectValue placeholder="All Issuers" />
       </SelectTrigger>
       <SelectContent>
@@ -153,7 +153,7 @@ function FilterBarInner() {
       value={rootCa}
       onValueChange={(v) => updateSecondaryFilter("root", v)}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[140px]"}>
+      <SelectTrigger size="sm" aria-label="Filter by root CA" className={className ?? "w-[140px]"}>
         <SelectValue placeholder="All Root CAs" />
       </SelectTrigger>
       <SelectContent>
@@ -172,7 +172,7 @@ function FilterBarInner() {
       value={type}
       onValueChange={(v) => updateSecondaryFilter("type", v)}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[110px]"}>
+      <SelectTrigger size="sm" aria-label="Filter by certificate type" className={className ?? "w-[110px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -190,7 +190,7 @@ function FilterBarInner() {
       value={mark}
       onValueChange={(v) => updateSecondaryFilter("mark", v)}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[160px]"}>
+      <SelectTrigger size="sm" aria-label="Filter by mark type" className={className ?? "w-[160px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -208,7 +208,7 @@ function FilterBarInner() {
       value={validity}
       onValueChange={(v) => updateSecondaryFilter("validity", v)}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[120px]"}>
+      <SelectTrigger size="sm" aria-label="Filter by validity status" className={className ?? "w-[120px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -226,7 +226,7 @@ function FilterBarInner() {
       value={precert}
       onValueChange={(v) => updateSecondaryFilter("precert", v)}
     >
-      <SelectTrigger size="sm" className={className ?? "w-[140px]"}>
+      <SelectTrigger size="sm" aria-label="Filter by precertificate status" className={className ?? "w-[140px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -245,6 +245,7 @@ function FilterBarInner() {
         type="date"
         value={dateFrom}
         onChange={(e) => updateSecondaryFilter("from", e.target.value)}
+        aria-label="Filter from date"
         className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
       <span className="text-xs text-muted-foreground">to</span>
@@ -252,6 +253,7 @@ function FilterBarInner() {
         type="date"
         value={dateTo}
         onChange={(e) => updateSecondaryFilter("to", e.target.value)}
+        aria-label="Filter to date"
         className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
     </div>
@@ -264,6 +266,7 @@ function FilterBarInner() {
         <div className="flex items-center justify-between md:hidden">
           <button
             onClick={() => setIsOpen(!isOpen)}
+            aria-expanded={isOpen}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
             <SlidersHorizontal className="size-4" />

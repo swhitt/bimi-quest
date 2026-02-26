@@ -2,11 +2,6 @@ import { Suspense } from "react";
 import { DashboardContent } from "./dashboard-content";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Use the default title from layout.tsx metadata template
-export const metadata = {
-  title: "Dashboard",
-};
-
 export default function DashboardPage() {
   return (
     <div className="space-y-6">

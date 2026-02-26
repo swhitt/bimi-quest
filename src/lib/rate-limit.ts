@@ -84,7 +84,11 @@ export function checkRateLimit(
  */
 export function getClientIP(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
-  return forwarded?.split(",")[0]?.trim() || "unknown";
+  if (forwarded) {
+    const parts = forwarded.split(",").map((s) => s.trim());
+    return parts[parts.length - 1] || "unknown";
+  }
+  return "unknown";
 }
 
 /**

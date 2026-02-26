@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
           "Mozilla/5.0 (compatible; bimi-quest/1.0; +https://bimi.quest)",
         Accept: "image/svg+xml, image/*",
       },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) {

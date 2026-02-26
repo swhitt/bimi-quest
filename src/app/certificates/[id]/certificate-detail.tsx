@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -200,6 +200,10 @@ export function CertificateDetail({ id }: { id: string }) {
   }
 
   const cert = data.certificate;
+  const sanitizedSvg = useMemo<string | null>(
+    () => (cert.logotypeSvg ? sanitizeSvg(cert.logotypeSvg) : null),
+    [cert.logotypeSvg]
+  );
   const isExpired = new Date(cert.notAfter) < new Date();
   const notYetValid = new Date(cert.notBefore) > new Date();
 
@@ -220,7 +224,7 @@ export function CertificateDetail({ id }: { id: string }) {
           {cert.logotypeSvg && (
             <div
               className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-white p-1.5 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
-              dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
+              dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
             />
           )}
           <div>
@@ -434,7 +438,7 @@ export function CertificateDetail({ id }: { id: string }) {
                 className={`flex h-40 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
                   svgBgDark ? "bg-zinc-900" : "bg-white"
                 }`}
-                dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
+                dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
               />
               <div className="flex-1 space-y-3">
                 {bimiCheck?.certSvgSizeBytes && (
@@ -595,7 +599,7 @@ export function CertificateDetail({ id }: { id: string }) {
                         </div>
                         <div
                           className="flex h-24 items-center justify-center rounded-md border bg-white p-2 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
-                          dangerouslySetInnerHTML={{ __html: sanitizeSvg(cert.logotypeSvg) }}
+                          dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
                         />
                         <span className="text-xs text-muted-foreground mt-1 block text-center">
                           {bimiCheck.certSvgSizeBytes ? `${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}

@@ -75,7 +75,7 @@ let client: Anthropic | null = null;
 
 function getClient(): Anthropic | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  if (!client) client = new Anthropic();
+  if (!client) client = new Anthropic({ timeout: 25_000 });
   return client;
 }
 
