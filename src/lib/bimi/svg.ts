@@ -257,11 +257,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
     );
   }
 
-  if (!widthMatch || !heightMatch) {
-    warnings.push(
-      "Missing explicit width/height attributes (Gmail requires explicit dimensions)"
-    );
-  } else {
+  if (widthMatch && heightMatch) {
     const w = parseFloat(widthMatch[1]);
     const h = parseFloat(heightMatch[1]);
     if (!isNaN(w) && !isNaN(h)) {

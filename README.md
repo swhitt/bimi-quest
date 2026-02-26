@@ -1,4 +1,4 @@
-# BIMI Intel
+# BIMI Quest
 
 Competitive intelligence tool for the BIMI certificate market. Scans CT logs for VMC/CMC issuances across all CAs and shows who's winning.
 

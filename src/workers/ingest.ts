@@ -520,7 +520,7 @@ async function rescore(maxCerts = 0) {
 
 // Entry point
 const mode = process.argv[2] || "backfill";
-console.log(`BIMI Intel Ingestion Worker - Mode: ${mode}`);
+console.log(`BIMI Quest Ingestion Worker - Mode: ${mode}`);
 
 if (mode === "stream") {
   stream().catch(console.error);

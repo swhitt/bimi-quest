@@ -30,7 +30,7 @@ export async function searchByFingerprint(
   try {
     const res = await fetch(
       `${BASE_URL}/?q=${encodeURIComponent(sha256)}&output=json`,
-      { headers: { "User-Agent": "bimi-intel/1.0" } }
+      { headers: { "User-Agent": "bimi-quest/1.0" } }
     );
     if (!res.ok) return null;
     const results: CrtshResult[] = await res.json();
@@ -47,7 +47,7 @@ export async function searchByDomain(
   try {
     const res = await fetch(
       `${BASE_URL}/?q=${encodeURIComponent(domain)}&output=json`,
-      { headers: { "User-Agent": "bimi-intel/1.0" } }
+      { headers: { "User-Agent": "bimi-quest/1.0" } }
     );
     if (!res.ok) return [];
     return res.json();

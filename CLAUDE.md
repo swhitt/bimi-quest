@@ -1,4 +1,4 @@
-# BIMI Intel
+# BIMI Quest
 
 BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VMC/CMC certificates, enriches data, and presents it through a dashboard.
 

@@ -1,5 +1,5 @@
 const BASE_URL = "https://gorgon.ct.digicert.com/log";
-const USER_AGENT = "bimi-intel/1.0 (CT Log Scanner)";
+const USER_AGENT = "bimi-quest/1.0 (CT Log Scanner)";
 const DEFAULT_DELAY_MS = 150;
 
 export interface STHResponse {

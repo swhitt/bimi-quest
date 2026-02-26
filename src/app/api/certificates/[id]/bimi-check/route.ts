@@ -106,7 +106,7 @@ export async function GET(
             try {
               const res = await safeFetch(logoUrl, {
                 headers: {
-                  "User-Agent": "bimi-intel/1.0 (BIMI Validator)",
+                  "User-Agent": "bimi-quest/1.0 (BIMI Validator)",
                   Accept: "image/svg+xml",
                 },
                 signal: AbortSignal.timeout(10_000),

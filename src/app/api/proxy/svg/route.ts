@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const res = await safeFetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; bimi-intel/1.0; +https://bimi-intel.vercel.app)",
+          "Mozilla/5.0 (compatible; bimi-quest/1.0; +https://bimi.quest)",
         Accept: "image/svg+xml, image/*",
       },
     });

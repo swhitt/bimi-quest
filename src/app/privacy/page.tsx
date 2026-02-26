@@ -8,7 +8,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "BIMI Intel privacy information. No tracking, no cookies, no accounts.",
+  description: "BIMI Quest privacy information. No tracking, no cookies, no accounts.",
 };
 
 export default function PrivacyPage() {
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Privacy</h1>
         <p className="text-muted-foreground">
-          How BIMI Intel handles your data.
+          How BIMI Quest handles your data.
         </p>
       </div>
 
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm leading-relaxed">
-          <p>Nothing. BIMI Intel does not collect personal data from visitors.</p>
+          <p>Nothing. BIMI Quest does not collect personal data from visitors.</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>No user accounts or sign-ups.</li>
             <li>No cookies.</li>
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
           <p>
             If you have questions about this site, open an issue on{" "}
             <a
-              href="https://github.com/nicholasgriffintn/bimi-intel"
+              href="https://github.com/swhitt/bimi-quest"
               className="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"

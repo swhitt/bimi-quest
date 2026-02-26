@@ -85,7 +85,7 @@ export async function validateDomain(
   if (bimiRecord?.logoUrl) {
     try {
       const res = await safeFetch(bimiRecord.logoUrl, {
-        headers: { "User-Agent": "bimi-intel/1.0 (BIMI Validator)" },
+        headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
         signal: AbortSignal.timeout(10_000),
       });
       if (res.ok) {
@@ -130,7 +130,7 @@ export async function validateDomain(
   if (bimiRecord?.authorityUrl) {
     try {
       const res = await safeFetch(bimiRecord.authorityUrl, {
-        headers: { "User-Agent": "bimi-intel/1.0 (BIMI Validator)" },
+        headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
         signal: AbortSignal.timeout(10_000),
       });
       if (res.ok) {

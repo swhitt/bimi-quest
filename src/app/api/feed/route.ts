@@ -4,7 +4,7 @@ import { certificates } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { buildPrecertCondition } from "@/lib/db/filters";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi-intel.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest";
 
 export async function GET() {
   try {
@@ -44,7 +44,7 @@ export async function GET() {
     const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>BIMI Intel - Recent Certificate Issuances</title>
+    <title>BIMI Quest - Recent Certificate Issuances</title>
     <link>${BASE_URL}</link>
     <description>Latest BIMI VMC and CMC certificate issuances from Certificate Transparency logs.</description>
     <language>en</language>
@@ -64,7 +64,7 @@ ${items}
     const emptyRss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>BIMI Intel - Recent Certificate Issuances</title>
+    <title>BIMI Quest - Recent Certificate Issuances</title>
     <link>${BASE_URL}</link>
     <description>Latest BIMI VMC and CMC certificate issuances from Certificate Transparency logs.</description>
     <language>en</language>

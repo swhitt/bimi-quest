@@ -20,12 +20,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "BIMI Intel - Certificate Market Intelligence",
-    template: "%s | BIMI Intel",
+    default: "BIMI Quest - Certificate Market Intelligence",
+    template: "%s | BIMI Quest",
   },
   description: "Track VMC and CMC certificate issuances across all Certificate Authorities. Real-time BIMI market intelligence from CT logs.",
   openGraph: {
-    title: "BIMI Intel - Certificate Market Intelligence",
+    title: "BIMI Quest - Certificate Market Intelligence",
     description: "Track VMC and CMC certificate issuances across all Certificate Authorities.",
     type: "website",
   },
