@@ -184,6 +184,11 @@ export function CertificateDetail({ id }: { id: string }) {
     setTimeout(() => setCopied(null), 2000);
   }, []);
 
+  const sanitizedSvg = useMemo<string | null>(
+    () => (data?.certificate.logotypeSvg ? sanitizeSvg(data.certificate.logotypeSvg) : null),
+    [data?.certificate.logotypeSvg]
+  );
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
@@ -201,10 +206,6 @@ export function CertificateDetail({ id }: { id: string }) {
   }
 
   const cert = data.certificate;
-  const sanitizedSvg = useMemo<string | null>(
-    () => (cert.logotypeSvg ? sanitizeSvg(cert.logotypeSvg) : null),
-    [cert.logotypeSvg]
-  );
   const isExpired = new Date(cert.notAfter) < new Date();
   const notYetValid = new Date(cert.notBefore) > new Date();
 
@@ -290,6 +291,14 @@ export function CertificateDetail({ id }: { id: string }) {
               {cert.markType}
             </Badge>
           )}
+          {data.pairedCert && (
+            <Link
+              href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`}
+              className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary ${cert.isPrecert ? "border-amber-500/40 text-amber-700 dark:text-amber-300" : "border-blue-500/40 text-blue-700 dark:text-blue-300"}`}
+            >
+              {cert.isPrecert ? "View Final Cert" : "View Precert"}
+            </Link>
+          )}
           <a
             href={`https://crt.sh/?q=${cert.fingerprintSha256}`}
             target="_blank"
@@ -312,36 +321,6 @@ export function CertificateDetail({ id }: { id: string }) {
           )}
         </div>
       </div>
-
-      {/* Precert/Final cert pairing notice */}
-      {data.pairedCert && (
-        <Card className={cert.isPrecert ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/10" : "border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/10"}>
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                {cert.isPrecert ? (
-                  <>
-                    <span className="text-muted-foreground">This is a precertificate. The final certificate is also logged:</span>
-                    <Link href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`} className="font-medium hover:underline">
-                      View final certificate
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">The precertificate for this certificate is also logged:</span>
-                    <Link href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`} className="font-medium hover:underline">
-                      View precertificate
-                    </Link>
-                  </>
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground font-mono">
-                CT #{data.pairedCert.ctLogIndex || "?"}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Certificate Summary */}
       <Card>
@@ -383,7 +362,7 @@ export function CertificateDetail({ id }: { id: string }) {
                   <span className="w-40 shrink-0 text-muted-foreground">SANs</span>
                   <span className="break-all">
                     {cert.sanList.map((san, i) => {
-                      const otherCount = data.sanCertCounts[san] ?? 0;
+                      const otherCount = data.sanCertCounts?.[san] ?? 0;
                       return (
                         <span key={san}>
                           {i > 0 && ", "}

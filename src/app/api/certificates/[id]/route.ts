@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
-import { eq, and, ne, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { resolveCertParam } from "@/lib/db/filters";
 import { log } from "@/lib/logger";
 
@@ -81,21 +81,25 @@ export async function GET(
     }
 
     // Count other certs per SAN (excluding current cert and its precert pair)
-    const excludeIds = [certId, ...(pairedCert ? [pairedCert.id] : [])];
     let sanCertCounts: Record<string, number> = {};
-    if (domains.length > 0) {
-      const result = await db.execute(sql`
-        SELECT s AS san, count(*)::int AS cnt
-        FROM certificates, unnest(san_list) AS s
-        WHERE s = ANY(${domains})
-          AND id != ALL(${excludeIds})
-        GROUP BY s
-      `);
-      for (const r of result.rows) {
-        if (r.san != null) {
-          sanCertCounts[r.san as string] = r.cnt as number;
+    try {
+      const excludeIds = [certId, ...(pairedCert ? [pairedCert.id] : [])];
+      if (domains.length > 0) {
+        const result = await db.execute(sql`
+          SELECT s AS san, count(*)::int AS cnt
+          FROM certificates, unnest(san_list) AS s
+          WHERE s IN (${sql.join(domains.map(d => sql`${d}`), sql`, `)})
+            AND id NOT IN (${sql.join(excludeIds.map(id => sql`${id}`), sql`, `)})
+          GROUP BY s
+        `);
+        for (const r of result.rows) {
+          if (r.san != null) {
+            sanCertCounts[r.san as string] = r.cnt as number;
+          }
         }
       }
+    } catch (err) {
+      log('warn', 'certificate-detail.san-counts.failed', { error: String(err), certId });
     }
 
     return NextResponse.json({
