@@ -33,9 +33,9 @@ async function fetchWithRetry(
 
     // Rate limited or server error, back off
     if (res.status === 429 || res.status >= 500) {
-      const backoff = delay * Math.pow(2, attempt);
+      const backoff = delay * Math.pow(2, attempt) * (0.5 + Math.random() * 0.5);
       console.warn(
-        `Gorgon returned ${res.status}, retrying in ${backoff}ms (attempt ${attempt + 1}/${retries})`
+        `Gorgon returned ${res.status}, retrying in ${Math.round(backoff)}ms (attempt ${attempt + 1}/${retries})`
       );
       await new Promise((r) => setTimeout(r, backoff));
       continue;

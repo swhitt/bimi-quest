@@ -97,7 +97,8 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
 
 /**
  * Shared ingestion loop: fetch CT log entries in batches, parse BIMI certs,
- * enrich with chain/notability data, and upsert into the database.
+ * and upsert into the database. Scoring is decoupled and runs after all
+ * batches complete to keep ingestion throughput high.
  */
 export async function processIngestBatch(
   options: IngestBatchOptions
@@ -115,14 +116,8 @@ export async function processIngestBatch(
   let found = 0;
   let processed = startIndex;
   let batchesRun = 0;
-  let pendingScores: PendingCert[] = [];
-
-  async function flush() {
-    if (pendingScores.length === 0) return;
-    const batch = pendingScores;
-    pendingScores = [];
-    await flushScores(batch, notify);
-  }
+  // Collect all inserted certs for post-ingestion scoring
+  const allPendingScores: PendingCert[] = [];
 
   for (let i = startIndex; i < endIndex; ) {
     if (maxBatches > 0 && batchesRun >= maxBatches) break;
@@ -212,17 +207,24 @@ export async function processIngestBatch(
           });
 
         if (inserted) {
-          // Store certificate chain
-          for (let k = 0; k < parsed.chainPems.length; k++) {
-            const chainInfo = parseChainCert(parsed.chainPems[k]);
-            const fingerprint = await computePemFingerprint(parsed.chainPems[k]);
+          // Batch chain cert inserts: compute all fingerprints first, then bulk upsert
+          const chainData = await Promise.all(
+            parsed.chainPems.map(async (pem) => ({
+              info: parseChainCert(pem),
+              fingerprint: await computePemFingerprint(pem),
+              pem,
+            }))
+          );
+
+          for (let k = 0; k < chainData.length; k++) {
+            const { info: chainInfo, fingerprint, pem } = chainData[k];
             const [chainCert] = await db
               .insert(chainCerts)
               .values({
                 fingerprintSha256: fingerprint,
                 subjectDn: chainInfo?.subjectDn || "unknown",
                 issuerDn: chainInfo?.issuerDn || "unknown",
-                rawPem: parsed.chainPems[k],
+                rawPem: pem,
                 notBefore: chainInfo?.notBefore,
                 notAfter: chainInfo?.notAfter,
               })
@@ -248,8 +250,8 @@ export async function processIngestBatch(
 
           found++;
 
-          // Queue for batch scoring + notification
-          pendingScores.push({
+          // Collect for post-ingestion scoring (decoupled from main loop)
+          allPendingScores.push({
             id: inserted.id,
             fingerprintSha256: inserted.fingerprintSha256,
             org: bimiData.subjectOrg || "unknown",
@@ -259,32 +261,8 @@ export async function processIngestBatch(
             certType: bimiData.certType,
             hasLogo: !!bimiData.logotypeSvg,
           });
-
-          if (pendingScores.length >= SCORE_BATCH_SIZE) {
-            await flush();
-          }
         }
         lastSuccessIndex = entryIndex;
-
-        // Save cursor after each entry so progress survives timeouts
-        const entryCursor = entryIndex + 1;
-        await db
-          .insert(ingestionCursors)
-          .values({
-            logName: "gorgon",
-            lastIndex: entryCursor,
-            lastRun: new Date(),
-            updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: ingestionCursors.logName,
-            set: {
-              lastIndex: entryCursor,
-              lastRun: new Date(),
-              updatedAt: new Date(),
-            },
-          });
-        processed = entryCursor;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         onProgress?.(
@@ -294,11 +272,26 @@ export async function processIngestBatch(
       }
     }
 
-    // Flush any remaining scores after this Gorgon batch
-    await flush();
-
+    // Update cursor once per Gorgon batch instead of per-entry
     const newCursor = lastSuccessIndex + 1;
     if (newCursor > i) {
+      await db
+        .insert(ingestionCursors)
+        .values({
+          logName: "gorgon",
+          lastIndex: newCursor,
+          lastRun: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: ingestionCursors.logName,
+          set: {
+            lastIndex: newCursor,
+            lastRun: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      processed = newCursor;
       i = newCursor;
     } else {
       onProgress?.(`Batch starting at ${i} failed entirely, stopping.`);
@@ -310,8 +303,18 @@ export async function processIngestBatch(
     await throttle(150);
   }
 
-  // Flush any stragglers
-  await flush();
+  // Score all discovered certs after ingestion completes (decoupled from main loop)
+  if (allPendingScores.length > 0) {
+    onProgress?.(`Scoring ${allPendingScores.length} new certs...`);
+    for (let s = 0; s < allPendingScores.length; s += SCORE_BATCH_SIZE) {
+      const batch = allPendingScores.slice(s, s + SCORE_BATCH_SIZE);
+      try {
+        await flushScores(batch, notify);
+      } catch (err) {
+        console.error("Scoring flush failed:", err);
+      }
+    }
+  }
 
   return { certsFound: found, lastIndex: processed, batchesRun };
 }
