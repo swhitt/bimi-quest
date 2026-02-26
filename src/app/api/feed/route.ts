@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { buildPrecertCondition } from "@/lib/db/filters";
+import { log } from "@/lib/logger";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest";
 
@@ -60,7 +61,7 @@ ${items}
       },
     });
   } catch (error) {
-    console.error("Feed API error:", error);
+    log('error', 'feed.api.failed', { error: String(error), route: '/api/feed' });
     const emptyRss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>

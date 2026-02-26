@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ingestionCursors } from "@/lib/db/schema";
 import { getSTH } from "@/lib/ct/gorgon";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
+import { log } from "@/lib/logger";
 
 // Vercel Pro allows up to 300s
 export const maxDuration = 300;
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       batchesRun: result.batchesRun,
     });
   } catch (error) {
-    console.error("Cron ingest error:", error);
+    log('error', 'cron.ingest.failed', { error: String(error), route: '/api/cron/ingest' });
     return NextResponse.json(
       { error: "Ingestion failed" },
       { status: 500 }

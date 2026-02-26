@@ -1,3 +1,5 @@
+import { log } from "@/lib/logger";
+
 export interface DiscordCertPayload {
   domain: string;
   org: string;
@@ -70,9 +72,9 @@ export async function sendDiscordNotification(
       body: JSON.stringify({ embeds: [embed] }),
     });
     if (!res.ok) {
-      console.error(`Discord webhook failed: ${res.status} ${res.statusText}`);
+      log('error', 'discord.webhook.failed', { status: res.status, statusText: res.statusText });
     }
   } catch (err) {
-    console.error("Discord webhook error:", err);
+    log('error', 'discord.webhook.error', { error: String(err) });
   }
 }

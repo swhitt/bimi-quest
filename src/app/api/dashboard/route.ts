@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
 import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
+import { log } from "@/lib/logger";
 
 // Conditions without CA/root filters (for the "total" denominator)
 function buildGlobalConditions(params: URLSearchParams) {
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("Dashboard API error:", error);
+    log('error', 'dashboard.api.failed', { error: String(error), route: '/api/dashboard' });
     return NextResponse.json(
       { error: "Failed to fetch dashboard data" },
       { status: 500 }

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { certificates } from "@/lib/db/schema";
 import { asc, desc, sql } from "drizzle-orm";
+import { log } from "@/lib/logger";
 
 /**
  * Resolve a domain to its newest certificate, or fall back to validate.
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       found: false,
     });
   } catch (err) {
-    console.error("Resolve API error:", err);
+    log('error', 'resolve.api.failed', { error: String(err), route: '/api/resolve' });
     return NextResponse.json(
       { error: "Failed to resolve domain" },
       { status: 500 }

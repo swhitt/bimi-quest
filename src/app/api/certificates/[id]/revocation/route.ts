@@ -17,6 +17,7 @@ import {
   type OcspResult,
   type CrlResult,
 } from "@/lib/x509/revocation";
+import { log } from "@/lib/logger";
 
 const MAX_CRL_SIZE = 5 * 1024 * 1024; // 5MB
 const FETCH_TIMEOUT = 10_000; // 10s
@@ -81,7 +82,7 @@ export async function GET(
       }
     );
   } catch (err) {
-    console.error("Revocation check API error:", err);
+    log('error', 'revocation.api.failed', { error: String(err), route: '/api/certificates/[id]/revocation' });
     return NextResponse.json(
       { error: "Failed to check revocation status" },
       { status: 500 }

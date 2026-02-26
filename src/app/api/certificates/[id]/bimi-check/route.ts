@@ -8,6 +8,7 @@ import { lookupDMARC, isDMARCValidForBIMI } from "@/lib/bimi/dmarc";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { resolveCertParam } from "@/lib/db/filters";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 
 export async function GET(
   _request: NextRequest,
@@ -178,7 +179,7 @@ export async function GET(
       }
     );
   } catch (error) {
-    console.error("BIMI check API error:", error);
+    log('error', 'bimi-check.api.failed', { error: String(error), route: '/api/certificates/[id]/bimi-check' });
     return NextResponse.json(
       { error: "Failed to run BIMI check" },
       { status: 500 }

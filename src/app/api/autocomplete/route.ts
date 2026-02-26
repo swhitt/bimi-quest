@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, desc } from "drizzle-orm";
+import { log } from "@/lib/logger";
 
 /**
  * Fast autocomplete for hostname/org search.
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
     });
   } catch (err) {
-    console.error("Autocomplete API error:", err);
+    log('error', 'autocomplete.api.failed', { error: String(err), route: '/api/autocomplete' });
     return NextResponse.json(
       { error: "Failed to fetch autocomplete results" },
       { status: 500 }

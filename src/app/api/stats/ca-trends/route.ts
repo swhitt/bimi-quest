@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, eq, gte, and, count, desc } from "drizzle-orm";
 import { buildPrecertCondition } from "@/lib/db/filters";
+import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
     });
   } catch (error) {
-    console.error("CA trends API error:", error);
+    log('error', 'ca-trends.api.failed', { error: String(error), route: '/api/stats/ca-trends' });
     return NextResponse.json(
       { error: "Failed to fetch trends" },
       { status: 500 }

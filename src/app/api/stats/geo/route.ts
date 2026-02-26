@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, eq, and, gte, lte, count, desc } from "drizzle-orm";
 import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
+import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
     });
   } catch (error) {
-    console.error("Geo stats API error:", error);
+    log('error', 'geo-stats.api.failed', { error: String(error), route: '/api/stats/geo' });
     return NextResponse.json(
       { error: "Failed to fetch geo data" },
       { status: 500 }

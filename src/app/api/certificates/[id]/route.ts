@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { resolveCertParam } from "@/lib/db/filters";
+import { log } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -85,7 +86,7 @@ export async function GET(
       headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
     });
   } catch (error) {
-    console.error("Certificate detail API error:", error);
+    log('error', 'certificate-detail.api.failed', { error: String(error), route: '/api/certificates/[id]' });
     return NextResponse.json(
       { error: "Failed to fetch certificate" },
       { status: 500 }

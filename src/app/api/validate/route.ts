@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateDomain } from "@/lib/bimi/validate";
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       { headers: rl.headers }
     );
   } catch (error) {
-    console.error("Validate API error:", error);
+    log('error', 'validate.api.failed', { error: String(error), route: '/api/validate' });
     return NextResponse.json(
       { error: "Validation failed" },
       { status: 500 }

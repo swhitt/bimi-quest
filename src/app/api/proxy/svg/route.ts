@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 
 // In-memory LRU cache for SVG content
 const cache = new Map<string, { content: string; contentType: string; timestamp: number }>();
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("SVG proxy error:", error);
+    log('error', 'svg-proxy.api.failed', { error: String(error), route: '/api/proxy/svg' });
     return NextResponse.json(
       { error: "Failed to fetch SVG" },
       { status: 502, headers: { ...corsHeaders(request), ...rl.headers } }

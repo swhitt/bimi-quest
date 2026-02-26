@@ -14,6 +14,7 @@ import {
   or,
 } from "drizzle-orm";
 import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
+import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
     });
   } catch (error) {
-    console.error("Certificates API error:", error);
+    log('error', 'certificates.api.failed', { error: String(error), route: '/api/certificates' });
     return NextResponse.json(
       { error: "Failed to fetch certificates" },
       { status: 500 }
