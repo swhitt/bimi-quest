@@ -88,9 +88,19 @@ const ALLOWED_ATTRS = [
   "baseProfile",
 ];
 
+/** Add viewBox from width/height if missing, so SVGs scale properly */
+function ensureViewBox(svg: string): string {
+  if (/viewBox\s*=/i.test(svg)) return svg;
+  const wMatch = svg.match(/<svg[^>]*\bwidth=["'](\d+(?:\.\d+)?)/i);
+  const hMatch = svg.match(/<svg[^>]*\bheight=["'](\d+(?:\.\d+)?)/i);
+  if (!wMatch || !hMatch) return svg;
+  return svg.replace(/<svg\b/, `<svg viewBox="0 0 ${wMatch[1]} ${hMatch[1]}"`);
+}
+
 /** Sanitize SVG markup, stripping scripts and event handlers */
 export function sanitizeSvg(raw: string): string {
-  return DOMPurify.sanitize(raw, {
+  const normalized = ensureViewBox(raw);
+  return DOMPurify.sanitize(normalized, {
     USE_PROFILES: { svg: true, svgFilters: true },
     ALLOWED_TAGS,
     ALLOWED_ATTR: ALLOWED_ATTRS,
