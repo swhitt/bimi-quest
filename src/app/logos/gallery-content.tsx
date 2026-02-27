@@ -25,6 +25,7 @@ interface Logo {
   issuer: string | null;
   rootCa: string | null;
   score: number | null;
+  ctLogTimestamp: string | null;
   count: number;
 }
 
@@ -104,34 +105,23 @@ function LogoTile({ logo }: { logo: Logo }) {
           )}
         </button>
       )}
-      {/* Tooltip */}
-      <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-1.5 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-        <div className="w-60 rounded bg-black/85 px-2.5 py-2 backdrop-blur-sm space-y-1">
-          <div className="font-semibold text-white text-xs leading-tight line-clamp-2">
-            {logo.org || logo.domain || "Unknown"}
-          </div>
-          <div className="flex items-center justify-between gap-2">
+      {/* Tooltip — positioned above tile to avoid z-fight with scaled tile */}
+      <div className="pointer-events-none absolute left-1/2 bottom-full z-40 mb-2 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <div className="rounded bg-black/90 px-2 py-1.5 backdrop-blur-sm text-[10px] leading-tight whitespace-nowrap">
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-white">{(logo.org || logo.domain || "?").slice(0, 28)}</span>
             {logo.certType && (
-              <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap ${
-                logo.certType === "VMC"
-                  ? "bg-blue-500/40 text-blue-100"
-                  : "bg-purple-500/40 text-purple-100"
-              }`}>
-                {logo.certType}
-              </span>
+              <span className={`px-1 py-px rounded text-[9px] font-medium ${
+                logo.certType === "VMC" ? "bg-blue-500/40 text-blue-200" : "bg-purple-500/40 text-purple-200"
+              }`}>{logo.certType}</span>
             )}
             {logo.score != null && (
-              <span className="text-[10px] text-gray-300 whitespace-nowrap tabular-nums">
-                {logo.score}/10
-              </span>
+              <span className="text-gray-400 tabular-nums">{logo.score}/10</span>
             )}
           </div>
-          {logo.domain && (
-            <div className="text-[10px] text-gray-300 truncate">{logo.domain}</div>
-          )}
-          {logo.issuer && (
-            <div className="text-[10px] text-gray-400 truncate">{logo.issuer}</div>
-          )}
+          <div className="text-gray-400 truncate max-w-52">
+            {[logo.domain, logo.issuer, logo.ctLogTimestamp ? new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA") : null].filter(Boolean).join(" · ")}
+          </div>
         </div>
       </div>
     </div>

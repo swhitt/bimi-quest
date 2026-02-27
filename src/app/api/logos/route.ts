@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
           rootCa: sql<string>`(array_agg(${certificates.rootCaOrg} ORDER BY ${pickOrder}))[1]`.as("root_ca"),
           count: sql<number>`count(*)::int`.as("count"),
           score: sql<number>`max(${certificates.notabilityScore})`.as("score"),
+          ctLogTimestamp: sql<string>`(array_agg(${certificates.ctLogTimestamp} ORDER BY ${pickOrder}))[1]`.as("ct_log_timestamp"),
         })
         .from(certificates)
         .where(baseWhere)
