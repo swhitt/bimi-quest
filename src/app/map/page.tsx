@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function MapPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Geographic Distribution</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold">Geographic Distribution</h1>
+        <p className="text-sm text-muted-foreground">
           BIMI certificate distribution by country.
         </p>
       </div>

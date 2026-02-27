@@ -1,17 +1,17 @@
 /** Shared color palette for OG cards */
 export const colors = {
-  bg: "#1E1B4B",
-  textPrimary: "#EDE9FE",
-  textSecondary: "#A78BFA",
-  badgeBg: "#6D28D9",
-  badgeText: "#EDE9FE",
-  mono: "#94A3B8",
-  watermark: "#4C1D95",
+  bg: "#0C1222",
+  textPrimary: "#E8EAED",
+  textSecondary: "#5EEAD4",
+  badgeBg: "#0D9488",
+  badgeText: "#F0FDFA",
+  mono: "#8B95A5",
+  watermark: "#1A3A4A",
   validGreen: "#22C55E",
   validAmber: "#F59E0B",
   validRed: "#EF4444",
-  cardBg: "#2E2750",
-  border: "#3B3270",
+  cardBg: "#151D2E",
+  border: "#1E2D3D",
 } as const;
 
 /** Card dimensions */

@@ -50,7 +50,7 @@ export function HostContent({ hostname }: HostContentProps) {
   }, [apiQuery]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2" aria-label="Breadcrumb">

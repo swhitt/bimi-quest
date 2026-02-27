@@ -57,12 +57,12 @@ export async function GET(
         style={{
           width: OG_WIDTH,
           height: OG_HEIGHT,
-          background: `linear-gradient(135deg, ${colors.bg} 0%, #312E81 100%)`,
+          background: `linear-gradient(145deg, ${colors.bg} 0%, #0F1A2E 100%)`,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "Geist",
+          fontFamily: "IBM Plex Sans",
           gap: 24,
         }}
       >

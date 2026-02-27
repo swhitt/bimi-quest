@@ -24,10 +24,10 @@ export const metadata: Metadata = {
 
 export default function GalleryPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Logo Gallery</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold">Logo Gallery</h1>
+        <p className="text-sm text-muted-foreground">
           Browse unique BIMI logos discovered from certificate transparency logs.
         </p>
       </div>

@@ -4,13 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Track BIMI (Brand Indicators for Message Identification) certificate adoption across all Certificate Authorities.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <h1 className="text-2xl font-semibold">Dashboard</h1>
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>
@@ -20,7 +15,7 @@ export default function DashboardPage() {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-[120px] rounded-xl" />

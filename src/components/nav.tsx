@@ -54,10 +54,10 @@ function NavLinks() {
           key={item.href}
           href={buildHref(item.href)}
           className={cn(
-            "px-3 py-1.5 rounded-md transition-colors",
+            "px-2 py-1 transition-colors",
             isActive(item.href)
-              ? "bg-secondary text-secondary-foreground font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              ? "border-b-2 border-primary text-foreground font-medium rounded-none"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
           {item.label}
@@ -69,11 +69,11 @@ function NavLinks() {
 
 export function Nav() {
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-      <div className="container mx-auto flex h-14 items-center px-4">
-        <Link href="/" className="mr-6 flex items-center gap-2 font-semibold">
+    <header className="border-b bg-background sticky top-0 z-50">
+      <div className="container mx-auto flex h-12 items-center px-4">
+        <Link href="/" className="mr-6 flex items-center gap-2">
           <img src="/logo.svg" alt="" className="size-6" />
-          <span className="text-lg">BIMI Quest</span>
+          <span className="text-base font-semibold">BIMI Quest</span>
         </Link>
         <Suspense
           fallback={
@@ -81,7 +81,7 @@ export function Nav() {
               {navItems.map((i) => (
                 <span
                   key={i.href}
-                  className="px-3 py-1.5 text-muted-foreground"
+                  className="px-2 py-1 text-muted-foreground"
                 >
                   {i.label}
                 </span>

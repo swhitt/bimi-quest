@@ -60,7 +60,7 @@ export async function generateMosaic(): Promise<Buffer> {
       width: WIDTH,
       height: HEIGHT,
       channels: 4,
-      background: { r: 30, g: 27, b: 75, alpha: 255 },
+      background: { r: 12, g: 18, b: 34, alpha: 255 },
     },
   })
     .composite(composite)

@@ -130,9 +130,9 @@ export function ValidateContent() {
   const rngChecks = result?.checks.filter((c) => c.id.startsWith("rng-")) ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">BIMI Validator</h1>
+        <h1 className="text-xl font-semibold">BIMI Validator</h1>
         <p className="text-muted-foreground">
           Check if a domain is ready for BIMI (Brand Indicators for Message Identification). Tests DNS records, DMARC policy, SVG logo compliance, and certificate status.
         </p>

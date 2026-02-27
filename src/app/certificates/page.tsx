@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function CertificatesPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Certificates</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold">Certificates</h1>
+        <p className="text-sm text-muted-foreground">
           Browse and filter all BIMI certificates discovered from CT logs.
         </p>
       </div>

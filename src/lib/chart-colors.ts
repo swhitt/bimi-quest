@@ -3,21 +3,21 @@
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
-// HSL colors that work as SVG fill attributes in both light and dark mode
+// OKLCH colors matching the chart tokens in globals.css
 const LIGHT_COLORS: Record<string, string> = {
-  DigiCert: "hsl(221, 83%, 53%)",
-  Entrust: "hsl(160, 60%, 45%)",
-  GlobalSign: "hsl(35, 92%, 50%)",
-  "SSL.com": "hsl(262, 83%, 58%)",
-  Sectigo: "hsl(0, 72%, 51%)",
+  DigiCert: "oklch(0.55 0.15 230)",
+  Entrust: "oklch(0.60 0.14 165)",
+  GlobalSign: "oklch(0.70 0.16 65)",
+  "SSL.com": "oklch(0.55 0.15 290)",
+  Sectigo: "oklch(0.60 0.20 25)",
 };
 
 const DARK_COLORS: Record<string, string> = {
-  DigiCert: "hsl(217, 91%, 60%)",
-  Entrust: "hsl(160, 70%, 50%)",
-  GlobalSign: "hsl(38, 92%, 55%)",
-  "SSL.com": "hsl(270, 76%, 65%)",
-  Sectigo: "hsl(4, 90%, 58%)",
+  DigiCert: "oklch(0.60 0.17 230)",
+  Entrust: "oklch(0.65 0.14 165)",
+  GlobalSign: "oklch(0.75 0.16 65)",
+  "SSL.com": "oklch(0.60 0.17 290)",
+  Sectigo: "oklch(0.65 0.22 25)",
 };
 
 export const CA_COLOR_INDEX: Record<string, number> = {
@@ -43,5 +43,5 @@ export function getCAColor(
   colors: Record<string, string>,
   ca: string
 ): string {
-  return colors[ca] || "hsl(0, 0%, 55%)";
+  return colors[ca] || "oklch(0.55 0 0)";
 }

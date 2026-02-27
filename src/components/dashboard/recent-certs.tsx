@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   HoverCard,
@@ -90,16 +89,16 @@ export function RecentCerts() {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Issuances</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading && certs.length === 0 ? (
-          <p className="text-muted-foreground py-4 text-center" aria-live="polite">Loading...</p>
-        ) : sanitizedCerts.length > 0 ? (
-          <div className="space-y-3">
-            {sanitizedCerts.map((cert) => (
+    <section>
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Recent Issuances</h2>
+        <div className="flex-1 border-t" />
+      </div>
+      {loading && certs.length === 0 ? (
+        <p className="text-muted-foreground py-4 text-center" aria-live="polite">Loading...</p>
+      ) : sanitizedCerts.length > 0 ? (
+        <div className="space-y-3">
+          {sanitizedCerts.map((cert) => (
               <Link
                 key={cert.id}
                 href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
@@ -212,12 +211,11 @@ export function RecentCerts() {
 
             <PaginationBar pagination={pagination} onPageChange={handlePageChange} />
           </div>
-        ) : (
-          <p className="text-muted-foreground">
-            No certificates found. Run the ingestion worker to populate data.
-          </p>
-        )}
-      </CardContent>
-    </Card>
+      ) : (
+        <p className="text-muted-foreground">
+          No certificates found. Run the ingestion worker to populate data.
+        </p>
+      )}
+    </section>
   );
 }

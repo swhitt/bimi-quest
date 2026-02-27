@@ -67,7 +67,7 @@ export function OrgContent({ org }: OrgContentProps) {
   const country = data.data.length > 0 ? data.data[0].subjectCountry : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2" aria-label="Breadcrumb">

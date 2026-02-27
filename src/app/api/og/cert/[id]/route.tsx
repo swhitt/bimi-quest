@@ -79,10 +79,10 @@ export async function GET(
         style={{
           width: OG_WIDTH,
           height: OG_HEIGHT,
-          background: `linear-gradient(135deg, ${colors.bg} 0%, #312E81 100%)`,
+          background: `linear-gradient(145deg, ${colors.bg} 0%, #0F1A2E 100%)`,
           display: "flex",
           flexDirection: "column",
-          fontFamily: "Geist",
+          fontFamily: "IBM Plex Sans",
           padding: 0,
         }}
       >
@@ -248,7 +248,7 @@ export async function GET(
             justifyContent: "space-between",
             alignItems: "center",
             padding: "16px 56px",
-            background: "#15133A",
+            background: "#080E1A",
           }}
         >
           <div style={{ fontSize: 18, color: colors.watermark, fontWeight: 700 }}>

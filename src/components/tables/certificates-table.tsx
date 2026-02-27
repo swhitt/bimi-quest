@@ -440,7 +440,7 @@ export function CertificatesTable({
       />
 
       {/* Table */}
-      <div className="rounded-lg border overflow-x-auto">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

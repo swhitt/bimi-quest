@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -13,67 +8,46 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Privacy</h1>
-        <p className="text-muted-foreground">
-          How BIMI Quest handles your data.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <h1 className="text-xl font-semibold">Privacy</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl">What we collect</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm leading-relaxed">
+      <div className="space-y-8">
+        <section className="space-y-3 text-sm leading-relaxed">
+          <h2 className="text-lg font-semibold">What we collect</h2>
           <p>Nothing. BIMI Quest does not collect personal data from visitors.</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>No user accounts or sign-ups.</li>
             <li>No cookies.</li>
             <li>No analytics or tracking scripts.</li>
           </ul>
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl">Certificate data</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm leading-relaxed">
+        <Separator />
+
+        <section className="space-y-3 text-sm leading-relaxed">
+          <h2 className="text-lg font-semibold">Certificate data</h2>
           <p>
             All certificate data displayed on this site is already public. It is
             sourced from Certificate Transparency logs, which are designed to be
             openly auditable by anyone.
           </p>
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl">BIMI Validator</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm leading-relaxed">
+        <Separator />
+
+        <section className="space-y-3 text-sm leading-relaxed">
+          <h2 className="text-lg font-semibold">BIMI Validator</h2>
           <p>
             When you use the BIMI Validator, live DNS lookups are performed from
             our servers to check the domain&apos;s BIMI and DMARC records. The
             domains you query are not stored or logged.
           </p>
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl">Questions</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm leading-relaxed">
+        <Separator />
+
+        <section className="space-y-3 text-sm leading-relaxed">
+          <h2 className="text-lg font-semibold">Questions</h2>
           <p>
             If you have questions about this site, open an issue on{" "}
             <a
@@ -86,8 +60,8 @@ export default function PrivacyPage() {
             </a>
             .
           </p>
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </div>
   );
 }

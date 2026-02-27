@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 
 interface KPICardsProps {
@@ -49,70 +48,48 @@ export function KPICards({
   expiringCount,
 }: KPICardsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active (Valid)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{activeCerts.toLocaleString()}</div>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {totalCerts > 0
-                ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalCerts.toLocaleString()} total`
-                : "Currently valid certs"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-2 md:grid-cols-5 border rounded-lg divide-x divide-y md:divide-y-0 bg-card">
+      <div className="px-4 py-3">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active (Valid)</div>
+        <div className="text-2xl font-bold tabular-nums mt-1">{activeCerts.toLocaleString()}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {totalCerts > 0
+            ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalCerts.toLocaleString()} total`
+            : "Currently valid certs"}
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{selectedCA} Certs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{caCerts.toLocaleString()}</div>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Issued by {selectedCA}</p>
-            <DeltaBadge value={caNewLast30d} />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="px-4 py-3">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{selectedCA} Certs</div>
+        <div className="text-2xl font-bold tabular-nums mt-1">{caCerts.toLocaleString()}</div>
+        <div className="flex items-center justify-between mt-0.5">
+          <span className="text-xs text-muted-foreground">Issued by {selectedCA}</span>
+          <DeltaBadge value={caNewLast30d} />
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Market Share</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{marketShare != null ? `${marketShare}%` : "100%"}</div>
-          <p className="text-xs text-muted-foreground">{selectedCA} vs market</p>
-        </CardContent>
-      </Card>
+      <div className="px-4 py-3">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Market Share</div>
+        <div className="text-2xl font-bold tabular-nums mt-1">{marketShare != null ? `${marketShare}%` : "100%"}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{selectedCA} vs market</div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Unique Orgs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{uniqueOrgs.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Organizations using {selectedCA}</p>
-        </CardContent>
-      </Card>
+      <div className="px-4 py-3">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Unique Orgs</div>
+        <div className="text-2xl font-bold tabular-nums mt-1">{uniqueOrgs.toLocaleString()}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">Organizations using {selectedCA}</div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2">
-            <span className={`text-2xl font-bold ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
-              {expiringCount.toLocaleString()}
-            </span>
-            {expiringCount > 0 && <AlertTriangle className="size-5 text-amber-500" />}
-          </div>
-          <p className="text-xs text-muted-foreground">Expiring within 30 days</p>
-        </CardContent>
-      </Card>
+      <div className="px-4 py-3">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Expiring Soon</div>
+        <div className="flex items-center gap-2 mt-1">
+          <span className={`text-2xl font-bold tabular-nums ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+            {expiringCount.toLocaleString()}
+          </span>
+          {expiringCount > 0 && <AlertTriangle className="size-5 text-amber-500" />}
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5">Expiring within 30 days</div>
+      </div>
     </div>
   );
 }

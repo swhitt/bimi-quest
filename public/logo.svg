@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps" viewBox="0 0 512 512">
   <title>BIMI Quest</title>
-  <desc>A purple shield with a compass rose, representing BIMI certificate exploration</desc>
-  <path d="M256 28C186 28 116 56 76 84 72 87 68 92 68 98V258C68 358 140 430 248 482 253 484 259 484 264 482 372 430 444 358 444 258V98C444 92 440 87 436 84 396 56 326 28 256 28Z" fill="#6D28D9"/>
-  <path d="M256 56C196 56 136 80 100 104V258C100 342 160 406 256 454 352 406 412 342 412 258V104C376 80 316 56 256 56Z" fill="#1E1B4B"/>
-  <polygon points="256,100 284,232 256,200 228,232" fill="#A78BFA"/>
-  <polygon points="256,388 228,280 256,312 284,280" fill="#7C3AED"/>
-  <polygon points="388,256 280,228 312,256 280,284" fill="#7C3AED"/>
-  <polygon points="124,256 232,284 200,256 232,228" fill="#A78BFA"/>
-  <circle cx="256" cy="256" r="40" fill="#A78BFA"/>
-  <circle cx="256" cy="256" r="24" fill="#EDE9FE"/>
+  <desc>A teal shield with a compass rose, representing BIMI certificate exploration</desc>
+  <path d="M256 28C186 28 116 56 76 84 72 87 68 92 68 98V258C68 358 140 430 248 482 253 484 259 484 264 482 372 430 444 358 444 258V98C444 92 440 87 436 84 396 56 326 28 256 28Z" fill="#0D9488"/>
+  <path d="M256 56C196 56 136 80 100 104V258C100 342 160 406 256 454 352 406 412 342 412 258V104C376 80 316 56 256 56Z" fill="#0C1222"/>
+  <polygon points="256,100 284,232 256,200 228,232" fill="#5EEAD4"/>
+  <polygon points="256,388 228,280 256,312 284,280" fill="#14B8A6"/>
+  <polygon points="388,256 280,228 312,256 280,284" fill="#14B8A6"/>
+  <polygon points="124,256 232,284 200,256 232,228" fill="#5EEAD4"/>
+  <circle cx="256" cy="256" r="40" fill="#5EEAD4"/>
+  <circle cx="256" cy="256" r="24" fill="#F0FDFA"/>
 </svg>
