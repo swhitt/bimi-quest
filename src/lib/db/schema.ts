@@ -117,6 +117,12 @@ export const domainBimiState = pgTable("domain_bimi_state", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+export const ogCache = pgTable("og_cache", {
+  key: text("key").primaryKey(),
+  png: text("png").notNull(),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const ingestionCursors = pgTable("ingestion_cursors", {
   id: serial("id").primaryKey(),
   logName: text("log_name").unique().notNull(),

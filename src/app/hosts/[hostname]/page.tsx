@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { sql, and, isNotNull, desc } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { certificates } from "@/lib/db/schema";
 import { HostContent } from "./host-content";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -10,9 +13,52 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { hostname } = await params;
   const decoded = decodeURIComponent(hostname).toLowerCase();
+
+  const rows = await db
+    .select({
+      subjectOrg: certificates.subjectOrg,
+      certType: certificates.certType,
+    })
+    .from(certificates)
+    .where(
+      and(
+        sql`${decoded} = ANY(${certificates.sanList})`,
+        isNotNull(certificates.fingerprintSha256),
+      ),
+    )
+    .orderBy(desc(certificates.notBefore))
+    .limit(50);
+
+  const certCount = rows.length;
+  const orgs = [...new Set(rows.map((r) => r.subjectOrg).filter(Boolean))];
+  const types = [...new Set(rows.map((r) => r.certType).filter(Boolean))];
+  const typeCounts = types
+    .map((t) => `${rows.filter((r) => r.certType === t).length} ${t}`)
+    .join(", ");
+
+  const descParts = [
+    `${certCount === 50 ? "50+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""} with ${decoded} as SAN`,
+    orgs.length ? `Organizations: ${orgs.slice(0, 3).join(", ")}${orgs.length > 3 ? ` +${orgs.length - 3} more` : ""}` : "",
+    typeCounts ? `Types: ${typeCounts}` : "",
+    "Browse on bimi.quest",
+  ].filter(Boolean);
+
+  const ogImageUrl = `/api/og/host/${encodeURIComponent(decoded)}`;
+
   return {
     title: `Certificates for ${decoded}`,
-    description: `Browse all BIMI VMC and CMC certificates with ${decoded} as a Subject Alternative Name (SAN).`,
+    description: descParts.join(" | "),
+    openGraph: {
+      title: `Certificates for ${decoded}`,
+      description: descParts.join(" | "),
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Certificates for ${decoded}`,
+      description: descParts.join(" | "),
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
   };
 }
 
