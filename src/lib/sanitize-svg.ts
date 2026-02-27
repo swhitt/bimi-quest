@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 
 const ALLOWED_TAGS = [
   "svg",
@@ -99,6 +99,9 @@ function ensureViewBox(svg: string): string {
 
 /** Sanitize SVG markup, stripping scripts and event handlers */
 export function sanitizeSvg(raw: string): string {
+  // DOMPurify requires a browser DOM; during SSR pass through as-is
+  // (all callers are "use client" components, so this sanitizes on hydration)
+  if (typeof window === "undefined") return ensureViewBox(raw);
   const normalized = ensureViewBox(raw);
   return DOMPurify.sanitize(normalized, {
     USE_PROFILES: { svg: true, svgFilters: true },
