@@ -38,17 +38,23 @@ export async function GET(request: NextRequest) {
       ? sql`max(${certificates.notBefore}) desc`
       : sql`max(${certificates.notabilityScore}) desc nulls last, max(${certificates.notBefore}) desc`;
 
+    // When sorting by recency, pick the most recent cert per org group;
+    // when sorting by score, pick the highest-scored cert.
+    const pickOrder = sort === "recent"
+      ? sql`${certificates.notBefore} DESC, ${certificates.notabilityScore} DESC NULLS LAST`
+      : sql`${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC`;
+
     const [rows, [totalRow]] = await Promise.all([
       db
         .select({
-          fingerprint: sql<string>`(array_agg(${certificates.fingerprintSha256} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("fingerprint"),
-          svgHash: sql<string>`(array_agg(${certificates.logotypeSvgHash} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("svg_hash"),
-          svg: sql<string>`(array_agg(${certificates.logotypeSvg} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("svg"),
-          org: sql<string>`(array_agg(${certificates.subjectOrg} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("org"),
-          domain: sql<string>`(array_agg(${certificates.sanList}[1] ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("domain"),
-          certType: sql<string>`(array_agg(${certificates.certType} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("cert_type"),
-          issuer: sql<string>`(array_agg(${certificates.issuerOrg} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("issuer"),
-          rootCa: sql<string>`(array_agg(${certificates.rootCaOrg} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("root_ca"),
+          fingerprint: sql<string>`(array_agg(${certificates.fingerprintSha256} ORDER BY ${pickOrder}))[1]`.as("fingerprint"),
+          svgHash: sql<string>`(array_agg(${certificates.logotypeSvgHash} ORDER BY ${pickOrder}))[1]`.as("svg_hash"),
+          svg: sql<string>`(array_agg(${certificates.logotypeSvg} ORDER BY ${pickOrder}))[1]`.as("svg"),
+          org: sql<string>`(array_agg(${certificates.subjectOrg} ORDER BY ${pickOrder}))[1]`.as("org"),
+          domain: sql<string>`(array_agg(${certificates.sanList}[1] ORDER BY ${pickOrder}))[1]`.as("domain"),
+          certType: sql<string>`(array_agg(${certificates.certType} ORDER BY ${pickOrder}))[1]`.as("cert_type"),
+          issuer: sql<string>`(array_agg(${certificates.issuerOrg} ORDER BY ${pickOrder}))[1]`.as("issuer"),
+          rootCa: sql<string>`(array_agg(${certificates.rootCaOrg} ORDER BY ${pickOrder}))[1]`.as("root_ca"),
           count: sql<number>`count(*)::int`.as("count"),
           score: sql<number>`max(${certificates.notabilityScore})`.as("score"),
         })

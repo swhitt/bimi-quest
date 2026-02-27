@@ -185,12 +185,24 @@ function LogoTile({ logo }: { logo: Logo }) {
   const linkHref = logo.fingerprint
     ? `/logo/${logo.fingerprint.slice(0, 16)}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
     : null;
+  const [copied, setCopied] = useState(false);
 
   // Strip baked-in white backgrounds, then pick tile bg from content colors
   const strippedSvg = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
   const bgColor = strippedSvg ? tileBgForSvg(strippedSvg) : undefined;
   const isLightBg = bgColor?.includes("243");
   const ringColor = isLightBg ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)";
+
+  const handleCopyLink = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!linkHref) return;
+    const url = `${window.location.origin}${linkHref}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [linkHref]);
 
   const tile = (
     <div
@@ -215,6 +227,20 @@ function LogoTile({ logo }: { logo: Logo }) {
         <div className="flex h-full w-full items-center justify-center bg-muted/30 text-xs text-muted-foreground">
           No image
         </div>
+      )}
+      {/* Copy link button */}
+      {linkHref && (
+        <button
+          onClick={handleCopyLink}
+          className="absolute top-1 right-1 z-30 rounded bg-black/60 p-1 text-white/70 opacity-0 transition-opacity duration-150 hover:text-white group-hover:opacity-100"
+          title="Copy share link"
+        >
+          {copied ? (
+            <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+          ) : (
+            <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+          )}
+        </button>
       )}
       {/* Tooltip */}
       <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-1.5 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">

@@ -447,6 +447,15 @@ export function CertificateDetail({ id }: { id: string }) {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Embedded Logo</CardTitle>
             <div className="flex items-center gap-2">
+              {cert.fingerprintSha256 && (
+                <Link
+                  href={`/logo/${cert.fingerprintSha256.slice(0, 16)}/${((cert.sanList?.[0] || cert.subjectCn || "logo").toLowerCase().replace(/[^a-z0-9.\-]/g, "").split(".").slice(-2, -1)[0]) || "logo"}`}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                  Share
+                </Link>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -971,7 +980,7 @@ function RevocationStatusCard({
                 {revocation?.ocsp ? (
                   <RevocationStatusBadge status={revocation.ocsp.status} />
                 ) : (
-                  <Badge variant="secondary">Not Available</Badge>
+                  <span className="text-xs text-muted-foreground">No endpoint in cert</span>
                 )}
               </div>
               {revocation?.ocsp && (
@@ -1005,7 +1014,7 @@ function RevocationStatusCard({
                 {revocation?.crl ? (
                   <RevocationStatusBadge status={revocation.crl.status} />
                 ) : (
-                  <Badge variant="secondary">Not Available</Badge>
+                  <span className="text-xs text-muted-foreground">No endpoint in cert</span>
                 )}
               </div>
               {revocation?.crl && (
