@@ -19,20 +19,24 @@ export async function GET(request: NextRequest) {
     Math.max(1, parseInt(params.get("limit") ?? "", 10) || 200)
   );
   const offset = (page - 1) * limit;
+  const sort = params.get("sort") === "recent" ? "recent" : "score";
+  const minScore = Math.max(0, Math.min(10, parseInt(params.get("minScore") ?? "", 10) || 3));
 
   try {
-    const MIN_NOTABILITY = 3;
-
     const baseWhere = and(
       isNotNull(certificates.logotypeSvgHash),
       isNotNull(certificates.logotypeSvg),
       isNotNull(certificates.subjectOrg),
-      gte(certificates.notabilityScore, MIN_NOTABILITY)
+      gte(certificates.notabilityScore, minScore)
     );
 
     // Group by normalized org name (lowercase, trimmed) to deduplicate.
     // Pick the logo and details from the highest-scored certificate per org.
     const normOrg = sql`lower(trim(${certificates.subjectOrg}))`;
+
+    const orderClause = sort === "recent"
+      ? sql`max(${certificates.notBefore}) desc`
+      : sql`max(${certificates.notabilityScore}) desc nulls last, max(${certificates.notBefore}) desc`;
 
     const [rows, [totalRow]] = await Promise.all([
       db
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(baseWhere)
         .groupBy(normOrg)
-        .orderBy(sql`max(${certificates.notabilityScore}) desc nulls last`, sql`max(${certificates.notBefore}) desc`)
+        .orderBy(orderClause)
         .limit(limit)
         .offset(offset),
       db

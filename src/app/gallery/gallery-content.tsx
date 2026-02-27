@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationBar } from "@/components/pagination-bar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Logo {
   svgHash: string;
@@ -178,43 +185,103 @@ function LogoTile({ logo }: { logo: Logo }) {
   return tile;
 }
 
+const SORT_OPTIONS = [
+  { value: "score", label: "Top Scored" },
+  { value: "recent", label: "Most Recent" },
+];
+
+const MIN_SCORE_OPTIONS = [
+  { value: "1", label: "Score 1+" },
+  { value: "2", label: "Score 2+" },
+  { value: "3", label: "Score 3+" },
+  { value: "5", label: "Score 5+" },
+  { value: "7", label: "Score 7+" },
+];
+
 export function GalleryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialPage = parseInt(searchParams.get("page") ?? "1") || 1;
 
-  const [data, setData] = useState<GalleryResponse>({
-    logos: [],
-    total: 0,
-    page: initialPage,
-    limit: ITEMS_PER_PAGE,
-  });
+  const [sort, setSort] = useState(searchParams.get("sort") ?? "score");
+  const [minScore, setMinScore] = useState(searchParams.get("minScore") ?? "3");
+  const [infiniteScroll, setInfiniteScroll] = useState(false);
+  const [logos, setLogos] = useState<Logo[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const fetchPage = useCallback((page: number) => {
-    setLoading(true);
-    setError(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    fetch(`/api/gallery?page=${page}&limit=${ITEMS_PER_PAGE}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then((result: GalleryResponse) => {
-        setData(result);
-        const url = page > 1 ? `/gallery?page=${page}` : "/gallery";
-        router.replace(url, { scroll: false });
-      })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load gallery")
-      )
-      .finally(() => setLoading(false));
-  }, [router]);
+  const fetchPage = useCallback(
+    (p: number, append = false) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      if (!append) window.scrollTo({ top: 0, behavior: "smooth" });
 
+      fetch(`/api/gallery?page=${p}&limit=${ITEMS_PER_PAGE}&sort=${sort}&minScore=${minScore}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to load");
+          return res.json();
+        })
+        .then((result: GalleryResponse) => {
+          if (append) {
+            setLogos((prev) => [...prev, ...result.logos]);
+          } else {
+            setLogos(result.logos);
+          }
+          setTotal(result.total);
+          setPage(p);
+
+          const params = new URLSearchParams();
+          if (p > 1) params.set("page", String(p));
+          if (sort !== "score") params.set("sort", sort);
+          if (minScore !== "3") params.set("minScore", minScore);
+          const qs = params.toString();
+          router.replace(qs ? `/gallery?${qs}` : "/gallery", { scroll: false });
+        })
+        .catch((err) =>
+          setError(err instanceof Error ? err.message : "Failed to load gallery")
+        )
+        .finally(() => {
+          setLoading(false);
+          setLoadingMore(false);
+        });
+    },
+    [router, sort, minScore]
+  );
+
+  // Refetch when sort/minScore changes
   useEffect(() => {
-    fetchPage(initialPage);
-  }, [fetchPage, initialPage]);
+    setLogos([]);
+    fetchPage(1);
+  }, [fetchPage]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!infiniteScroll || loading || loadingMore) return;
+    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+    if (page >= totalPages) return;
+
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchPage(page + 1, true);
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [infiniteScroll, loading, loadingMore, page, total, fetchPage]);
 
   if (error) {
     return (
@@ -222,7 +289,7 @@ export function GalleryContent() {
         <p className="text-destructive">{error}</p>
         <button
           className="text-sm underline text-muted-foreground hover:text-foreground"
-          onClick={() => fetchPage(data.page)}
+          onClick={() => fetchPage(page)}
         >
           Retry
         </button>
@@ -230,11 +297,46 @@ export function GalleryContent() {
     );
   }
 
-  const totalPages = Math.ceil(data.total / data.limit);
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-6">
-      {!loading && data.logos.length === 0 && (
+    <div className="space-y-4">
+      {/* Gallery controls */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger size="sm" className="w-[130px]" aria-label="Sort order">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={minScore} onValueChange={setMinScore}>
+          <SelectTrigger size="sm" className="w-[110px]" aria-label="Minimum score">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MIN_SCORE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={infiniteScroll}
+            onChange={(e) => setInfiniteScroll(e.target.checked)}
+            className="rounded border-muted-foreground/30"
+          />
+          Infinite scroll
+        </label>
+      </div>
+
+      {!loading && logos.length === 0 && (
         <div className="flex h-64 items-center justify-center text-muted-foreground">
           No logos found.
         </div>
@@ -245,20 +347,28 @@ export function GalleryContent() {
           ? Array.from({ length: 60 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square w-full" />
             ))
-          : data.logos.map((logo, i) => (
+          : logos.map((logo, i) => (
               <LogoTile key={logo.org ?? `logo-${i}`} logo={logo} />
             ))}
+        {loadingMore &&
+          Array.from({ length: 30 }).map((_, i) => (
+            <Skeleton key={`more-${i}`} className="aspect-square w-full" />
+          ))}
       </div>
 
-      {!loading && totalPages > 1 && (
+      {/* Infinite scroll sentinel */}
+      {infiniteScroll && <div ref={sentinelRef} />}
+
+      {/* Pagination (only when not infinite scrolling) */}
+      {!infiniteScroll && !loading && totalPages > 1 && (
         <PaginationBar
           pagination={{
-            page: data.page,
-            limit: data.limit,
-            total: data.total,
+            page,
+            limit: ITEMS_PER_PAGE,
+            total,
             totalPages,
           }}
-          onPageChange={fetchPage}
+          onPageChange={(p) => fetchPage(p)}
           noun="logos"
         />
       )}
