@@ -33,7 +33,7 @@ interface GalleryResponse {
   limit: number;
 }
 
-const ITEMS_PER_PAGE = 200;
+const ITEMS_PER_PAGE = 100;
 
 /** Parse a hex color (3 or 6 chars, no #) into [r, g, b] 0-255 */
 function hexToRgb(hex: string): [number, number, number] {
@@ -353,7 +353,7 @@ export function GalleryContent() {
           fetchPage(page + 1, true);
         }
       },
-      { rootMargin: "400px" }
+      { rootMargin: "1200px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
