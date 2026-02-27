@@ -20,9 +20,9 @@ export default function GalleryPage() {
       </div>
       <Suspense
         fallback={
-          <div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            {Array.from({ length: 18 }).map((_, i) => (
-              <Skeleton key={i} className="h-48 w-full rounded-xl" />
+          <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15">
+            {Array.from({ length: 60 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square w-full" />
             ))}
           </div>
         }
