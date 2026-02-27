@@ -90,16 +90,26 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
  *  When checking a subdomain, the sp= tag (subdomain policy) takes
  *  precedence over p= if present. */
 export function isDMARCValidForBIMI(record: DMARCRecord, isSubdomain = false): boolean {
+  return getDMARCBIMIReason(record, isSubdomain) === null;
+}
+
+/** Returns null if the DMARC record is valid for BIMI, or a specific reason string if not.
+ *  When checking a subdomain, the sp= tag (subdomain policy) takes
+ *  precedence over p= if present. */
+export function getDMARCBIMIReason(record: DMARCRecord, isSubdomain = false): string | null {
   const effectivePolicy = isSubdomain && record.sp
     ? record.sp
     : record.policy;
 
   if (effectivePolicy !== "quarantine" && effectivePolicy !== "reject") {
-    return false;
+    if (isSubdomain && record.sp === "none") {
+      return "sp=none explicitly blocks BIMI for subdomains";
+    }
+    return `Policy is '${effectivePolicy}', must be 'quarantine' or 'reject'`;
   }
   // pct must be 100 (default if not specified)
   if (record.pct !== 100) {
-    return false;
+    return `pct=${record.pct}, must be 100`;
   }
-  return true;
+  return null;
 }

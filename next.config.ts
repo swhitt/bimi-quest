@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [],
   },
   // Node.js APIs needed for BIMI validation (dns/promises)
-  serverExternalPackages: ["@peculiar/x509"],
+  serverExternalPackages: ["@peculiar/x509", "xmllint-wasm"],
   async headers() {
     return [
       {

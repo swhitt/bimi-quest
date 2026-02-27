@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDMARCRecord, isDMARCValidForBIMI, getOrgDomain } from "./dmarc";
+import { parseDMARCRecord, isDMARCValidForBIMI, getDMARCBIMIReason, getOrgDomain } from "./dmarc";
 
 describe("parseDMARCRecord", () => {
   it("parses a basic DMARC record", () => {
@@ -61,6 +61,48 @@ describe("isDMARCValidForBIMI", () => {
   it("falls back to p when sp not present for subdomains", () => {
     const record = parseDMARCRecord("v=DMARC1; p=reject");
     expect(isDMARCValidForBIMI(record, true)).toBe(true);
+  });
+});
+
+describe("getDMARCBIMIReason", () => {
+  it("returns null for valid p=reject", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=reject");
+    expect(getDMARCBIMIReason(record)).toBeNull();
+  });
+
+  it("returns null for valid p=quarantine", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=quarantine");
+    expect(getDMARCBIMIReason(record)).toBeNull();
+  });
+
+  it("returns policy reason for p=none", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=none");
+    expect(getDMARCBIMIReason(record)).toBe("Policy is 'none', must be 'quarantine' or 'reject'");
+  });
+
+  it("returns pct reason when pct < 100", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=reject; pct=50");
+    expect(getDMARCBIMIReason(record)).toBe("pct=50, must be 100");
+  });
+
+  it("returns sp=none subdomain reason when isSubdomain and sp=none", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=reject; sp=none");
+    expect(getDMARCBIMIReason(record, true)).toBe("sp=none explicitly blocks BIMI for subdomains");
+  });
+
+  it("returns null for subdomain when sp=reject", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=none; sp=reject");
+    expect(getDMARCBIMIReason(record, true)).toBeNull();
+  });
+
+  it("falls back to p= for subdomain when sp not set", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=reject");
+    expect(getDMARCBIMIReason(record, true)).toBeNull();
+  });
+
+  it("returns policy reason for subdomain falling back to p=none", () => {
+    const record = parseDMARCRecord("v=DMARC1; p=none");
+    expect(getDMARCBIMIReason(record, true)).toBe("Policy is 'none', must be 'quarantine' or 'reject'");
   });
 });
 

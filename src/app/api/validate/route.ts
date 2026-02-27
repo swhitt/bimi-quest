@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await validateDomain(domain);
+    const selector: string = body.selector?.trim().toLowerCase() || "default";
+    const result = await validateDomain(domain, selector);
 
     // If we found a valid cert, try to ingest it (fire-and-forget)
     if (result.certificate.found && result.certificate.rawPem) {

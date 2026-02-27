@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { validateSVGTinyPS } from "./svg";
+import { gzipSync } from "node:zlib";
+import {
+  validateSVGTinyPS,
+  decompressSvgIfNeeded,
+  computeSvgHash,
+  categorizeSvgChecks,
+} from "./svg";
 
 const validSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps"
@@ -121,7 +127,7 @@ describe("validateSVGTinyPS", () => {
       .replace('height="100"', "");
     const result = validateSVGTinyPS(svg);
     expect(result.warnings).toContainEqual(
-      expect.stringContaining("Missing explicit width/height")
+      expect.stringContaining("Missing explicit width/height attributes")
     );
   });
 
@@ -155,5 +161,128 @@ describe("validateSVGTinyPS", () => {
     const result = validateSVGTinyPS(svg);
     expect(result.valid).toBe(false);
     expect(result.errors).toContainEqual(expect.stringContaining("xmlns"));
+  });
+
+  it("rejects invalid playbackOrder", () => {
+    const svg = validSvg.replace("<svg", '<svg playbackOrder="forwardOnly"');
+    const result = validateSVGTinyPS(svg);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('playbackOrder="forwardOnly"')
+    );
+  });
+
+  it("accepts valid playbackOrder", () => {
+    const svg = validSvg.replace("<svg", '<svg playbackOrder="all"');
+    const result = validateSVGTinyPS(svg);
+    expect(result.errors).not.toContainEqual(
+      expect.stringContaining("playbackOrder")
+    );
+  });
+
+  it("rejects invalid timelineBegin", () => {
+    const svg = validSvg.replace("<svg", '<svg timelineBegin="onRequest"');
+    const result = validateSVGTinyPS(svg);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('timelineBegin="onRequest"')
+    );
+  });
+
+  it("accepts valid timelineBegin", () => {
+    const svg = validSvg.replace("<svg", '<svg timelineBegin="onLoad"');
+    const result = validateSVGTinyPS(svg);
+    expect(result.errors).not.toContainEqual(
+      expect.stringContaining("timelineBegin")
+    );
+  });
+
+  it("rejects text editable not set to none", () => {
+    const svg = validSvg.replace(
+      "</svg>",
+      '<text editable="simple">Hello</text></svg>'
+    );
+    const result = validateSVGTinyPS(svg);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('editable="simple"')
+    );
+  });
+
+  it("accepts text editable=none", () => {
+    const svg = validSvg.replace(
+      "</svg>",
+      '<text editable="none">Hello</text></svg>'
+    );
+    const result = validateSVGTinyPS(svg);
+    expect(result.errors).not.toContainEqual(
+      expect.stringContaining("editable")
+    );
+  });
+});
+
+describe("decompressSvgIfNeeded", () => {
+  it("returns plain SVG unchanged", () => {
+    const buf = Buffer.from(validSvg, "utf-8");
+    expect(decompressSvgIfNeeded(buf)).toBe(validSvg);
+  });
+
+  it("decompresses gzipped SVG", () => {
+    const compressed = gzipSync(Buffer.from(validSvg, "utf-8"));
+    expect(decompressSvgIfNeeded(compressed)).toBe(validSvg);
+  });
+
+  it("works with Uint8Array input", () => {
+    const compressed = gzipSync(Buffer.from(validSvg, "utf-8"));
+    const uint8 = new Uint8Array(compressed);
+    expect(decompressSvgIfNeeded(uint8)).toBe(validSvg);
+  });
+});
+
+describe("computeSvgHash", () => {
+  it("returns a 64-character hex string", () => {
+    const hash = computeSvgHash(validSvg);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("returns consistent hashes for same input", () => {
+    expect(computeSvgHash(validSvg)).toBe(computeSvgHash(validSvg));
+  });
+
+  it("returns different hashes for different input", () => {
+    expect(computeSvgHash(validSvg)).not.toBe(computeSvgHash("different"));
+  });
+});
+
+describe("categorizeSvgChecks", () => {
+  it("returns a pass item for a valid SVG", () => {
+    const result = validateSVGTinyPS(validSvg);
+    const items = categorizeSvgChecks(result);
+    expect(items).toHaveLength(1);
+    expect(items[0].status).toBe("pass");
+    expect(items[0].category).toBe("spec");
+  });
+
+  it("categorizes spec errors as fail with spec category", () => {
+    const svg = validSvg.replace('baseProfile="tiny-ps"', "");
+    const result = validateSVGTinyPS(svg);
+    const items = categorizeSvgChecks(result);
+    const specFails = items.filter(
+      (i) => i.category === "spec" && i.status === "fail"
+    );
+    expect(specFails.length).toBeGreaterThan(0);
+  });
+
+  it("categorizes Gmail warnings as compatibility", () => {
+    const svg = validSvg
+      .replace('width="100"', 'width="50"')
+      .replace('height="100"', 'height="50"');
+    const result = validateSVGTinyPS(svg);
+    const items = categorizeSvgChecks(result);
+    const compatWarns = items.filter(
+      (i) => i.category === "compatibility" && i.status === "warn"
+    );
+    expect(compatWarns.length).toBeGreaterThan(0);
+    expect(compatWarns[0].summary).toContain("Gmail");
   });
 });

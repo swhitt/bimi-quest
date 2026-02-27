@@ -8,6 +8,13 @@
       "when": 1772169517171,
       "tag": "0000_safe_the_anarchist",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772214436066,
+      "tag": "0001_natural_silk_fever",
+      "breakpoints": true
     }
   ]
 }

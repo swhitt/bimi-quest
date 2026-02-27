@@ -1,3 +1,7 @@
+import { gunzipSync } from "node:zlib";
+import { createHash } from "node:crypto";
+import type { BimiCheckItem } from "./types";
+
 export interface SVGValidationResult {
   valid: boolean;
   errors: string[];
@@ -97,6 +101,8 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   checkAttrValue(svgAttrs, "focusable", "false", errors);
   checkAttrValue(svgAttrs, "externalResourcesRequired", "false", errors);
   checkAttrValue(svgAttrs, "snapshotTime", "none", errors);
+  checkAttrValue(svgAttrs, "playbackOrder", "all", errors);
+  checkAttrValue(svgAttrs, "timelineBegin", "onLoad", errors);
 
   // Element whitelist - extract all element names and check against allowed set
   const elementMatches = trimmed.matchAll(/<([a-zA-Z][\w.-]*)/g);
@@ -257,7 +263,11 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
     );
   }
 
-  if (widthMatch && heightMatch) {
+  if (!widthMatch || !heightMatch) {
+    warnings.push(
+      "Missing explicit width/height attributes (recommended for Gmail compatibility)"
+    );
+  } else {
     const w = parseFloat(widthMatch[1]);
     const h = parseFloat(heightMatch[1]);
     if (!isNaN(w) && !isNaN(h)) {
@@ -282,6 +292,18 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
     warnings.push(
       "Contains <text> elements (converting to paths improves cross-client portability)"
     );
+  }
+
+  // <text editable> must be "none" if present (SVG Tiny PS constraint)
+  const textEditableMatches = trimmed.matchAll(
+    /<text[^>]*\beditable\s*=\s*["']([^"']*)["'][^>]*/gi
+  );
+  for (const m of textEditableMatches) {
+    if (m[1].trim().toLowerCase() !== "none") {
+      errors.push(
+        `<text> has editable="${m[1].trim()}" (must be "none" per SVG Tiny PS)`
+      );
+    }
   }
 
   // =============================================
@@ -327,4 +349,71 @@ function checkAttrValue(
       `${attr}="${match[1].trim()}" (must be "${expected}" per SVG Tiny PS)`
     );
   }
+}
+
+/**
+ * Decompress SVGZ (gzip-compressed SVG) if needed.
+ * Detects gzip by checking for the magic bytes 0x1f 0x8b.
+ */
+export function decompressSvgIfNeeded(buffer: Buffer | Uint8Array): string {
+  if (buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+    const decompressed = gunzipSync(buffer);
+    return decompressed.toString("utf-8");
+  }
+  return Buffer.from(buffer).toString("utf-8");
+}
+
+/**
+ * Compute a hex-encoded SHA-256 hash of SVG content.
+ */
+export function computeSvgHash(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+/**
+ * Map SVG validation errors/warnings to structured BimiCheckItem entries.
+ */
+export function categorizeSvgChecks(
+  result: SVGValidationResult
+): BimiCheckItem[] {
+  const items: BimiCheckItem[] = [];
+
+  // Compatibility-related keywords (Gmail, Apple Mail, dimensions, portability)
+  const compatPatterns =
+    /gmail|apple mail|portability|dimensions|width\/height|display size/i;
+
+  if (result.errors.length === 0 && result.warnings.length === 0) {
+    items.push({
+      id: "svg-valid",
+      category: "spec",
+      label: "SVG Tiny PS",
+      status: "pass",
+      summary: "SVG passes all SVG Tiny PS checks",
+    });
+    return items;
+  }
+
+  for (const error of result.errors) {
+    const isCompat = compatPatterns.test(error);
+    items.push({
+      id: `svg-err-${items.length}`,
+      category: isCompat ? "compatibility" : "spec",
+      label: isCompat ? "Compatibility" : "SVG Tiny PS",
+      status: "fail",
+      summary: error,
+    });
+  }
+
+  for (const warning of result.warnings) {
+    const isCompat = compatPatterns.test(warning);
+    items.push({
+      id: `svg-warn-${items.length}`,
+      category: isCompat ? "compatibility" : "spec",
+      label: isCompat ? "Compatibility" : "SVG Tiny PS",
+      status: "warn",
+      summary: warning,
+    });
+  }
+
+  return items;
 }

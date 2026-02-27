@@ -1,18 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
+import { ValidationGrade } from "@/components/bimi/validation-grade";
+import { ValidationChecklist } from "@/components/bimi/validation-checklist";
+import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
 
 interface ValidationResult {
   domain: string;
-  bimi: { found: boolean; record: { raw: string; logoUrl: string | null; authorityUrl: string | null } | null };
-  dmarc: { found: boolean; record: { raw: string; policy: string; pct: number } | null; validForBIMI: boolean };
+  bimi: {
+    found: boolean;
+    record: { raw: string; logoUrl: string | null; authorityUrl: string | null } | null;
+    declined: boolean;
+    orgDomainFallback: boolean;
+    orgDomain: string | null;
+  };
+  dmarc: {
+    found: boolean;
+    record: { raw: string; policy: string; pct: number } | null;
+    validForBIMI: boolean;
+    reason: string | null;
+  };
   svg: { found: boolean; validation: { valid: boolean; errors: string[]; warnings: string[] } | null };
   certificate: { found: boolean; certType: string | null; issuer: string | null };
+  grade: BimiGrade;
+  gradeSummary: string;
+  checks: BimiCheckItem[];
   overallValid: boolean;
   errors: string[];
 }
@@ -49,12 +63,15 @@ export function DomainAnalysis({ domain }: { domain: string }) {
           <p className="text-muted-foreground">BIMI domain analysis</p>
         </div>
         {validation && (
-          <Badge
-            variant={validation.overallValid ? "default" : "destructive"}
-            className="text-base px-4 py-1"
-          >
-            {validation.overallValid ? "BIMI Valid" : "BIMI Invalid"}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <ValidationGrade grade={validation.grade} summary={validation.gradeSummary} />
+            <Badge
+              variant={validation.overallValid ? "default" : "destructive"}
+              className="text-base px-4 py-1"
+            >
+              {validation.overallValid ? "BIMI Valid" : "BIMI Invalid"}
+            </Badge>
+          </div>
         )}
       </div>
 
@@ -66,7 +83,7 @@ export function DomainAnalysis({ domain }: { domain: string }) {
               <CardTitle className="flex items-center gap-2">
                 BIMI Record
                 <Badge variant={validation.bimi.found ? "default" : "destructive"}>
-                  {validation.bimi.found ? "Found" : "Missing"}
+                  {validation.bimi.declined ? "Declined" : validation.bimi.found ? "Found" : "Missing"}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -78,6 +95,11 @@ export function DomainAnalysis({ domain }: { domain: string }) {
                 )}
                 {validation.bimi.record.authorityUrl && (
                   <div><span className="text-muted-foreground">Authority URL:</span> {validation.bimi.record.authorityUrl}</div>
+                )}
+                {validation.bimi.orgDomainFallback && (
+                  <div className="text-xs text-muted-foreground">
+                    Found via org domain fallback ({validation.bimi.orgDomain})
+                  </div>
                 )}
               </CardContent>
             )}
@@ -98,6 +120,9 @@ export function DomainAnalysis({ domain }: { domain: string }) {
                 <div><span className="text-muted-foreground">Policy:</span> {validation.dmarc.record.policy}</div>
                 <div><span className="text-muted-foreground">PCT:</span> {validation.dmarc.record.pct}%</div>
                 <div><span className="text-muted-foreground">Raw:</span> {validation.dmarc.record.raw}</div>
+                {validation.dmarc.reason && (
+                  <div className="text-destructive text-xs">{validation.dmarc.reason}</div>
+                )}
               </CardContent>
             )}
           </Card>
@@ -117,7 +142,6 @@ export function DomainAnalysis({ domain }: { domain: string }) {
               </CardHeader>
               <CardContent>
                 <div className="flex items-start gap-4">
-                  {/* Render via our proxy to avoid CORS/CSP issues */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/proxy/svg?url=${encodeURIComponent(validation.bimi.record.logoUrl!)}`}
@@ -140,6 +164,11 @@ export function DomainAnalysis({ domain }: { domain: string }) {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Structured checklist */}
+          {validation.checks.length > 0 && (
+            <ValidationChecklist checks={validation.checks} />
           )}
 
           {/* Errors */}
