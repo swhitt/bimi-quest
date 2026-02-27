@@ -11,14 +11,14 @@ export const metadata: Metadata = {
     title: "Logo Gallery",
     description:
       "Browse BIMI logos from VMC and CMC certificates discovered in Certificate Transparency logs.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/gallery", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Logo Gallery",
     description:
       "Browse BIMI logos from VMC and CMC certificates discovered in Certificate Transparency logs.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/gallery", width: 1200, height: 630 }],
   },
 };
 
