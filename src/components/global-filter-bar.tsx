@@ -57,9 +57,10 @@ function FilterBarInner() {
   // Build a URL preserving secondary filters, with the CA in the path
   const buildUrl = useCallback(
     (newCaSlug: string, updates?: Record<string, string | null>) => {
-      let pagePath = pathname;
-      if (pathname.startsWith("/ca/")) {
-        const segs = pathname.split("/").filter(Boolean);
+      // Strip /page/N suffix and /ca/slug prefix to get the base page path
+      let pagePath = pathname.replace(/\/page\/\d+$/, "");
+      if (pagePath.startsWith("/ca/")) {
+        const segs = pagePath.split("/").filter(Boolean);
         pagePath = "/" + segs.slice(2).join("/");
         if (pagePath === "/") pagePath = "/";
       }
@@ -96,9 +97,9 @@ function FilterBarInner() {
   );
 
   const clearFilters = useCallback(() => {
-    let pagePath = pathname;
-    if (pathname.startsWith("/ca/")) {
-      const segs = pathname.split("/").filter(Boolean);
+    let pagePath = pathname.replace(/\/page\/\d+$/, "");
+    if (pagePath.startsWith("/ca/")) {
+      const segs = pagePath.split("/").filter(Boolean);
       pagePath = "/" + segs.slice(2).join("/");
       if (pagePath === "/") pagePath = "/";
     }

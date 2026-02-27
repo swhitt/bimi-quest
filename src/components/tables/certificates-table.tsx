@@ -131,14 +131,20 @@ export function CertificatesTable({
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
+      params.delete("page");
+      let page: string | null = null;
       for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === "") {
+        if (key === "page") {
+          page = value && value !== "1" ? value : null;
+        } else if (value === null || value === "") {
           params.delete(key);
         } else {
           params.set(key, value);
         }
       }
-      router.push(`${basePath}?${params.toString()}`);
+      const pageSuffix = page ? `/page/${page}` : "";
+      const qs = params.toString();
+      router.push(`${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
     },
     [router, searchParams, basePath]
   );

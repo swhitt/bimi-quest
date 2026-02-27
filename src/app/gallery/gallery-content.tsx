@@ -315,11 +315,11 @@ export function GalleryContent() {
           setPage(p);
 
           const params = new URLSearchParams();
-          if (p > 1) params.set("page", String(p));
           if (sort !== "recent") params.set("sort", sort);
           if (minScore !== "7") params.set("minScore", minScore);
+          const pageSuffix = p > 1 ? `/page/${p}` : "";
           const qs = params.toString();
-          router.replace(qs ? `/gallery?${qs}` : "/gallery", { scroll: false });
+          router.replace(`/gallery${pageSuffix}${qs ? `?${qs}` : ""}`, { scroll: false });
         })
         .catch((err) =>
           setError(err instanceof Error ? err.message : "Failed to load gallery")

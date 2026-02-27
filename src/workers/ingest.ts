@@ -267,18 +267,18 @@ async function rescore(maxCerts = 0) {
 
   const DB_BATCH = 50;
   const SCORE_BATCH = 10;
-  let offset = 0;
   let scored = 0;
 
   while (true) {
     if (maxCerts > 0 && scored >= maxCerts) break;
 
+    // No OFFSET needed — scored rows drop out of the NULL filter each iteration
     const rows = await sql`
       SELECT id, subject_org, san_list, subject_country
       FROM certificates
       WHERE notability_score IS NULL
       ORDER BY id DESC
-      LIMIT ${DB_BATCH} OFFSET ${offset}
+      LIMIT ${DB_BATCH}
     `;
     if (rows.length === 0) break;
 
@@ -323,7 +323,6 @@ async function rescore(maxCerts = 0) {
       await throttle(100);
     }
 
-    offset += DB_BATCH;
   }
 
   console.log(`\n\nRescore complete. Scored ${scored} certificates.`);

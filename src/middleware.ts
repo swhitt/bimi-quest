@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // CA slug -> root_ca_org value used for filtering.
-// Clicking "SSL.com" will match both SSL Corporation and Sectigo certs.
 const CA_SLUGS: Record<string, string> = {
   digicert: "DigiCert",
   entrust: "Entrust",
@@ -11,32 +10,46 @@ const CA_SLUGS: Record<string, string> = {
   sectigo: "Sectigo Limited",
 };
 
-// Rewrites /ca/digicert/certificates -> /certificates?ca=DigiCert
-// The browser URL stays pretty, the page code reads query params as usual.
+/**
+ * Middleware handles two URL rewrites:
+ *  1. /ca/digicert/certificates -> /certificates?ca=DigiCert
+ *  2. /gallery/page/3           -> /gallery?page=3  (any route with /page/N suffix)
+ * Both can combine: /ca/digicert/certificates/page/2 -> /certificates?ca=DigiCert&page=2
+ */
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  if (!pathname.startsWith("/ca/")) return NextResponse.next();
-
-  const segments = pathname.split("/").filter(Boolean);
-  // segments: ["ca", "digicert"] or ["ca", "digicert", "certificates"]
-  if (segments.length < 2) return NextResponse.next();
-
-  const caSlug = segments[1].toLowerCase();
-  const caName = CA_SLUGS[caSlug];
-  if (!caName) return NextResponse.next();
-
-  // The rest of the path after /ca/slug/
-  const rest = "/" + segments.slice(2).join("/");
-  const target = rest === "/" ? "/" : rest;
-
   const url = request.nextUrl.clone();
-  url.pathname = target;
-  url.searchParams.set("ca", caName);
+  let { pathname } = url;
+  let modified = false;
 
+  // Extract /page/N suffix from any route
+  const pageMatch = pathname.match(/\/page\/(\d+)$/);
+  if (pageMatch) {
+    url.searchParams.set("page", pageMatch[1]);
+    pathname = pathname.replace(/\/page\/\d+$/, "") || "/";
+    modified = true;
+  }
+
+  // Handle /ca/slug rewrites
+  if (pathname.startsWith("/ca/")) {
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length >= 2) {
+      const caSlug = segments[1].toLowerCase();
+      const caName = CA_SLUGS[caSlug];
+      if (caName) {
+        const rest = "/" + segments.slice(2).join("/");
+        pathname = rest === "/" ? "/" : rest;
+        url.searchParams.set("ca", caName);
+        modified = true;
+      }
+    }
+  }
+
+  if (!modified) return NextResponse.next();
+
+  url.pathname = pathname;
   return NextResponse.rewrite(url);
 }
 
 export const config = {
-  matcher: "/ca/:path*",
+  matcher: ["/((?!api|_next/static|_next/image|favicon).*)"],
 };
