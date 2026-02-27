@@ -19,7 +19,11 @@ export interface NewCertEvent {
 export async function dispatchNewCertNotification(
   event: NewCertEvent
 ): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "https://bimi.quest");
 
   // CAs whose root should always be shown (comma-separated). Defaults to SSL.com.
   const alwaysShowRootCas = (process.env.DISCORD_SHOW_ROOT_CAS || "SSL.com")
