@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { Sun, Moon, ExternalLink, Shield, Award, Star } from "lucide-react";
+import { formatUtcFull } from "@/components/ui/utc-time";
 
 interface LogoData {
   svg: string | null;
@@ -196,14 +197,14 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
 
           {logo.notBefore && (
             <DetailRow label="Issued">
-              {new Date(logo.notBefore).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+              <span className="tabular-nums">{formatUtcFull(logo.notBefore)}</span>
             </DetailRow>
           )}
 
           {logo.notAfter && (
             <DetailRow label="Expires">
-              <span className={isExpired ? "text-destructive" : ""}>
-                {new Date(logo.notAfter).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+              <span className={`tabular-nums ${isExpired ? "text-destructive" : ""}`}>
+                {formatUtcFull(logo.notAfter)}
                 {isExpired && " (expired)"}
               </span>
             </DetailRow>
