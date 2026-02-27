@@ -27,7 +27,8 @@ interface PendingCert {
   org: string;
   domain: string;
   country: string | null;
-  ca: string;
+  issuer: string;
+  rootCa: string;
   certType: "VMC" | "CMC" | null;
   hasLogo: boolean;
 }
@@ -83,7 +84,8 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
         fingerprintSha256: cert.fingerprintSha256,
         domain: cert.domain,
         org: cert.org || "unknown",
-        ca: cert.ca,
+        issuer: cert.issuer,
+        rootCa: cert.rootCa,
         certType: cert.certType ?? "VMC",
         country: cert.country,
         notabilityScore: notability?.score,
@@ -257,7 +259,8 @@ export async function processIngestBatch(
             org: bimiData.subjectOrg || "unknown",
             domain: bimiData.sanList[0] || bimiData.subjectCn || "unknown",
             country: bimiData.subjectCountry,
-            ca: bimiData.issuerOrg || "unknown",
+            issuer: normalizeIssuerOrg(bimiData.issuerOrg) || "unknown",
+            rootCa: rootCaOrg || normalizeIssuerOrg(bimiData.issuerOrg) || "unknown",
             certType: bimiData.certType,
             hasLogo: !!bimiData.logotypeSvg,
           });

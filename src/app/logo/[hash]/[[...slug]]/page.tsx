@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { eq, and, isNotNull } from "drizzle-orm";
+import { sql, and, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { LogoSvg } from "@/components/logo-svg";
@@ -12,8 +12,7 @@ interface Props {
 
 /** Strip a domain to just the name before the first dot: "mail.paypal.com" → "paypal" for 2+ parts, "localhost" → "localhost" */
 function domainSlug(domain: string): string {
-  const parts = domain.toLowerCase().replace(/[^a-z0-9.-]/g, "").split(".");
-  // Use second-level domain if available (e.g., "paypal" from "www.paypal.com")
+  const parts = domain.toLowerCase().replace(/[^a-z0-9.\-]/g, "").split(".");
   if (parts.length >= 2) return parts[parts.length - 2];
   return parts[0] || "logo";
 }
@@ -31,11 +30,12 @@ async function getLogo(hash: string) {
       score: certificates.notabilityScore,
       notBefore: certificates.notBefore,
       notAfter: certificates.notAfter,
+      fingerprintSha256: certificates.fingerprintSha256,
     })
     .from(certificates)
     .where(
       and(
-        eq(certificates.logotypeSvgHash, hash),
+        sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`,
         isNotNull(certificates.logotypeSvg),
       )
     )
@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${org} BIMI Logo`,
       description: `${logo.certType ?? "Certificate"} logo issued by ${logo.issuer ?? "unknown CA"}.`,
-      images: [`/api/logo/${hash}`],
+      images: logo.svgHash ? [`/api/logo/${logo.svgHash}`] : [],
     },
   };
 }
@@ -113,6 +113,13 @@ export default async function LogoPage({ params }: Props) {
       {/* Details */}
       <div className="rounded-lg border bg-card p-4 space-y-3 text-sm">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          <span className="text-muted-foreground">Certificate</span>
+          <Link
+            href={`/certificates/${logo.fingerprintSha256.slice(0, 12)}`}
+            className="text-primary hover:underline font-mono text-xs"
+          >
+            {logo.fingerprintSha256.slice(0, 12)}&hellip;
+          </Link>
           {logo.certType && (
             <>
               <span className="text-muted-foreground">Type</span>

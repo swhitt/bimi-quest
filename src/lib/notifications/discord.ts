@@ -3,7 +3,8 @@ import { log } from "@/lib/logger";
 export interface DiscordCertPayload {
   domain: string;
   org: string;
-  ca: string;
+  issuer: string;
+  rootCa: string;
   certType: "VMC" | "CMC";
   country: string | null;
   certId: number;
@@ -13,6 +14,8 @@ export interface DiscordCertPayload {
   notabilityReason?: string | null;
   companyDescription?: string | null;
   hasLogo?: boolean;
+  /** CAs whose root CA should always be shown even when it matches the issuer. Configurable via DISCORD_SHOW_ROOT_CAS env var. */
+  alwaysShowRootCas?: string[];
 }
 
 // CA brand colors for Discord embeds
@@ -34,16 +37,24 @@ export async function sendDiscordNotification(
     return;
   }
 
-  const color = CA_COLORS[payload.ca] ?? DEFAULT_COLOR;
+  const color = CA_COLORS[payload.rootCa] ?? CA_COLORS[payload.issuer] ?? DEFAULT_COLOR;
   const certUrl = `${payload.baseUrl}/certificates/${payload.fingerprintSha256.slice(0, 12)}`;
+
+  const alwaysShowRoot = payload.alwaysShowRootCas ?? [];
+  const showRootCa =
+    payload.rootCa !== payload.issuer ||
+    alwaysShowRoot.some((ca) => payload.rootCa.includes(ca) || payload.issuer.includes(ca));
 
   const embed = {
     title: `New ${payload.certType} Certificate`,
-    description: `**${payload.org || payload.domain}** obtained a BIMI ${payload.certType} from **${payload.ca}**`,
+    description: `**${payload.org || payload.domain}** obtained a BIMI ${payload.certType} from **${payload.issuer}**`,
     color,
     fields: [
       { name: "Domain", value: payload.domain, inline: true },
-      { name: "CA", value: payload.ca, inline: true },
+      { name: "Issuer", value: payload.issuer, inline: true },
+      ...(showRootCa
+        ? [{ name: "Root CA", value: payload.rootCa, inline: true }]
+        : []),
       { name: "Type", value: payload.certType, inline: true },
       ...(payload.country
         ? [{ name: "Country", value: payload.country, inline: true }]

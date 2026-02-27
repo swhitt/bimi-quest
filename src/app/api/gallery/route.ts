@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
     const [rows, [totalRow]] = await Promise.all([
       db
         .select({
+          fingerprint: sql<string>`(array_agg(${certificates.fingerprintSha256} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("fingerprint"),
           svgHash: sql<string>`(array_agg(${certificates.logotypeSvgHash} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("svg_hash"),
           svg: sql<string>`(array_agg(${certificates.logotypeSvg} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("svg"),
           org: sql<string>`(array_agg(${certificates.subjectOrg} ORDER BY ${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC))[1]`.as("org"),

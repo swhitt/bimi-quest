@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     if (ca) conditions.push(eq(certificates.issuerOrg, ca));
     if (root) conditions.push(eq(certificates.rootCaOrg, root));
     if (certType) conditions.push(eq(certificates.certType, certType));
-    if (mark) conditions.push(ilike(certificates.markType, `%${mark}%`));
+    if (mark) conditions.push(eq(certificates.markType, mark));
     const fromDate = parseDate(from);
     const toDate = parseDate(to);
     if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));

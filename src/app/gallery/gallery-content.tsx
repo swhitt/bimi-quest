@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 
 interface Logo {
+  fingerprint: string;
   svgHash: string;
   svg: string | null;
   org: string | null;
@@ -175,14 +176,14 @@ function tileBgForSvg(svg: string): string {
 }
 
 function domainSlug(domain: string): string {
-  const parts = domain.toLowerCase().replace(/[^a-z0-9.-]/g, "").split(".");
+  const parts = domain.toLowerCase().replace(/[^a-z0-9.\-]/g, "").split(".");
   if (parts.length >= 2) return parts[parts.length - 2];
   return parts[0] || "logo";
 }
 
 function LogoTile({ logo }: { logo: Logo }) {
-  const linkHref = logo.svgHash
-    ? `/logo/${logo.svgHash}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
+  const linkHref = logo.fingerprint
+    ? `/logo/${logo.fingerprint.slice(0, 16)}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
     : null;
 
   // Strip baked-in white backgrounds, then pick tile bg from content colors

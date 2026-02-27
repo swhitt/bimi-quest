@@ -18,6 +18,7 @@ import {
   CA_SLUG_TO_NAME,
   ROOT_CA_OPTIONS,
 } from "@/lib/ca-slugs";
+import { ALL_MARK_TYPES } from "@/lib/mark-types";
 
 const CERT_TYPES = [
   { value: "all", label: "All Types" },
@@ -27,8 +28,7 @@ const CERT_TYPES = [
 
 const MARK_OPTIONS = [
   { value: "all", label: "All Marks" },
-  { value: "Government", label: "Government Mark" },
-  { value: "Registered", label: "Registered Mark" },
+  ...ALL_MARK_TYPES.map((m) => ({ value: m.value, label: m.title })),
 ];
 
 const VALIDITY_OPTIONS = [

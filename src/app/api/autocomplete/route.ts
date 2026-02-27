@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
   const pattern = `%${q}%`;
 
   try {
-    // Search SANs and orgs in parallel, ranked by cert count
+    // Search SANs and orgs in parallel, ranked by similarity then cert count.
+    // pg_trgm accelerates the ILIKE on subject_org via GIN index;
+    // SAN unnest still does a seq scan but the dataset is small enough.
     const result = await db.execute(sql`
       (
         SELECT s.domain AS label, 'domain' AS type, COUNT(*)::int AS count
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       (
         SELECT subject_org AS label, 'org' AS type, COUNT(*)::int AS count
         FROM certificates
-        WHERE lower(subject_org) LIKE ${pattern}
+        WHERE subject_org ILIKE ${pattern}
         GROUP BY subject_org
         ORDER BY count DESC
         LIMIT 4

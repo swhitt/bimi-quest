@@ -349,12 +349,13 @@ function extractMarkType(cert: X509Certificate): string | null {
 /** Derive cert type (VMC or CMC) from mark type */
 export function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
   if (!markType) return null;
-  const vmcTypes = ["Registered Mark", "Government Mark"];
-  if (vmcTypes.some((t) => markType.includes(t))) return "VMC";
+  // CMC types checked first — "Modified Registered Mark" contains "Registered Mark"
+  // so CMC-specific types must match before the broader VMC check
   const cmcTypes = ["Prior Use Mark", "Modified Registered Mark", "Pending Registration Mark"];
   if (cmcTypes.some((t) => markType.includes(t))) return "CMC";
-  // Unknown mark type - default to VMC since Gorgon is a BIMI-only log
-  return "VMC";
+  const vmcTypes = ["Registered Mark", "Government Mark"];
+  if (vmcTypes.some((t) => markType.includes(t))) return "VMC";
+  return null;
 }
 
 /** Try to extract SVG logotype from the logotype extension (RFC 3709).
