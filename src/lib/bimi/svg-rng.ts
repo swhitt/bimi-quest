@@ -1,20 +1,9 @@
 import type { BimiCheckItem } from "./types";
+import { SVG_TINY_PS_RNG_SCHEMA } from "./svg-rng-schema";
 
 export interface RngValidationResult {
   valid: boolean;
   errors: string[];
-}
-
-let cachedSchema: string | null = null;
-
-async function getSchema(): Promise<string> {
-  if (!cachedSchema) {
-    const { readFile } = await import("node:fs/promises");
-    const { resolve } = await import("node:path");
-    const schemaPath = resolve(process.cwd(), "rfc/svg_tiny_ps.rng");
-    cachedSchema = await readFile(schemaPath, "utf-8");
-  }
-  return cachedSchema;
 }
 
 /** Validate an SVG string against the SVG Tiny PS RELAX NG schema */
@@ -23,7 +12,7 @@ export async function validateSvgRng(
 ): Promise<RngValidationResult> {
   try {
     const { validateXML } = await import("xmllint-wasm");
-    const schema = await getSchema();
+    const schema = SVG_TINY_PS_RNG_SCHEMA;
 
     const result = await validateXML({
       xml: [{ fileName: "input.svg", contents: svgContent }],
