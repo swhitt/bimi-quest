@@ -1,5 +1,3 @@
-import DOMPurify from "dompurify";
-
 const ALLOWED_TAGS = [
   "svg",
   "g",
@@ -97,13 +95,19 @@ function ensureViewBox(svg: string): string {
   return svg.replace(/<svg\b/, `<svg viewBox="0 0 ${wMatch[1]} ${hMatch[1]}"`);
 }
 
+// Lazy-loaded DOMPurify instance (client-only, avoids jsdom on server)
+let purify: typeof import("dompurify").default | null = null;
+
 /** Sanitize SVG markup, stripping scripts and event handlers */
 export function sanitizeSvg(raw: string): string {
-  // DOMPurify requires a browser DOM; during SSR pass through as-is
-  // (all callers are "use client" components, so this sanitizes on hydration)
-  if (typeof window === "undefined") return ensureViewBox(raw);
   const normalized = ensureViewBox(raw);
-  return DOMPurify.sanitize(normalized, {
+  // During SSR pass through as-is; all callers are "use client" components
+  if (typeof window === "undefined") return normalized;
+  if (!purify) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    purify = require("dompurify").default;
+  }
+  return purify!.sanitize(normalized, {
     USE_PROFILES: { svg: true, svgFilters: true },
     ALLOWED_TAGS,
     ALLOWED_ATTR: ALLOWED_ATTRS,
