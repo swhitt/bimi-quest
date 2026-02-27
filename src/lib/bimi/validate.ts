@@ -762,8 +762,8 @@ function parsePemBasicInfo(
     const markType = extractDnField(cert.subject, MARK_TYPE_OID);
     const certType = deriveCertType(markType);
 
-    // Extract issuer org from DN
-    const issuerOrg = extractDnField(cert.issuer, "2.5.4.10"); // OID for organizationName
+    // Extract issuer org from DN (try short name first, fall back to OID)
+    const issuerOrg = extractDnField(cert.issuer, "O") ?? extractDnField(cert.issuer, "2.5.4.10");
 
     const sans: string[] = [];
     try {
