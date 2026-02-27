@@ -67,19 +67,73 @@ const NAMED_COLOR_LUM: Record<string, number> = {
 
 const SKIP_COLORS = new Set(["none", "transparent", "inherit", "currentcolor", "url"]);
 
+const WHITE_FILLS = new Set(["#fff", "#ffffff", "white", "rgb(255,255,255)", "rgb(255, 255, 255)"]);
+
+/**
+ * Strip baked-in white background rects from SVGs so the tile bg shows through.
+ * Detects the first <rect> with a white fill that covers the full viewBox and
+ * replaces it with fill="none". This lets colorful logos render against the
+ * dark tile background instead of their own white canvas.
+ */
+function stripWhiteSvgBg(svg: string): string {
+  // Parse viewBox dimensions
+  const vbMatch = svg.match(/viewBox=["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
+  if (!vbMatch) return svg;
+  const vbW = parseFloat(vbMatch[1]);
+  const vbH = parseFloat(vbMatch[2]);
+  if (!vbW || !vbH) return svg;
+
+  // Find rects in the first portion of the SVG (background rects come early)
+  const searchRegion = svg.slice(0, Math.min(svg.length, 1200));
+  const rectRe = /<rect\b([^>]*)\/?>|<rect\b([^>]*)>[^<]*<\/rect>/gi;
+  let m;
+  while ((m = rectRe.exec(searchRegion)) !== null) {
+    const attrs = m[1] || m[2];
+
+    // Check fill is white
+    const fillMatch = attrs.match(/fill=["']([^"']+)["']/i);
+    if (!fillMatch) continue;
+    const fill = fillMatch[1].toLowerCase().trim();
+    if (!WHITE_FILLS.has(fill)) continue;
+
+    // Check dimensions cover the full canvas (within 10% tolerance)
+    const wMatch = attrs.match(/\bwidth=["']([^"']+)["']/i);
+    const hMatch = attrs.match(/\bheight=["']([^"']+)["']/i);
+    if (!wMatch || !hMatch) continue;
+
+    const w = wMatch[1], h = hMatch[1];
+    const coversW = w === "100%" || Math.abs(parseFloat(w) - vbW) < vbW * 0.1;
+    const coversH = h === "100%" || Math.abs(parseFloat(h) - vbH) < vbH * 0.1;
+    if (!coversW || !coversH) continue;
+
+    // Check position is at origin
+    const xMatch = attrs.match(/\bx=["']([^"']+)["']/i);
+    const yMatch = attrs.match(/\by=["']([^"']+)["']/i);
+    const x = xMatch ? parseFloat(xMatch[1]) : 0;
+    const y = yMatch ? parseFloat(yMatch[1]) : 0;
+    if (Math.abs(x) > vbW * 0.05 || Math.abs(y) > vbH * 0.05) continue;
+
+    // Replace this rect's fill with none
+    return svg.replace(m[0], m[0].replace(/fill=["'][^"']+["']/, 'fill="none"'));
+  }
+
+  return svg;
+}
+
 /**
  * Analyze SVG markup to pick a tile background color.
- * Extracts ALL colors from the SVG (attributes, inline styles, style blocks)
- * to determine if the content is dark (needs light bg) or light (dark bg is fine).
+ * Runs on the stripped SVG (white bg already removed) so it only sees
+ * actual content colors. Dark content gets a light tile bg for contrast.
  */
 function tileBgForSvg(svg: string): string {
   const DEFAULT_DARK = "rgb(38 38 38)";  // neutral-800
   const LIGHT_BG = "rgb(243 244 246)";    // gray-100
 
-  // Check if SVG has a large background rect (covers its own bg)
-  // Match rect with width >= 100 or width="100%" near the start of the SVG
+  // Check if SVG has a large visible non-white background rect (covers its own bg).
+  // Skip rects with fill="none" since those are invisible clip/layout rects.
   const firstFewElements = svg.slice(0, Math.min(svg.length, 800));
-  if (/<rect[^>]*(?:width=["']100%|width=["']\d{3,})/i.test(firstFewElements)) {
+  const bgRectMatch = firstFewElements.match(/<rect[^>]*(?:width=["']100%|width=["']\d{3,})[^>]*>/i);
+  if (bgRectMatch && !/fill=["']none["']/i.test(bgRectMatch[0])) {
     return DEFAULT_DARK;
   }
 
@@ -108,7 +162,7 @@ function tileBgForSvg(svg: string): string {
   if (lums.length === 0) return LIGHT_BG;
 
   // Filter out very light colors (likely backgrounds baked into the SVG)
-  // and very dark colors to focus on the "content" mid-range
+  // and focus on the "content" mid-range
   const contentLums = lums.filter((l) => l < 0.9);
   const avgAll = lums.reduce((a, b) => a + b, 0) / lums.length;
   const avg = contentLums.length > 0
@@ -120,25 +174,40 @@ function tileBgForSvg(svg: string): string {
   return DEFAULT_DARK;
 }
 
-function LogoTile({ logo }: { logo: Logo }) {
-  const linkHref = logo.org
-    ? `/orgs/${encodeURIComponent(logo.org)}`
-    : logo.domain
-      ? `/hosts/${encodeURIComponent(logo.domain)}`
-      : null;
+function domainSlug(domain: string): string {
+  const parts = domain.toLowerCase().replace(/[^a-z0-9.-]/g, "").split(".");
+  if (parts.length >= 2) return parts[parts.length - 2];
+  return parts[0] || "logo";
+}
 
-  const bgColor = logo.svg ? tileBgForSvg(logo.svg) : undefined;
+function LogoTile({ logo }: { logo: Logo }) {
+  const linkHref = logo.svgHash
+    ? `/logo/${logo.svgHash}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
+    : null;
+
+  // Strip baked-in white backgrounds, then pick tile bg from content colors
+  const strippedSvg = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
+  const bgColor = strippedSvg ? tileBgForSvg(strippedSvg) : undefined;
+  const isLightBg = bgColor?.includes("243");
+  const ringColor = isLightBg ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)";
 
   const tile = (
     <div
-      className="group relative aspect-square border border-white/[0.06] bg-neutral-800 transition-all duration-300 ease-out hover:z-20 hover:scale-[1.35] hover:rounded-lg"
-      style={bgColor ? { backgroundColor: bgColor } : undefined}
+      className="group relative aspect-square bg-neutral-800 transition-all duration-200 ease-out hover:z-20 hover:scale-[1.25] hover:rounded-md"
+      style={{
+        ...(bgColor ? { backgroundColor: bgColor } : {}),
+        // @ts-expect-error CSS custom property
+        "--ring": ringColor,
+        boxShadow: "0 0 0 0px var(--ring)",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 0 3px var(--ring)`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `0 0 0 0px var(--ring)`; }}
     >
-      {logo.svg ? (
+      {strippedSvg ? (
         <div
           className="flex h-full w-full items-center justify-center [&>svg]:h-full [&>svg]:w-full"
           dangerouslySetInnerHTML={{
-            __html: sanitizeSvg(logo.svg),
+            __html: sanitizeSvg(strippedSvg),
           }}
         />
       ) : (
@@ -146,31 +215,11 @@ function LogoTile({ logo }: { logo: Logo }) {
           No image
         </div>
       )}
-      {/* Floating tooltip below the tile */}
-      <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 -translate-x-1/2 scale-90 opacity-0 transition-all duration-200 group-hover:scale-100 group-hover:opacity-100">
-        <div className="relative whitespace-nowrap rounded-lg bg-neutral-900 px-2.5 py-1.5 shadow-xl ring-1 ring-white/10">
-          {/* Arrow */}
-          <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-neutral-900 ring-1 ring-white/10 [clip-path:polygon(0_0,100%_0,0_100%)]" />
-          <p className="text-center text-[10px] font-bold text-white">
-            {logo.org || "Unknown"}
-          </p>
-          <p className="text-center text-[8px] text-white/50">
-            {logo.domain || "---"}
-          </p>
-          <div className="mt-0.5 flex items-center justify-center gap-1 text-[8px]">
-            {logo.certType && (
-              <span className="rounded-full bg-white/15 px-1 py-px text-white/70">
-                {logo.certType}
-              </span>
-            )}
-            {logo.issuer && (
-              <span className="text-white/40">{logo.issuer}</span>
-            )}
-            {logo.rootCa && logo.rootCa !== logo.issuer && (
-              <span className="text-white/30">/ {logo.rootCa}</span>
-            )}
-          </div>
-        </div>
+      {/* Tooltip */}
+      <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-1.5 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <p className="max-w-48 truncate whitespace-nowrap rounded bg-black/80 px-2 py-0.5 text-center text-[10px] text-white/90 backdrop-blur-sm">
+          {logo.org || logo.domain || "Unknown"}
+        </p>
       </div>
     </div>
   );
@@ -203,9 +252,9 @@ export function GalleryContent() {
   const router = useRouter();
   const initialPage = parseInt(searchParams.get("page") ?? "1") || 1;
 
-  const [sort, setSort] = useState(searchParams.get("sort") ?? "score");
-  const [minScore, setMinScore] = useState(searchParams.get("minScore") ?? "3");
-  const [infiniteScroll, setInfiniteScroll] = useState(false);
+  const [sort, setSort] = useState(searchParams.get("sort") ?? "recent");
+  const [minScore, setMinScore] = useState(searchParams.get("minScore") ?? "7");
+  const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(initialPage);
@@ -240,8 +289,8 @@ export function GalleryContent() {
 
           const params = new URLSearchParams();
           if (p > 1) params.set("page", String(p));
-          if (sort !== "score") params.set("sort", sort);
-          if (minScore !== "3") params.set("minScore", minScore);
+          if (sort !== "recent") params.set("sort", sort);
+          if (minScore !== "7") params.set("minScore", minScore);
           const qs = params.toString();
           router.replace(qs ? `/gallery?${qs}` : "/gallery", { scroll: false });
         })
@@ -342,7 +391,7 @@ export function GalleryContent() {
         </div>
       )}
 
-      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15">
+      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15 bg-neutral-800">
         {loading
           ? Array.from({ length: 60 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square w-full" />
