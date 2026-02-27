@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { sql, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { getOgFonts } from "@/lib/og/fonts";
@@ -26,7 +26,7 @@ export async function GET(
     .from(certificates)
     .where(
       and(
-        sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`,
+        eq(certificates.logotypeSvgHash, hash),
         isNotNull(certificates.logotypeSvg),
       ),
     )
