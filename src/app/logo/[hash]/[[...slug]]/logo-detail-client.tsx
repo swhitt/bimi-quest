@@ -80,7 +80,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/gallery" className="hover:text-foreground transition-colors">Gallery</Link>
+        <Link href="/logos" className="hover:text-foreground transition-colors">Gallery</Link>
         <span className="text-muted-foreground/50">/</span>
         <span className="text-foreground truncate font-medium">{logo.org}</span>
       </nav>

@@ -11,7 +11,7 @@ import { caNameToSlug } from "@/lib/ca-slugs";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/certificates", label: "Certificates" },
-  { href: "/gallery", label: "Logos" },
+  { href: "/logos", label: "Logos" },
   { href: "/validate", label: "Validate" },
   { href: "/map", label: "Map" },
 ];

@@ -300,7 +300,7 @@ export function GalleryContent() {
       setError(null);
       if (!append) window.scrollTo({ top: 0, behavior: "smooth" });
 
-      fetch(`/api/gallery?page=${p}&limit=${ITEMS_PER_PAGE}&sort=${sort}&minScore=${minScore}`)
+      fetch(`/api/logos?page=${p}&limit=${ITEMS_PER_PAGE}&sort=${sort}&minScore=${minScore}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load");
           return res.json();
@@ -319,7 +319,7 @@ export function GalleryContent() {
           if (minScore !== "7") params.set("minScore", minScore);
           const pageSuffix = p > 1 ? `/page/${p}` : "";
           const qs = params.toString();
-          router.replace(`/gallery${pageSuffix}${qs ? `?${qs}` : ""}`, { scroll: false });
+          router.replace(`/logos${pageSuffix}${qs ? `?${qs}` : ""}`, { scroll: false });
         })
         .catch((err) =>
           setError(err instanceof Error ? err.message : "Failed to load gallery")

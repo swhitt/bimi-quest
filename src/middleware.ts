@@ -13,7 +13,7 @@ const CA_SLUGS: Record<string, string> = {
 /**
  * Middleware handles two URL rewrites:
  *  1. /ca/digicert/certificates -> /certificates?ca=DigiCert
- *  2. /gallery/page/3           -> /gallery?page=3  (any route with /page/N suffix)
+ *  2. /logos/page/3           -> /logos?page=3  (any route with /page/N suffix)
  * Both can combine: /ca/digicert/certificates/page/2 -> /certificates?ca=DigiCert&page=2
  */
 export function middleware(request: NextRequest) {
