@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { sql, and, isNotNull } from "drizzle-orm";
-import { parse as parseDomain } from "tldts";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { displayIssuerOrg } from "@/lib/ca-display";
@@ -12,8 +11,9 @@ interface Props {
 }
 
 function domainSlug(domain: string): string {
-  const result = parseDomain(domain);
-  return result.domainWithoutSuffix?.toLowerCase() || "logo";
+  // Extract the main part of the domain (e.g. "aws" from "aws.com")
+  const parts = domain.replace(/^www\./, "").split(".");
+  return (parts.length >= 2 ? parts[parts.length - 2] : parts[0])?.toLowerCase() || "logo";
 }
 
 async function getLogo(hash: string) {
