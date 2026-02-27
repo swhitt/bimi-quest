@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { LogoSvg } from "@/components/logo-svg";
+import { stripWhiteSvgBg, tileBgForSvg, isLightBg, DARK_BG, LIGHT_BG } from "@/lib/svg-bg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMarkTypeInfo } from "@/lib/mark-types";
@@ -65,7 +66,15 @@ function ScoreStars({ score }: { score: number }) {
 }
 
 export function LogoDetailClient({ logo }: { logo: LogoData }) {
-  const [bgMode, setBgMode] = useState<"dark" | "light">("dark");
+  const autoBg = useMemo(() => {
+    if (!logo.svg) return DARK_BG;
+    const stripped = stripWhiteSvgBg(logo.svg);
+    return tileBgForSvg(stripped);
+  }, [logo.svg]);
+  const autoIsLight = isLightBg(autoBg);
+  const strippedSvg = useMemo(() => logo.svg ? stripWhiteSvgBg(logo.svg) : null, [logo.svg]);
+
+  const [bgMode, setBgMode] = useState<"auto" | "dark" | "light">("auto");
   const now = new Date();
   const isExpired = logo.notAfter ? new Date(logo.notAfter) < now : false;
   const mtInfo = getMarkTypeInfo(logo.markType);
@@ -92,13 +101,19 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           <div
             className={`w-72 h-72 rounded-2xl p-5 ring-1 transition-colors duration-200
               [&>div>svg]:h-full [&>div>svg]:w-full
-              ${bgMode === "dark"
-                ? "bg-neutral-900 ring-white/10"
-                : "bg-white ring-black/10"
+              ${bgMode === "light" || (bgMode === "auto" && autoIsLight)
+                ? "ring-black/10"
+                : "ring-white/10"
               }`}
+            style={{
+              backgroundColor:
+                bgMode === "auto" ? autoBg
+                : bgMode === "dark" ? DARK_BG
+                : LIGHT_BG,
+            }}
           >
             {logo.svg ? (
-              <LogoSvg svg={logo.svg} className="h-full w-full [&>svg]:h-full [&>svg]:w-full" />
+              <LogoSvg svg={bgMode === "light" ? logo.svg : (strippedSvg ?? logo.svg)} className="h-full w-full [&>svg]:h-full [&>svg]:w-full" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                 No image
@@ -110,11 +125,13 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
             <Button
               variant="secondary"
               size="icon-sm"
-              onClick={() => setBgMode(bgMode === "dark" ? "light" : "dark")}
-              title={`Switch to ${bgMode === "dark" ? "light" : "dark"} background`}
+              onClick={() => setBgMode(bgMode === "auto" ? "light" : bgMode === "light" ? "dark" : "auto")}
+              title={`Background: ${bgMode} (click to cycle)`}
               className="backdrop-blur-sm bg-background/80 shadow-md"
             >
-              {bgMode === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+              {(bgMode === "dark" || (bgMode === "auto" && !autoIsLight))
+                ? <Sun className="size-3.5" />
+                : <Moon className="size-3.5" />}
             </Button>
           </div>
         </div>
