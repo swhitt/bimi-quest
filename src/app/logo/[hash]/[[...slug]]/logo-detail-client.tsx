@@ -240,10 +240,6 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
         </div>
       </div>
 
-      {/* Fingerprint */}
-      <p className="text-center text-xs text-muted-foreground/40 font-mono truncate select-all">
-        {logo.fingerprintSha256}
-      </p>
     </div>
   );
 }
