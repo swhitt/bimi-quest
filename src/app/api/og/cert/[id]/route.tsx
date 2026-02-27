@@ -185,13 +185,13 @@ export async function GET(
                 opacity: 0.8,
               }}
             >
-              Issued by {issuerChain}
+              {`Issued by ${issuerChain}`}
             </div>
 
             {/* Validity */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ fontSize: 20, color: colors.mono }}>
-                {fmtDate(cert.notBefore)} → {fmtDate(cert.notAfter)}
+                {`${fmtDate(cert.notBefore)} → ${fmtDate(cert.notAfter)}`}
               </div>
               <div
                 style={{
@@ -223,7 +223,7 @@ export async function GET(
                   color: colors.mono,
                 }}
               >
-                SANs: {sansText}
+                {`SANs: ${sansText}`}
               </div>
             )}
 
@@ -236,7 +236,7 @@ export async function GET(
                 fontFamily: "monospace",
               }}
             >
-              SHA256: {fp}
+              {`SHA256: ${fp}`}
             </div>
           </div>
         </div>
@@ -255,7 +255,7 @@ export async function GET(
             bimi.quest
           </div>
           <div style={{ fontSize: 16, color: colors.mono, opacity: 0.6 }}>
-            crt.sh/?q={cert.fingerprintSha256.slice(0, 16)}
+            {`crt.sh/?q=${cert.fingerprintSha256.slice(0, 16)}`}
           </div>
         </div>
       </div>

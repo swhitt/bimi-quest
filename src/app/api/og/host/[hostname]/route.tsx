@@ -108,7 +108,7 @@ export async function GET(
               fontWeight: 700,
             }}
           >
-            {certCount === 20 ? "20+" : certCount} BIMI certificate{certCount !== 1 ? "s" : ""}
+            {`${certCount === 20 ? "20+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""}`}
           </div>
         </div>
 
