@@ -80,13 +80,20 @@ export function checkRateLimit(
 }
 
 /**
- * Extract client IP from the request, preferring X-Forwarded-For.
+ * Extract client IP from the request.
+ * On Vercel, the leftmost X-Forwarded-For entry is the client IP (Vercel
+ * appends its own and strips spoofed entries). Falls back to the last entry
+ * for other reverse-proxy setups, then to "unknown".
  */
 export function getClientIP(request: Request): string {
+  // Vercel sets this header to the verified client IP
+  const vercelIp = request.headers.get("x-real-ip");
+  if (vercelIp) return vercelIp.trim();
+
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
     const parts = forwarded.split(",").map((s) => s.trim());
-    return parts[parts.length - 1] || "unknown";
+    return parts[0] || "unknown";
   }
   return "unknown";
 }

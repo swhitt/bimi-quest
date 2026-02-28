@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalFilterBar } from "@/components/global-filter-bar";
 import { UpdateBanner } from "@/components/update-banner";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -75,6 +77,8 @@ export default function RootLayout({
             <Footer />
             <UpdateBanner />
           </TooltipProvider>
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>

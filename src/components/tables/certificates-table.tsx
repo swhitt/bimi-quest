@@ -97,10 +97,12 @@ function SortHeader({
   onSort: (key: string) => void;
 }) {
   const isActive = currentSort === sortKey;
+  const ariaSortValue = isActive ? (currentDir === "asc" ? "ascending" : "descending") : undefined;
   return (
     <button
       className="flex items-center gap-1 hover:text-foreground transition-colors -ml-2 px-2 py-1 rounded"
       onClick={() => onSort(sortKey)}
+      aria-sort={ariaSortValue}
     >
       {label}
       {isActive ? (

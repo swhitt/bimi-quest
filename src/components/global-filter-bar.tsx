@@ -526,7 +526,11 @@ function FilterBarInner() {
         <div className="flex items-center justify-between md:hidden">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <button
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                aria-expanded={sheetOpen}
+                aria-controls="filter-sheet"
+              >
                 <SlidersHorizontal className="size-4" />
                 Filters
                 {filterCount > 0 && (

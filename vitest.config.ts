@@ -4,6 +4,12 @@ import path from "path";
 export default defineConfig({
   test: {
     root: "src",
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["lib/**/*.ts", "app/api/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/*.d.ts"],
+    },
   },
   resolve: {
     alias: {
