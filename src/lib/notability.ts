@@ -203,6 +203,78 @@ export async function scoreNotabilityBatch(
   return results;
 }
 
+const INDUSTRY_TOOL: Anthropic.Messages.Tool = {
+  name: "classify_industry_batch",
+  description: "Classify the industry for a batch of companies",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      results: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "The brand ID from the input" },
+            industry: { type: "string", enum: INDUSTRY_ENUM, description: "Industry sector" },
+          },
+          required: ["id", "industry"],
+        },
+        description: "One result per brand in the input, matched by id",
+      },
+    },
+    required: ["results"],
+  },
+};
+
+/** Classify industry only (no scoring). Cheaper and faster than full scoring. */
+export async function classifyIndustryBatch(
+  brands: BrandInput[]
+): Promise<Map<string, Industry>> {
+  const results = new Map<string, Industry>();
+  const anthropic = getClient();
+  if (!anthropic || brands.length === 0) return results;
+
+  const brandList = brands
+    .map((b) => `- id="${b.id}" org="${b.org}" domain="${b.domain}" country="${b.country}"`)
+    .join("\n");
+
+  try {
+    const msg = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4000,
+      system: "Classify each company into its industry sector. Use the provided tool to respond.",
+      tools: [INDUSTRY_TOOL],
+      tool_choice: { type: "tool", name: "classify_industry_batch" },
+      messages: [
+        {
+          role: "user",
+          content: `Classify these ${brands.length} companies:\n${brandList}`,
+        },
+      ],
+    });
+
+    const toolBlock = msg.content.find(
+      (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
+    );
+    if (!toolBlock) return results;
+
+    const input = toolBlock.input as Record<string, unknown>;
+    const items = Array.isArray(input.results) ? input.results : [];
+
+    for (const r of items) {
+      if (typeof r !== "object" || r === null) continue;
+      const item = r as { id?: string; industry?: string };
+      if (typeof item.id === "string") {
+        results.set(item.id, normalizeIndustry(item.industry));
+      }
+    }
+  } catch (err) {
+    console.warn("classifyIndustryBatch failed:", err instanceof Error ? err.message : String(err));
+  }
+
+  return results;
+}
+
 function isNotabilityInput(v: unknown): v is { score: number; reason: string; description: string; industry?: string; [key: string]: unknown } {
   if (typeof v !== "object" || v === null) return false;
   const obj = v as Record<string, unknown>;

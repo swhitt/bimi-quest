@@ -15,7 +15,7 @@ import {
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { format, parseISO } from "date-fns";
-import { displayRootCa } from "@/lib/ca-display";
+import { displayIssuerOrg } from "@/lib/ca-display";
 
 interface TrendDataPoint {
   month: string;
@@ -69,10 +69,12 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
   // Normalize raw rootCaOrg values to display names
   const normalized = data.map((d) => ({
     ...d,
-    ca: displayRootCa(d.ca),
+    ca: displayIssuerOrg(d.ca),
   }));
 
-  const months = [...new Set(normalized.map((d) => d.month))].sort();
+  // Drop the oldest month since it's always partial (query starts mid-month)
+  const allMonths = [...new Set(normalized.map((d) => d.month))].sort();
+  const months = allMonths.slice(1);
 
   // When a specific CA is selected, show only that CA.
   // When "All Issuers", show stacked bars.

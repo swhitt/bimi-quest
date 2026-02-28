@@ -10,7 +10,7 @@ import {
   extractBIMIData,
   pemToDer,
 } from "@/lib/ct/parser";
-import { scoreNotabilityBatch, type BrandInput } from "@/lib/notability";
+import { scoreNotabilityBatch, classifyIndustryBatch, type BrandInput } from "@/lib/notability";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { X509Certificate } from "@peculiar/x509";
 
@@ -329,6 +329,57 @@ async function rescore(maxCerts = 0) {
   console.log(`\n\nRescore complete. Scored ${scored} certificates.`);
 }
 
+/**
+ * Backfill industry for certs that were scored but have no industry.
+ * Uses a lightweight industry-only classifier (cheaper than full rescore).
+ */
+async function backfillIndustry() {
+  console.log("Backfilling industry for certs with industry IS NULL...\n");
+
+  const BATCH = 50;
+  let classified = 0;
+
+  while (true) {
+    const rows = await sql`
+      SELECT id, subject_org, san_list, subject_country
+      FROM certificates
+      WHERE industry IS NULL AND subject_org IS NOT NULL
+      ORDER BY id DESC
+      LIMIT ${BATCH}
+    `;
+    if (rows.length === 0) break;
+
+    const brands: BrandInput[] = rows
+      .map((row) => {
+        const r = row as { id: number; subject_org: string | null; san_list: string[]; subject_country: string | null };
+        return {
+          id: String(r.id),
+          org: r.subject_org || "",
+          domain: r.san_list?.[0] || "unknown",
+          country: r.subject_country || "unknown",
+        };
+      })
+      .filter((b) => b.org);
+
+    const results = await classifyIndustryBatch(brands);
+
+    for (const row of rows) {
+      const r = row as { id: number; subject_org: string | null; san_list: string[] };
+      const industry = results.get(String(r.id));
+      if (industry) {
+        await sql`UPDATE certificates SET industry = ${industry} WHERE id = ${r.id}`;
+        classified++;
+        const name = r.subject_org || r.san_list?.[0] || "unknown";
+        console.log(`  ${classified}: ${name} -> ${industry}`);
+      }
+    }
+
+    await throttle(100);
+  }
+
+  console.log(`\nBackfill complete. Classified ${classified} certificates.`);
+}
+
 // Entry point
 const mode = process.argv[2] || "backfill";
 console.log(`BIMI Quest Ingestion Worker - Mode: ${mode}`);
@@ -342,6 +393,8 @@ if (mode === "stream") {
 } else if (mode === "rescore") {
   const limit = parseInt(process.argv[3] || "0", 10);
   rescore(limit).catch(console.error);
+} else if (mode === "backfill-industry") {
+  backfillIndustry().catch(console.error);
 } else {
   backfill().catch(console.error);
 }

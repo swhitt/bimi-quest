@@ -16,7 +16,7 @@ import {
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { cn } from "@/lib/utils";
-import { displayRootCa } from "@/lib/ca-display";
+import { displayIssuerOrg } from "@/lib/ca-display";
 
 interface CABreakdown {
   ca: string | null;
@@ -76,7 +76,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
   const chartData = [...data]
     .sort((a, b) => b.total - a.total)
     .map((d) => ({
-      name: displayRootCa(d.ca),
+      name: displayIssuerOrg(d.ca),
       total: d.total,
       vmcCount: d.vmcCount,
       cmcCount: d.cmcCount,

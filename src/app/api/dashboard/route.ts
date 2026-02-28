@@ -52,8 +52,9 @@ export async function GET(request: NextRequest) {
     const caWhere =
       caConditions.length > 0 ? and(...caConditions) : undefined;
 
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+    // Fetch 13 months so the client can drop the partial first month
+    const thirteenMonthsAgo = new Date();
+    thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     const trendConditions = [
       ...baseConditions,
-      gte(certificates.notBefore, twelveMonthsAgo),
+      gte(certificates.notBefore, thirteenMonthsAgo),
     ];
 
     // Run all independent queries in parallel
@@ -92,10 +93,10 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(caWhere),
 
-      // CA breakdown grouped by root CA (base filters)
+      // CA breakdown grouped by issuing CA (base filters)
       db
         .select({
-          ca: certificates.rootCaOrg,
+          ca: certificates.issuerOrg,
           total: count(),
           vmcCount: count(
             sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`
@@ -106,21 +107,21 @@ export async function GET(request: NextRequest) {
         })
         .from(certificates)
         .where(baseWhere)
-        .groupBy(certificates.rootCaOrg)
+        .groupBy(certificates.issuerOrg)
         .orderBy(desc(count())),
 
-      // Monthly trend (last 12 months, grouped by root CA)
+      // Monthly trend (last 12 months, grouped by issuing CA)
       db
         .select({
           month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-          ca: certificates.rootCaOrg,
+          ca: certificates.issuerOrg,
           count: count(),
         })
         .from(certificates)
         .where(and(...trendConditions))
         .groupBy(
           sql`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-          certificates.rootCaOrg
+          certificates.issuerOrg
         )
         .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
 

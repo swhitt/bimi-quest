@@ -17,15 +17,17 @@ const navItems = [
 ];
 
 // Secondary filter keys that travel as query params
-const SECONDARY_FILTER_KEYS = ["type", "validity", "from", "to", "country", "precert", "root"];
+const SECONDARY_FILTER_KEYS = ["type", "mark", "validity", "precert", "root", "industry", "from", "to", "expiresFrom", "expiresTo", "country"];
 
 function NavLinks() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // The CA might come from the middleware rewrite (as ?ca=) or from the path
-  const ca = searchParams.get("ca");
-  const caSlug = ca ? caNameToSlug(ca) : undefined;
+  // CA can come from the path (/ca/{slug}) or middleware rewrite (?ca=Name)
+  const pathCaMatch = pathname.match(/\/ca\/([^/]+)/);
+  const caSlug = pathCaMatch
+    ? pathCaMatch[1].toLowerCase()
+    : (searchParams.get("ca") ? caNameToSlug(searchParams.get("ca")!) : undefined);
 
   function buildHref(href: string) {
     // Build the path: /{page}/ca/{slug} or just /{page}

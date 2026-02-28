@@ -49,14 +49,14 @@ export async function GET(request: NextRequest) {
     if (dataset === "market-share") {
       const rows = await db
         .select({
-          ca: certificates.rootCaOrg,
+          ca: certificates.issuerOrg,
           total: count(),
           vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
           cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
         })
         .from(certificates)
         .where(baseWhere)
-        .groupBy(certificates.rootCaOrg)
+        .groupBy(certificates.issuerOrg)
         .orderBy(desc(count()));
 
       const grandTotal = rows.reduce((s, r) => s + r.total, 0);
@@ -83,22 +83,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // dataset === "trends"
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+    // dataset === "trends" - fetch 13 months, drop the partial first month
+    const thirteenMonthsAgo = new Date();
+    thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
 
-    const trendConditions = [...baseConditions, gte(certificates.notBefore, twelveMonthsAgo)];
+    const trendConditions = [...baseConditions, gte(certificates.notBefore, thirteenMonthsAgo)];
 
-    const rows = await db
+    const allRows = await db
       .select({
         month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-        ca: certificates.rootCaOrg,
+        ca: certificates.issuerOrg,
         count: count(),
       })
       .from(certificates)
       .where(and(...trendConditions))
-      .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.rootCaOrg)
+      .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
       .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`);
+
+    // Drop the partial first month
+    const firstMonth = allRows.length > 0 ? allRows[0].month : null;
+    const rows = firstMonth ? allRows.filter((r) => r.month !== firstMonth) : allRows;
 
     const header = "Month,CA,Count";
     const csvRows = rows.map((r) =>

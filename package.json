@@ -13,6 +13,7 @@
     "ingest:check": "tsx src/workers/ingest.ts check",
     "ingest:reparse": "tsx src/workers/ingest.ts reparse",
     "ingest:rescore": "tsx src/workers/ingest.ts rescore",
+    "ingest:backfill-industry": "tsx src/workers/ingest.ts backfill-industry",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
