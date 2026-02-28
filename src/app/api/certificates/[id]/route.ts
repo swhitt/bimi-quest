@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ip = getClientIP(request);
-  const rl = checkRateLimit(`cert-detail:${ip}`, { windowMs: 60_000, max: 120 });
+  const rl = await checkRateLimit(`cert-detail:${ip}`, { windowMs: 60_000, max: 120 }, request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
 
   const { id: rawId } = await params;

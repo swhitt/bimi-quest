@@ -6,7 +6,7 @@ import { log } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
-  const rl = checkRateLimit(`validate:${ip}`, { windowMs: 60_000, max: 10 });
+  const rl = await checkRateLimit(`validate:${ip}`, { windowMs: 60_000, max: 10 }, request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
 
   try {

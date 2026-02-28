@@ -11,7 +11,7 @@ import { log } from "@/lib/logger";
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
-  const rl = checkRateLimit(`resolve:${ip}`, { windowMs: 60_000, max: 60 });
+  const rl = await checkRateLimit(`resolve:${ip}`, { windowMs: 60_000, max: 60 }, request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
 
   const domain = request.nextUrl.searchParams.get("domain")?.trim();

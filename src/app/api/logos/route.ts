@@ -10,7 +10,7 @@ import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
-  const rl = checkRateLimit(`gallery:${ip}`, { windowMs: 60_000, max: 60 });
+  const rl = await checkRateLimit(`gallery:${ip}`, { windowMs: 60_000, max: 60 }, request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
 
   const params = request.nextUrl.searchParams;

@@ -27,7 +27,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function GET(request: NextRequest) {
   // Rate limit
   const ip = getClientIP(request);
-  const rl = checkRateLimit(`svg-proxy:${ip}`, { windowMs: 60_000, max: 30 });
+  const rl = await checkRateLimit(`svg-proxy:${ip}`, { windowMs: 60_000, max: 30 }, request);
   if (!rl.allowed) return rateLimitResponse({ ...corsHeaders(request), ...rl.headers });
 
   const url = request.nextUrl.searchParams.get("url");

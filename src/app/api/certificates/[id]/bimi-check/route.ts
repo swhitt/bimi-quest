@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ip = getClientIP(_request);
-  const rl = checkRateLimit(`bimi-check:${ip}`, { windowMs: 60_000, max: 20 });
+  const rl = await checkRateLimit(`bimi-check:${ip}`, { windowMs: 60_000, max: 20 }, _request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
   const { id: rawId } = await params;
 

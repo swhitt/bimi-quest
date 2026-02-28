@@ -16,40 +16,40 @@ describe("checkRateLimit", () => {
     return `test-key-${++keyCounter}-${Date.now()}`;
   }
 
-  it("allows requests within the limit", () => {
+  it("allows requests within the limit", async () => {
     const key = uniqueKey();
     const config = { windowMs: 60_000, max: 3 };
 
-    const r1 = checkRateLimit(key, config);
+    const r1 = await checkRateLimit(key, config);
     expect(r1.allowed).toBe(true);
     expect(r1.remaining).toBe(2);
 
-    const r2 = checkRateLimit(key, config);
+    const r2 = await checkRateLimit(key, config);
     expect(r2.allowed).toBe(true);
     expect(r2.remaining).toBe(1);
 
-    const r3 = checkRateLimit(key, config);
+    const r3 = await checkRateLimit(key, config);
     expect(r3.allowed).toBe(true);
     expect(r3.remaining).toBe(0);
   });
 
-  it("blocks requests exceeding the limit", () => {
+  it("blocks requests exceeding the limit", async () => {
     const key = uniqueKey();
     const config = { windowMs: 60_000, max: 2 };
 
-    checkRateLimit(key, config);
-    checkRateLimit(key, config);
+    await checkRateLimit(key, config);
+    await checkRateLimit(key, config);
 
-    const r3 = checkRateLimit(key, config);
+    const r3 = await checkRateLimit(key, config);
     expect(r3.allowed).toBe(false);
     expect(r3.remaining).toBe(0);
   });
 
-  it("returns correct rate limit headers", () => {
+  it("returns correct rate limit headers", async () => {
     const key = uniqueKey();
     const config = { windowMs: 60_000, max: 5 };
 
-    const result = checkRateLimit(key, config);
+    const result = await checkRateLimit(key, config);
     expect(result.headers["X-RateLimit-Limit"]).toBe("5");
     // Header is set before the timestamp push, so it shows pre-push remaining
     expect(result.headers["X-RateLimit-Remaining"]).toBe("5");
@@ -58,12 +58,12 @@ describe("checkRateLimit", () => {
     expect(result.headers["Retry-After"]).toBeUndefined();
   });
 
-  it("includes Retry-After header when blocked", () => {
+  it("includes Retry-After header when blocked", async () => {
     const key = uniqueKey();
     const config = { windowMs: 60_000, max: 1 };
 
-    checkRateLimit(key, config);
-    const blocked = checkRateLimit(key, config);
+    await checkRateLimit(key, config);
+    const blocked = await checkRateLimit(key, config);
 
     expect(blocked.allowed).toBe(false);
     expect(blocked.headers["Retry-After"]).toBeDefined();
@@ -72,51 +72,48 @@ describe("checkRateLimit", () => {
     expect(retryAfter).toBeLessThanOrEqual(60);
   });
 
-  it("allows requests again after window expires", () => {
+  it("allows requests again after window expires", async () => {
     const key = uniqueKey();
     const config = { windowMs: 10_000, max: 1 };
 
-    const r1 = checkRateLimit(key, config);
+    const r1 = await checkRateLimit(key, config);
     expect(r1.allowed).toBe(true);
 
-    const r2 = checkRateLimit(key, config);
+    const r2 = await checkRateLimit(key, config);
     expect(r2.allowed).toBe(false);
 
     // Advance time past the window
     vi.advanceTimersByTime(10_001);
 
-    const r3 = checkRateLimit(key, config);
+    const r3 = await checkRateLimit(key, config);
     expect(r3.allowed).toBe(true);
   });
 
-  it("correctly counts remaining after partial window expiry", () => {
+  it("correctly counts remaining after partial window expiry", async () => {
     const key = uniqueKey();
     const config = { windowMs: 10_000, max: 3 };
 
     // Use up 2 of 3
-    checkRateLimit(key, config);
+    await checkRateLimit(key, config);
     vi.advanceTimersByTime(2_000);
-    checkRateLimit(key, config);
+    await checkRateLimit(key, config);
 
     // Advance so first request falls outside the window but second is still in
     vi.advanceTimersByTime(8_500);
 
-    const result = checkRateLimit(key, config);
+    const result = await checkRateLimit(key, config);
     expect(result.allowed).toBe(true);
-    // Only the second request (from 2s ago, now 10.5s-2s=8.5s old... actually
-    // the second request was at t=2000, and now we're at t=10500, so
-    // 10500-2000=8500 < 10000, so it's still in window. remaining = 3-1-1 = 1
     expect(result.remaining).toBe(1);
   });
 
-  it("runs cleanup after the cleanup interval", () => {
+  it("runs cleanup after the cleanup interval", async () => {
     const key1 = uniqueKey();
     const key2 = uniqueKey();
     const config = { windowMs: 1_000, max: 10 };
 
     // Add entries for two keys
-    checkRateLimit(key1, config);
-    checkRateLimit(key2, config);
+    await checkRateLimit(key1, config);
+    await checkRateLimit(key2, config);
 
     // Advance past the window so entries expire
     vi.advanceTimersByTime(2_000);
@@ -126,7 +123,7 @@ describe("checkRateLimit", () => {
 
     // Trigger cleanup by calling checkRateLimit
     const freshKey = uniqueKey();
-    const result = checkRateLimit(freshKey, config);
+    const result = await checkRateLimit(freshKey, config);
     // The fresh key should have full capacity
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(9);

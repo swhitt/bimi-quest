@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { log } from "@/lib/logger";
 
 /**
- * In-memory per-instance rate limiter with standard rate limit headers.
+ * Distributed rate limiter using @vercel/firewall on Vercel, with an
+ * in-memory per-instance fallback for local development.
  *
- * On Vercel, each serverless function instance maintains its own map, so limits
- * are per-instance rather than global. This still provides meaningful throttling
- * since warm instances handle sequential requests for several minutes, and the
- * per-instance ceiling prevents any single caller from monopolizing a warm instance.
- *
- * For true distributed rate limiting, swap this for a Redis/DB-backed counter.
+ * On Vercel, rate limit rules are configured in the Firewall dashboard.
+ * Each rule ID maps to a key prefix (e.g. "gallery", "validate").
+ * The dashboard controls the actual window/max; the config passed here
+ * is used only for the in-memory fallback and for response headers.
  */
+
+// ---------------------------------------------------------------------------
+// In-memory fallback (local dev / non-Vercel deployments)
+// ---------------------------------------------------------------------------
 
 interface RateLimitEntry {
   timestamps: number[];
@@ -18,7 +21,6 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>();
 
-// Periodic cleanup to prevent unbounded memory growth
 const CLEANUP_INTERVAL = 300_000; // 5 min
 let lastCleanup = Date.now();
 
@@ -32,19 +34,7 @@ function cleanup(windowMs: number) {
   }
 }
 
-export interface RateLimitConfig {
-  windowMs: number;
-  max: number;
-}
-
-export interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  resetMs: number;
-  headers: Record<string, string>;
-}
-
-export function checkRateLimit(
+function checkInMemoryRateLimit(
   key: string,
   config: RateLimitConfig
 ): RateLimitResult {
@@ -81,6 +71,94 @@ export function checkRateLimit(
   return { allowed: true, remaining: remaining - 1, resetMs, headers };
 }
 
+// ---------------------------------------------------------------------------
+// @vercel/firewall distributed rate limiting
+// ---------------------------------------------------------------------------
+
+/**
+ * Try the Vercel WAF rate limiter. Returns null if unavailable (local dev,
+ * package not configured, or firewall rule missing).
+ */
+async function checkFirewallRateLimit(
+  ruleId: string,
+  request: Request
+): Promise<boolean | null> {
+  try {
+    const { checkRateLimit: vercelCheck } = await import("@vercel/firewall");
+    const { rateLimited } = await vercelCheck(ruleId, { request });
+    return rateLimited;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export interface RateLimitConfig {
+  windowMs: number;
+  max: number;
+}
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetMs: number;
+  headers: Record<string, string>;
+}
+
+/**
+ * Check rate limit for a request. Uses @vercel/firewall when deployed on
+ * Vercel (distributed, edge-enforced). Falls back to in-memory otherwise.
+ *
+ * @param key   - Rate limit key, e.g. "gallery:1.2.3.4". The prefix before
+ *                ":" is used as the firewall rule ID on Vercel.
+ * @param config - Window/max for in-memory fallback and response headers.
+ * @param request - The incoming request. Required for @vercel/firewall;
+ *                  omit only in tests.
+ */
+export async function checkRateLimit(
+  key: string,
+  config: RateLimitConfig,
+  request?: Request
+): Promise<RateLimitResult> {
+  // On Vercel, try the distributed firewall check first
+  if (process.env.VERCEL && request) {
+    const ruleId = key.split(":")[0];
+    const rateLimited = await checkFirewallRateLimit(ruleId, request);
+
+    if (rateLimited !== null) {
+      const now = Date.now();
+      const resetMs = now + config.windowMs;
+      if (rateLimited) {
+        const headers: Record<string, string> = {
+          "X-RateLimit-Limit": String(config.max),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(resetMs / 1000)),
+          "Retry-After": String(Math.ceil(config.windowMs / 1000)),
+        };
+        log("warn", "rate_limit.exceeded", { key, max: config.max, windowMs: config.windowMs, distributed: true });
+        return { allowed: false, remaining: 0, resetMs, headers };
+      }
+      // Firewall says allowed — we don't know exact remaining count
+      return {
+        allowed: true,
+        remaining: config.max,
+        resetMs,
+        headers: {
+          "X-RateLimit-Limit": String(config.max),
+          "X-RateLimit-Remaining": String(config.max),
+          "X-RateLimit-Reset": String(Math.ceil(resetMs / 1000)),
+        },
+      };
+    }
+  }
+
+  // Fallback: in-memory rate limiting
+  return checkInMemoryRateLimit(key, config);
+}
+
 /**
  * Extract client IP from the request.
  * On Vercel, the leftmost X-Forwarded-For entry is the client IP (Vercel
@@ -88,7 +166,6 @@ export function checkRateLimit(
  * for other reverse-proxy setups, then to "unknown".
  */
 export function getClientIP(request: Request): string {
-  // Vercel sets this header to the verified client IP
   const vercelIp = request.headers.get("x-real-ip");
   if (vercelIp) return vercelIp.trim();
 
