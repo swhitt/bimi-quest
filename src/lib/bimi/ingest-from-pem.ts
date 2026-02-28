@@ -1,4 +1,5 @@
 import { X509Certificate } from "@peculiar/x509";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { extractBIMIData, hasBIMIOID } from "@/lib/ct/parser";
@@ -66,6 +67,20 @@ export async function ingestFromPem(
       })
       .onConflictDoNothing({ target: certificates.fingerprintSha256 })
       .returning({ fingerprintSha256: certificates.fingerprintSha256 });
+
+    if (inserted) {
+      // Mark any matching precerts as superseded
+      await db
+        .update(certificates)
+        .set({ isSuperseded: true })
+        .where(
+          and(
+            eq(certificates.serialNumber, bimiData.serialNumber),
+            eq(certificates.isPrecert, true),
+            eq(certificates.isSuperseded, false)
+          )
+        );
+    }
 
     return inserted?.fingerprintSha256 ?? null;
   } catch (err) {

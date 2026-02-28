@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   certificates,
@@ -210,6 +210,40 @@ export async function processIngestBatch(
           });
 
         if (inserted) {
+          // Mark precert/final pairs: if we just inserted a final cert, mark
+          // matching precert(s) as superseded. If we inserted a precert and a
+          // final cert already exists, mark this precert as superseded.
+          const isPrecert = parsed.entryType === "precert";
+          if (!isPrecert) {
+            await db
+              .update(certificates)
+              .set({ isSuperseded: true })
+              .where(
+                and(
+                  eq(certificates.serialNumber, bimiData.serialNumber),
+                  eq(certificates.isPrecert, true),
+                  eq(certificates.isSuperseded, false)
+                )
+              );
+          } else {
+            const [finalExists] = await db
+              .select({ id: certificates.id })
+              .from(certificates)
+              .where(
+                and(
+                  eq(certificates.serialNumber, bimiData.serialNumber),
+                  eq(certificates.isPrecert, false)
+                )
+              )
+              .limit(1);
+            if (finalExists) {
+              await db
+                .update(certificates)
+                .set({ isSuperseded: true })
+                .where(eq(certificates.id, inserted.id));
+            }
+          }
+
           // Batch chain cert inserts: compute all fingerprints first, then bulk upsert
           const chainData = await Promise.all(
             parsed.chainPems.map(async (pem) => ({

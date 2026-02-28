@@ -44,6 +44,8 @@ export const certificates = pgTable(
     notabilityReason: text("notability_reason"),
     companyDescription: text("company_description"),
     industry: text("industry"),
+    // True when a precert has been superseded by its matching final certificate
+    isSuperseded: boolean("is_superseded").default(false),
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
     discoverySource: text("discovery_source").default("ct-gorgon"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

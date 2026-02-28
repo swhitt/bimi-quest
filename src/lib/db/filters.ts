@@ -1,4 +1,4 @@
-import { sql, eq, like } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { db } from "./index";
 import { certificates } from "./schema";
 
@@ -52,16 +52,12 @@ export async function resolveCertParam(param: string): Promise<ResolvedCert> {
 }
 
 /**
- * Exclude precertificates that have a matching final certificate (same serial number).
- * Orphan precerts (where the final cert hasn't been logged yet) are kept.
+ * Exclude precertificates that have been superseded by their matching final certificate.
+ * Uses the materialized `is_superseded` column set during ingestion, avoiding
+ * a correlated subquery on every read.
  */
 export function excludeDuplicatePrecerts() {
-  return sql`NOT (
-    ${certificates.isPrecert} = true
-    AND ${certificates.serialNumber} IN (
-      SELECT serial_number FROM certificates WHERE is_precert = false
-    )
-  )`;
+  return eq(certificates.isSuperseded, false);
 }
 
 /**
