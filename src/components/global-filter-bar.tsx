@@ -66,25 +66,22 @@ function FilterBarInner() {
       .catch(() => {});
   }, []);
 
-  // Read CA from path segment /ca/slug
-  const pathMatch = pathname.match(/^\/ca\/([^/]+)/);
+  // Read CA from /{page}/ca/{slug} pattern
+  const pathMatch = pathname.match(/\/ca\/([^/]+)/);
   const caSlug = pathMatch ? pathMatch[1].toLowerCase() : "";
   const ca = caSlug ? (CA_SLUG_TO_NAME[caSlug] ?? "") : "";
+
+  // Extract the base page path (strip /ca/slug and /page/N suffixes)
+  function getBasePath(p: string): string {
+    return p.replace(/\/page\/\d+$/, "").replace(/\/ca\/[^/]+$/, "") || "/";
+  }
 
   // Build a URL preserving secondary filters, with the CA in the path
   const buildUrl = useCallback(
     (newCaSlug: string, updates?: Record<string, string | null>) => {
-      // Strip /page/N suffix and /ca/slug prefix to get the base page path
-      let pagePath = pathname.replace(/\/page\/\d+$/, "");
-      if (pagePath.startsWith("/ca/")) {
-        const segs = pagePath.split("/").filter(Boolean);
-        pagePath = "/" + segs.slice(2).join("/");
-        if (pagePath === "/") pagePath = "/";
-      }
-
-      const base = newCaSlug
-        ? `/ca/${newCaSlug}${pagePath === "/" ? "" : pagePath}`
-        : pagePath;
+      const pagePath = getBasePath(pathname);
+      const caSuffix = newCaSlug ? `/ca/${newCaSlug}` : "";
+      const base = pagePath === "/" ? (caSuffix || "/") : `${pagePath}${caSuffix}`;
 
       const params = new URLSearchParams(searchParams.toString());
       params.delete("ca");
@@ -114,13 +111,7 @@ function FilterBarInner() {
   );
 
   const clearFilters = useCallback(() => {
-    let pagePath = pathname.replace(/\/page\/\d+$/, "");
-    if (pagePath.startsWith("/ca/")) {
-      const segs = pagePath.split("/").filter(Boolean);
-      pagePath = "/" + segs.slice(2).join("/");
-      if (pagePath === "/") pagePath = "/";
-    }
-    router.push(pagePath);
+    router.push(getBasePath(pathname));
   }, [pathname, router]);
 
   // Don't show on validate or about pages

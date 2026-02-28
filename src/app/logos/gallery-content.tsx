@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { stripWhiteSvgBg, tileBgForSvg, isLightBg } from "@/lib/svg-bg";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface Logo {
   fingerprint: string;
@@ -152,11 +153,12 @@ const MIN_SCORE_OPTIONS = [
 
 export function GalleryContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const { buildApiParams } = useGlobalFilters();
+  const filterQuery = buildApiParams();
   const initialPage = parseInt(searchParams.get("page") ?? "1") || 1;
 
   const [sort, setSort] = useState(searchParams.get("sort") ?? "recent");
-  const [minScore, setMinScore] = useState(searchParams.get("minScore") ?? "7");
+  const [minScore, setMinScore] = useState(searchParams.get("minScore") ?? "5");
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
   const [total, setTotal] = useState(0);
@@ -176,7 +178,12 @@ export function GalleryContent() {
       setError(null);
       if (!append) window.scrollTo({ top: 0, behavior: "smooth" });
 
-      fetch(`/api/logos?page=${p}&limit=${ITEMS_PER_PAGE}&sort=${sort}&minScore=${minScore}`)
+      const localParams = new URLSearchParams(filterQuery);
+      localParams.set("page", String(p));
+      localParams.set("limit", String(ITEMS_PER_PAGE));
+      localParams.set("sort", sort);
+      localParams.set("minScore", minScore);
+      fetch(`/api/logos?${localParams}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load");
           return res.json();
@@ -190,12 +197,14 @@ export function GalleryContent() {
           setTotal(result.total);
           setPage(p);
 
+          // Update URL without triggering Next.js navigation (avoids middleware re-render)
           const params = new URLSearchParams();
           if (sort !== "recent") params.set("sort", sort);
-          if (minScore !== "7") params.set("minScore", minScore);
+          if (minScore !== "5") params.set("minScore", minScore);
+          const basePath = window.location.pathname.replace(/\/page\/\d+$/, "");
           const pageSuffix = p > 1 ? `/page/${p}` : "";
           const qs = params.toString();
-          router.replace(`/logos${pageSuffix}${qs ? `?${qs}` : ""}`, { scroll: false });
+          window.history.replaceState(null, "", `${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
         })
         .catch((err) =>
           setError(err instanceof Error ? err.message : "Failed to load gallery")
@@ -205,10 +214,10 @@ export function GalleryContent() {
           setLoadingMore(false);
         });
     },
-    [router, sort, minScore]
+    [sort, minScore, filterQuery]
   );
 
-  // Refetch when sort/minScore changes
+  // Refetch when sort/minScore/filters change
   useEffect(() => {
     setLogos([]);
     fetchPage(1);
@@ -300,7 +309,7 @@ export function GalleryContent() {
               <Skeleton key={i} className="aspect-square w-full" />
             ))
           : logos.map((logo, i) => (
-              <LogoTile key={logo.org ?? `logo-${i}`} logo={logo} />
+              <LogoTile key={logo.fingerprint || `logo-${i}`} logo={logo} />
             ))}
         {loadingMore &&
           Array.from({ length: 30 }).map((_, i) => (

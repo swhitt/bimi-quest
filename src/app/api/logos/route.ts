@@ -5,6 +5,7 @@ import { sql, and, isNotNull, gte } from "drizzle-orm";
 import { log } from "@/lib/logger";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
@@ -23,11 +24,13 @@ export async function GET(request: NextRequest) {
   const minScore = Math.max(0, Math.min(10, parseInt(params.get("minScore") ?? "", 10) || 3));
 
   try {
+    const globalFilters = buildCertificateConditions(params);
     const baseWhere = and(
       isNotNull(certificates.logotypeSvgHash),
       isNotNull(certificates.logotypeSvg),
       isNotNull(certificates.subjectOrg),
-      gte(certificates.notabilityScore, minScore)
+      gte(certificates.notabilityScore, minScore),
+      globalFilters
     );
 
     // Group by normalized org name (lowercase, trimmed) to deduplicate.

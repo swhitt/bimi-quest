@@ -28,8 +28,9 @@ function NavLinks() {
   const caSlug = ca ? caNameToSlug(ca) : undefined;
 
   function buildHref(href: string) {
-    // Build the path: /ca/slug/page or just /page
-    const base = caSlug ? `/ca/${caSlug}${href === "/" ? "" : href}` : href;
+    // Build the path: /{page}/ca/{slug} or just /{page}
+    const caSuffix = caSlug ? `/ca/${caSlug}` : "";
+    const base = href === "/" ? (caSuffix || "/") : `${href}${caSuffix}`;
 
     // Carry forward secondary filters
     const params = new URLSearchParams();
@@ -44,7 +45,7 @@ function NavLinks() {
   // Determine which nav item is active based on actual pathname
   function isActive(href: string) {
     if (href === "/") return pathname === "/" || pathname === `/ca/${caSlug}`;
-    return pathname.endsWith(href);
+    return pathname.startsWith(href);
   }
 
   return (

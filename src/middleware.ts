@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// CA slug -> root_ca_org value used for filtering.
+// CA slug -> issuer_org value used for filtering.
 const CA_SLUGS: Record<string, string> = {
   digicert: "DigiCert",
   entrust: "Entrust",
-  globalsign: "GlobalSign",
+  globalsign: "GlobalSign nv-sa",
   sslcom: "SSL Corporation",
   sectigo: "Sectigo Limited",
 };
 
 /**
  * Middleware handles two URL rewrites:
- *  1. /ca/digicert/certificates -> /certificates?ca=DigiCert
- *  2. /logos/page/3           -> /logos?page=3  (any route with /page/N suffix)
- * Both can combine: /ca/digicert/certificates/page/2 -> /certificates?ca=DigiCert&page=2
+ *  1. /certificates/ca/digicert -> /certificates?ca=DigiCert
+ *  2. /logos/page/3             -> /logos?page=3
+ * Both can combine: /certificates/ca/digicert/page/2 -> /certificates?ca=DigiCert&page=2
  */
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
@@ -29,18 +29,16 @@ export function middleware(request: NextRequest) {
     modified = true;
   }
 
-  // Handle /ca/slug rewrites
-  if (pathname.startsWith("/ca/")) {
-    const segments = pathname.split("/").filter(Boolean);
-    if (segments.length >= 2) {
-      const caSlug = segments[1].toLowerCase();
-      const caName = CA_SLUGS[caSlug];
-      if (caName) {
-        const rest = "/" + segments.slice(2).join("/");
-        pathname = rest === "/" ? "/" : rest;
-        url.searchParams.set("ca", caName);
-        modified = true;
-      }
+  // Handle /ca/slug suffix on any route: /{route}/ca/{slug} -> /{route}?ca=Name
+  const caMatch = pathname.match(/^(.*)\/ca\/([^/]+)$/);
+  if (caMatch) {
+    const basePath = caMatch[1] || "/";
+    const caSlug = caMatch[2].toLowerCase();
+    const caName = CA_SLUGS[caSlug];
+    if (caName) {
+      pathname = basePath === "" ? "/" : basePath;
+      url.searchParams.set("ca", caName);
+      modified = true;
     }
   }
 

@@ -6,7 +6,8 @@
  * this layer is purely for presentation.
  */
 
-// Canonical display names for root CAs
+// Canonical display names for root CAs.
+// Sectigo is intentionally absent: they always chain to SSL.com roots for BIMI.
 const ROOT_CA_DISPLAY: Record<string, string> = {
   "DigiCert": "DigiCert",
   "DigiCert, Inc.": "DigiCert",
@@ -15,7 +16,6 @@ const ROOT_CA_DISPLAY: Record<string, string> = {
   "GlobalSign": "GlobalSign",
   "GlobalSign nv-sa": "GlobalSign",
   "SSL Corporation": "SSL.com",
-  "Sectigo Limited": "Sectigo",
 };
 
 // Canonical display names for issuing CAs (intermediates)

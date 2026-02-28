@@ -13,8 +13,8 @@ export function useGlobalFilters() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Extract issuer CA from /ca/slug/... pattern
-  const pathMatch = pathname.match(/^\/ca\/([^/]+)/);
+  // Extract issuer CA from /{page}/ca/{slug} pattern
+  const pathMatch = pathname.match(/\/ca\/([^/]+)/);
   const ca = pathMatch ? caSlugToName(pathMatch[1]) ?? null : null;
 
   const root = searchParams.get("root") || null;
