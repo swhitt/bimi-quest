@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { useLazyRender } from "@/lib/use-lazy-render";
 
 interface Logo {
   fingerprint: string;
@@ -51,12 +52,27 @@ function LogoTile({ logo }: { logo: Logo }) {
     ? `/logo/${logo.fingerprint.slice(0, 16)}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
     : null;
   const [copied, setCopied] = useState(false);
+  const [lazyRef, isVisible] = useLazyRender<HTMLDivElement>("300px");
 
-  // Strip baked-in white backgrounds, then pick tile bg from content colors
-  const strippedSvg = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
-  const bgColor = strippedSvg ? tileBgForSvg(strippedSvg) : undefined;
-  const lightBg = bgColor ? isLightBg(bgColor) : false;
-  const ringColor = lightBg ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)";
+  // Compute background color eagerly so the placeholder matches the final tile color.
+  // These are cheap regex scans compared to DOMPurify sanitization + DOM insertion.
+  const { bgColor, lightBg, ringColor, strippedSvg } = useMemo(() => {
+    const stripped = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
+    const bg = stripped ? tileBgForSvg(stripped) : undefined;
+    const light = bg ? isLightBg(bg) : false;
+    return {
+      strippedSvg: stripped,
+      bgColor: bg,
+      lightBg: light,
+      ringColor: light ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)",
+    };
+  }, [logo.svg]);
+
+  // Defer the expensive DOMPurify sanitization until the tile is in view
+  const sanitizedHtml = useMemo(() => {
+    if (!isVisible || !strippedSvg) return null;
+    return sanitizeSvg(strippedSvg);
+  }, [isVisible, strippedSvg]);
 
   const handleCopyLink = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,6 +87,7 @@ function LogoTile({ logo }: { logo: Logo }) {
 
   const tile = (
     <div
+      ref={lazyRef}
       className="group relative aspect-square bg-neutral-800 transition-all duration-200 ease-out hover:z-20 hover:scale-[1.25] hover:rounded-md"
       style={{
         ...(bgColor ? { backgroundColor: bgColor } : {}),
@@ -81,17 +98,22 @@ function LogoTile({ logo }: { logo: Logo }) {
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 0 3px var(--ring)`; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `0 0 0 0px var(--ring)`; }}
     >
-      {strippedSvg ? (
-        <div
-          className="flex h-full w-full items-center justify-center [&>svg]:h-full [&>svg]:w-full"
-          dangerouslySetInnerHTML={{
-            __html: sanitizeSvg(strippedSvg),
-          }}
-        />
+      {isVisible ? (
+        sanitizedHtml ? (
+          <div
+            className="flex h-full w-full items-center justify-center [&>svg]:h-full [&>svg]:w-full"
+            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-muted/30 text-xs text-muted-foreground">
+            No image
+          </div>
+        )
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-muted/30 text-xs text-muted-foreground">
-          No image
-        </div>
+        /* Placeholder: colored box matching final bg, with a subtle shimmer */
+        <div className="h-full w-full animate-pulse rounded-sm" style={{
+          backgroundColor: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+        }} />
       )}
       {/* Copy link button */}
       {linkHref && (
