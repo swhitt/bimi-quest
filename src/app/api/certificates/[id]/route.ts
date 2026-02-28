@@ -7,6 +7,7 @@ import { resolveCertParam } from "@/lib/db/filters";
 import { extractDnField, pemToDer } from "@/lib/ct/parser";
 import { X509Certificate } from "@peculiar/x509";
 import { log } from "@/lib/logger";
+import { serverTiming } from "@/lib/server-timing";
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +19,7 @@ export async function GET(
 
   const { id: rawId } = await params;
 
+  const timing = serverTiming();
   try {
     const { id: certId, error } = await resolveCertParam(rawId);
     if (error) return NextResponse.json({ error: error.message }, { status: error.status });
@@ -126,7 +128,7 @@ export async function GET(
       bimiStates,
       sanCertCounts,
     }, {
-      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600", "Server-Timing": timing.header("db") },
     });
   } catch (error) {
     log('error', 'certificate-detail.api.failed', { error: String(error), route: '/api/certificates/[id]' });

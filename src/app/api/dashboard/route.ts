@@ -4,6 +4,7 @@ import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
 import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
 import { log } from "@/lib/logger";
+import { serverTiming } from "@/lib/server-timing";
 
 // Conditions without CA/root filters (for the "total" denominator)
 function buildGlobalConditions(params: URLSearchParams) {
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
   const selectedCA = searchParams.get("ca") || null;
   const selectedRoot = searchParams.get("root") || null;
 
+  const timing = serverTiming();
   try {
     const globalConditions = buildGlobalConditions(searchParams);
     const globalWhere =
@@ -225,6 +227,7 @@ export async function GET(request: NextRequest) {
       {
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Server-Timing": timing.header("db"),
         },
       }
     );

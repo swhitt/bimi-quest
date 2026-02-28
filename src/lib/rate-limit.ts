@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/logger";
 
 /**
  * In-memory per-instance rate limiter with standard rate limit headers.
@@ -70,6 +71,7 @@ export function checkRateLimit(
       Math.ceil((resetMs - now) / 1000)
     );
     store.set(key, entry);
+    log("warn", "rate_limit.exceeded", { key, max: config.max, windowMs: config.windowMs });
     return { allowed: false, remaining: 0, resetMs, headers };
   }
 

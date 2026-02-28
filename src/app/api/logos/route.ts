@@ -4,6 +4,7 @@ import { certificates } from "@/lib/db/schema";
 import { sql, and, isNotNull, gte, lte } from "drizzle-orm";
 import { log } from "@/lib/logger";
 import { CACHE_PRESETS } from "@/lib/cache";
+import { serverTiming } from "@/lib/server-timing";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
   const maxScoreRaw = params.get("maxScore");
   const maxScore = maxScoreRaw ? Math.max(0, Math.min(10, parseInt(maxScoreRaw, 10))) : null;
 
+  const timing = serverTiming();
   try {
     const globalFilters = buildCertificateConditions(params);
     const baseWhere = and(
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
         limit,
       },
       {
-        headers: { "Cache-Control": CACHE_PRESETS.MEDIUM },
+        headers: { "Cache-Control": CACHE_PRESETS.MEDIUM, "Server-Timing": timing.header("db") },
       }
     );
   } catch (error) {
