@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+
+export const revalidate = 3600;
 import { certificates } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 

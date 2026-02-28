@@ -272,7 +272,7 @@ export async function processIngestBatch(
         onProgress?.(
           `Error processing entry ${entryIndex}: ${msg.slice(0, 200)}`
         );
-        break;
+        continue;
       }
     }
 

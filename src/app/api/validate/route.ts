@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     log('error', 'validate.api.failed', { error: String(error), route: '/api/validate' });
     return NextResponse.json(
       { error: "Validation failed" },
-      { status: 500 }
+      { status: 500, headers: rl.headers }
     );
   }
 }
