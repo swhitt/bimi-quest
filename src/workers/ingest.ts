@@ -12,6 +12,7 @@ import {
 } from "@/lib/ct/parser";
 import { scoreNotabilityBatch, classifyIndustryBatch, type BrandInput } from "@/lib/notability";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
+import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
 import { X509Certificate } from "@peculiar/x509";
 
 const connectionString = process.env.DATABASE_URL;
@@ -380,6 +381,114 @@ async function backfillIndustry() {
   console.log(`\nBackfill complete. Classified ${classified} certificates.`);
 }
 
+/**
+ * Score logo visual quality using Gemini Flash-Lite.
+ * Groups by svg_hash to avoid re-scoring identical logos across certs.
+ * Sends batches of 20 logos as 128x128 PNGs for multimodal scoring.
+ *
+ * @param maxLogos - 0 means no limit
+ * @param recalc - if true, re-score all logos (not just unscored)
+ * @param startOffset - for recalc resume: skip this many rows
+ */
+async function scoreLogos(maxLogos = 0, recalc = false, startOffset = 0) {
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY is required for logo scoring");
+    process.exit(1);
+  }
+
+  const modeLabel = recalc ? "recalc" : "backfill";
+  const limitLabel = maxLogos > 0 ? `up to ${maxLogos}` : "all";
+  console.log(`Scoring logo visual quality (${modeLabel}, ${limitLabel}) with Gemini Flash-Lite...`);
+  if (startOffset) console.log(`Resuming from offset ${startOffset}`);
+  console.log();
+
+  const BATCH = 50;
+  let scored = 0;
+  let failed = 0;
+  let offset = startOffset;
+
+  while (true) {
+    if (maxLogos > 0 && scored + failed >= maxLogos) break;
+
+    const remaining = maxLogos > 0 ? Math.min(BATCH, maxLogos - scored - failed) : BATCH;
+
+    const rows = recalc
+      ? await sql`
+          SELECT logotype_svg_hash as hash,
+            (array_agg(logotype_svg ORDER BY notability_score DESC NULLS LAST))[1] as svg,
+            (array_agg(COALESCE(subject_org, san_list[1]) ORDER BY notability_score DESC NULLS LAST))[1] as label
+          FROM certificates
+          WHERE logotype_svg_hash IS NOT NULL
+            AND logotype_svg IS NOT NULL
+          GROUP BY logotype_svg_hash
+          ORDER BY logotype_svg_hash
+          LIMIT ${remaining} OFFSET ${offset}
+        `
+      : await sql`
+          SELECT logotype_svg_hash as hash,
+            (array_agg(logotype_svg ORDER BY notability_score DESC NULLS LAST))[1] as svg,
+            (array_agg(COALESCE(subject_org, san_list[1]) ORDER BY notability_score DESC NULLS LAST))[1] as label
+          FROM certificates
+          WHERE logotype_svg_hash IS NOT NULL
+            AND logotype_svg IS NOT NULL
+            AND logo_quality_score IS NULL
+          GROUP BY logotype_svg_hash
+          LIMIT ${remaining}
+        `;
+    if (rows.length === 0) break;
+
+    // Convert SVGs to PNGs
+    const logos: { svgHash: string; png: Buffer; label: string }[] = [];
+    for (const row of rows) {
+      const { hash, svg, label } = row as { hash: string; svg: string; label: string | null };
+      try {
+        const png = await svgToPng(svg);
+        logos.push({ svgHash: hash, png, label: label || hash.slice(0, 12) });
+      } catch (err) {
+        console.warn(`  SVG render failed for ${hash.slice(0, 12)}...: ${err instanceof Error ? err.message : String(err)}`);
+        await sql`
+          UPDATE certificates SET logo_quality_score = 1
+          WHERE logotype_svg_hash = ${hash}
+        `;
+        failed++;
+      }
+    }
+
+    if (logos.length === 0) continue;
+
+    try {
+      const results = await scoreLogoQualityBatch(logos);
+
+      for (const logo of logos) {
+        const result = results.get(logo.svgHash);
+        const score = result?.score ?? 5;
+        const reason = result?.reason || null;
+        await sql`
+          UPDATE certificates SET logo_quality_score = ${score}, logo_quality_reason = ${reason}
+          WHERE logotype_svg_hash = ${logo.svgHash}
+        `;
+        scored++;
+        console.log(`  ${scored}: ${logo.label} = ${score}/10 (${reason || "no reason"})`);
+      }
+    } catch (err) {
+      console.error(`\n  Gemini API error:`, err instanceof Error ? err.message : String(err));
+      if (recalc) console.error(`  Resume: bun run ingest:score-logos recalc ${offset}`);
+      await throttle(5000);
+    }
+
+    if (recalc) offset += rows.length;
+
+    if ((scored + failed) % 100 === 0) {
+      console.log(`  [checkpoint] ${scored + failed} done${recalc ? `, offset ${offset}` : ""}`);
+    }
+
+    await throttle(200);
+  }
+
+  console.log(`\nLogo scoring complete. Scored ${scored}, failed to render ${failed}.`);
+  if (recalc) console.log(`Final offset: ${offset}`);
+}
+
 // Entry point
 const mode = process.argv[2] || "backfill";
 console.log(`BIMI Quest Ingestion Worker - Mode: ${mode}`);
@@ -395,6 +504,14 @@ if (mode === "stream") {
   rescore(limit).catch(console.error);
 } else if (mode === "backfill-industry") {
   backfillIndustry().catch(console.error);
+} else if (mode === "score-logos") {
+  // score-logos [limit]              — backfill unscored logos
+  // score-logos recalc [offset]      — re-score all, optionally resume from offset
+  const arg3 = process.argv[3] || "";
+  const recalc = arg3 === "recalc";
+  const limit = recalc ? 0 : (parseInt(arg3, 10) || 0);
+  const resumeOffset = recalc ? (parseInt(process.argv[4] || "0", 10) || 0) : 0;
+  scoreLogos(limit, recalc, resumeOffset).catch(console.error);
 } else {
   backfill().catch(console.error);
 }

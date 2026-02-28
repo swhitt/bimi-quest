@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { sql, and, isNotNull, gte } from "drizzle-orm";
+import { sql, and, isNotNull, gte, lte } from "drizzle-orm";
 import { log } from "@/lib/logger";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
@@ -20,8 +20,11 @@ export async function GET(request: NextRequest) {
     Math.max(1, parseInt(params.get("limit") ?? "", 10) || 200)
   );
   const offset = (page - 1) * limit;
-  const sort = params.get("sort") === "recent" ? "recent" : "score";
+  const sortRaw = params.get("sort");
+  const sort = sortRaw === "recent" ? "recent" : sortRaw === "quality" ? "quality" : "score";
   const minScore = Math.max(0, Math.min(10, parseInt(params.get("minScore") ?? "", 10) || 3));
+  const maxScoreRaw = params.get("maxScore");
+  const maxScore = maxScoreRaw ? Math.max(0, Math.min(10, parseInt(maxScoreRaw, 10))) : null;
 
   try {
     const globalFilters = buildCertificateConditions(params);
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
       isNotNull(certificates.logotypeSvg),
       isNotNull(certificates.subjectOrg),
       gte(certificates.notabilityScore, minScore),
+      ...(maxScore !== null ? [lte(certificates.notabilityScore, maxScore)] : []),
       globalFilters
     );
 
@@ -39,12 +43,15 @@ export async function GET(request: NextRequest) {
 
     const orderClause = sort === "recent"
       ? sql`max(${certificates.notBefore}) desc`
+      : sort === "quality"
+      ? sql`max(${certificates.logoQualityScore}) desc nulls last, max(${certificates.notabilityScore}) desc nulls last`
       : sql`max(${certificates.notabilityScore}) desc nulls last, max(${certificates.notBefore}) desc`;
 
-    // When sorting by recency, pick the most recent cert per org group;
-    // when sorting by score, pick the highest-scored cert.
+    // Determines which cert is "representative" within each org group
     const pickOrder = sort === "recent"
       ? sql`${certificates.notBefore} DESC, ${certificates.notabilityScore} DESC NULLS LAST`
+      : sort === "quality"
+      ? sql`${certificates.logoQualityScore} DESC NULLS LAST, ${certificates.notabilityScore} DESC NULLS LAST`
       : sql`${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC`;
 
     const [rows, [totalRow]] = await Promise.all([
@@ -60,6 +67,7 @@ export async function GET(request: NextRequest) {
           rootCa: sql<string>`(array_agg(${certificates.rootCaOrg} ORDER BY ${pickOrder}))[1]`.as("root_ca"),
           count: sql<number>`count(*)::int`.as("count"),
           score: sql<number>`max(${certificates.notabilityScore})`.as("score"),
+          logoQuality: sql<number>`(array_agg(${certificates.logoQualityScore} ORDER BY ${pickOrder}))[1]`.as("logo_quality"),
           ctLogTimestamp: sql<string>`(array_agg(${certificates.ctLogTimestamp} ORDER BY ${pickOrder}))[1]`.as("ct_log_timestamp"),
         })
         .from(certificates)

@@ -26,6 +26,7 @@ interface Logo {
   issuer: string | null;
   rootCa: string | null;
   score: number | null;
+  logoQuality: number | null;
   ctLogTimestamp: string | null;
   count: number;
 }
@@ -119,6 +120,9 @@ function LogoTile({ logo }: { logo: Logo }) {
             {logo.score != null && (
               <span className="text-gray-400 tabular-nums" title="Notability score: brand recognition and email volume">★ {logo.score}/10</span>
             )}
+            {logo.logoQuality != null && (
+              <span className="text-gray-400 tabular-nums" title="Logo visual quality score">◆ {logo.logoQuality}/10</span>
+            )}
           </div>
           <div className="text-gray-400 truncate max-w-52">
             {[logo.domain, logo.issuer, logo.ctLogTimestamp ? new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA") : null].filter(Boolean).join(" · ")}
@@ -140,15 +144,17 @@ function LogoTile({ logo }: { logo: Logo }) {
 
 const SORT_OPTIONS = [
   { value: "score", label: "Top Scored" },
+  { value: "quality", label: "Best Logos" },
   { value: "recent", label: "Most Recent" },
 ];
 
-const MIN_SCORE_OPTIONS = [
-  { value: "1", label: "Score 1+" },
-  { value: "2", label: "Score 2+" },
-  { value: "3", label: "Score 3+" },
-  { value: "5", label: "Score 5+" },
-  { value: "7", label: "Score 7+" },
+const SCORE_RANGE_OPTIONS = [
+  { value: "1-10", label: "All (1-10)", min: 1, max: 10 },
+  { value: "7-10", label: "Top (7-10)", min: 7, max: 10 },
+  { value: "5-10", label: "High (5+)", min: 5, max: 10 },
+  { value: "3-6", label: "Mid (3-6)", min: 3, max: 6 },
+  { value: "1-3", label: "Low (1-3)", min: 1, max: 3 },
+  { value: "1-2", label: "Bottom (1-2)", min: 1, max: 2 },
 ];
 
 export function GalleryContent() {
@@ -158,7 +164,14 @@ export function GalleryContent() {
   const initialPage = parseInt(searchParams.get("page") ?? "1") || 1;
 
   const [sort, setSort] = useState(searchParams.get("sort") ?? "recent");
-  const [minScore, setMinScore] = useState(searchParams.get("minScore") ?? "5");
+  const initRange = (() => {
+    const min = searchParams.get("minScore");
+    const max = searchParams.get("maxScore");
+    if (min && max) return `${min}-${max}`;
+    if (min) return `${min}-10`;
+    return "5-10";
+  })();
+  const [scoreRange, setScoreRange] = useState(initRange);
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
   const [total, setTotal] = useState(0);
@@ -178,11 +191,13 @@ export function GalleryContent() {
       setError(null);
       if (!append) window.scrollTo({ top: 0, behavior: "smooth" });
 
+      const range = SCORE_RANGE_OPTIONS.find((o) => o.value === scoreRange) ?? SCORE_RANGE_OPTIONS[2];
       const localParams = new URLSearchParams(filterQuery);
       localParams.set("page", String(p));
       localParams.set("limit", String(ITEMS_PER_PAGE));
       localParams.set("sort", sort);
-      localParams.set("minScore", minScore);
+      localParams.set("minScore", String(range.min));
+      if (range.max < 10) localParams.set("maxScore", String(range.max));
       fetch(`/api/logos?${localParams}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load");
@@ -190,7 +205,11 @@ export function GalleryContent() {
         })
         .then((result: GalleryResponse) => {
           if (append) {
-            setLogos((prev) => [...prev, ...result.logos]);
+            setLogos((prev) => {
+              const seen = new Set(prev.map((l) => l.fingerprint));
+              const fresh = result.logos.filter((l) => !seen.has(l.fingerprint));
+              return [...prev, ...fresh];
+            });
           } else {
             setLogos(result.logos);
           }
@@ -200,7 +219,7 @@ export function GalleryContent() {
           // Update URL without triggering Next.js navigation (avoids middleware re-render)
           const params = new URLSearchParams();
           if (sort !== "recent") params.set("sort", sort);
-          if (minScore !== "5") params.set("minScore", minScore);
+          if (scoreRange !== "5-10") params.set("score", scoreRange);
           const basePath = window.location.pathname.replace(/\/page\/\d+$/, "");
           const pageSuffix = p > 1 ? `/page/${p}` : "";
           const qs = params.toString();
@@ -214,7 +233,7 @@ export function GalleryContent() {
           setLoadingMore(false);
         });
     },
-    [sort, minScore, filterQuery]
+    [sort, scoreRange, filterQuery]
   );
 
   // Refetch when sort/minScore/filters change
@@ -275,12 +294,12 @@ export function GalleryContent() {
           </SelectContent>
         </Select>
 
-        <Select value={minScore} onValueChange={setMinScore}>
-          <SelectTrigger size="sm" className="w-[110px]" aria-label="Minimum score">
+        <Select value={scoreRange} onValueChange={setScoreRange}>
+          <SelectTrigger size="sm" className="w-[130px]" aria-label="Score range">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {MIN_SCORE_OPTIONS.map((o) => (
+            {SCORE_RANGE_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
           </SelectContent>
@@ -309,7 +328,7 @@ export function GalleryContent() {
               <Skeleton key={i} className="aspect-square w-full" />
             ))
           : logos.map((logo, i) => (
-              <LogoTile key={logo.fingerprint || `logo-${i}`} logo={logo} />
+              <LogoTile key={`${logo.svgHash}-${logo.fingerprint || i}`} logo={logo} />
             ))}
         {loadingMore &&
           Array.from({ length: 30 }).map((_, i) => (

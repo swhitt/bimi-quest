@@ -21,6 +21,7 @@ interface LogoData {
   rawIssuer: string | null;
   rootCa: string | null;
   score: number | null;
+  logoQuality: number | null;
   reason: string | null;
   description: string | null;
   country: string | null;
@@ -224,6 +225,12 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
                 {formatUtcFull(logo.notAfter)}
                 {isExpired && " (expired)"}
               </span>
+            </DetailRow>
+          )}
+
+          {logo.logoQuality != null && (
+            <DetailRow label="Logo Quality">
+              <span className="tabular-nums">{logo.logoQuality}/10</span>
             </DetailRow>
           )}
         </div>

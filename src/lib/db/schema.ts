@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -44,6 +45,9 @@ export const certificates = pgTable(
     notabilityReason: text("notability_reason"),
     companyDescription: text("company_description"),
     industry: text("industry"),
+    // 1-10 visual quality score from multimodal LLM (Gemini Flash-Lite)
+    logoQualityScore: integer("logo_quality_score"),
+    logoQualityReason: text("logo_quality_reason"),
     // True when a precert has been superseded by its matching final certificate
     isSuperseded: boolean("is_superseded").default(false),
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
@@ -54,12 +58,8 @@ export const certificates = pgTable(
   (table) => [
     index("idx_certificates_serial_number").on(table.serialNumber),
     index("idx_certificates_not_before").on(table.notBefore),
-    index("idx_certificates_not_after").on(table.notAfter),
-    index("idx_certificates_root_ca_org").on(table.rootCaOrg),
     index("idx_certificates_issuer_org").on(table.issuerOrg),
-    index("idx_certificates_cert_type").on(table.certType),
     index("idx_certificates_subject_country").on(table.subjectCountry),
-    index("idx_certificates_is_precert").on(table.isPrecert),
     index("idx_certificates_serial_precert").on(
       table.serialNumber,
       table.isPrecert
@@ -70,7 +70,9 @@ export const certificates = pgTable(
     index("idx_certs_notafter_precert").on(table.notAfter, table.isPrecert),
     index("idx_certificates_san_list_gin").using("gin", table.sanList),
     index("idx_certificates_subject_org").on(table.subjectOrg),
-    index("idx_certificates_industry").on(table.industry),
+    index("idx_certificates_svg_hash").on(table.logotypeSvgHash),
+    // Partial index: most queries filter out superseded certs
+    index("idx_certs_active_notbefore").on(table.notBefore).where(sql`${table.isSuperseded} = false`),
   ]
 );
 
