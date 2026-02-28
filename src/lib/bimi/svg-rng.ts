@@ -1,5 +1,9 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import type { BimiCheckItem } from "./types";
-import { SVG_TINY_PS_RNG_SCHEMA } from "./svg-rng-schema";
+
+const schemaPath = join(process.cwd(), "src/lib/bimi/svg-tiny-ps.rng");
+const schema = readFileSync(schemaPath, "utf-8");
 
 export interface RngValidationResult {
   valid: boolean;
@@ -12,7 +16,6 @@ export async function validateSvgRng(
 ): Promise<RngValidationResult> {
   try {
     const { validateXML } = await import("xmllint-wasm");
-    const schema = SVG_TINY_PS_RNG_SCHEMA;
 
     const result = await validateXML({
       xml: [{ fileName: "input.svg", contents: svgContent }],

@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
   },
   // Node.js APIs needed for BIMI validation (dns/promises)
   serverExternalPackages: ["@peculiar/x509", "xmllint-wasm"],
+  outputFileTracingIncludes: {
+    "/api/*": ["./src/lib/bimi/svg-tiny-ps.rng"],
+    "/validate": ["./src/lib/bimi/svg-tiny-ps.rng"],
+    "/certificates/*": ["./src/lib/bimi/svg-tiny-ps.rng"],
+  },
   async headers() {
     return [
       {
