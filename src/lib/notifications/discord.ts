@@ -79,16 +79,33 @@ export async function sendDiscordNotification(
     timestamp: new Date().toISOString(),
   };
 
-  try {
-    const res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ embeds: [embed] }),
-    });
-    if (!res.ok) {
-      log('error', 'discord.webhook.failed', { status: res.status, statusText: res.statusText });
+  const body = JSON.stringify({ embeds: [embed] });
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (res.ok) return;
+
+      if (res.status === 429) {
+        const retryAfter = Number(res.headers.get("retry-after") || "2");
+        const jitter = Math.random() * 1000;
+        await new Promise((r) => setTimeout(r, retryAfter * 1000 + jitter));
+        continue;
+      }
+
+      log('error', 'discord.webhook.failed', { status: res.status, statusText: res.statusText, attempt });
+      return;
+    } catch (err) {
+      if (attempt === maxRetries - 1) {
+        log('error', 'discord.webhook.error', { error: String(err), attempt });
+      }
     }
-  } catch (err) {
-    log('error', 'discord.webhook.error', { error: String(err) });
   }
 }
