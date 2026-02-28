@@ -1,72 +1,30 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { headers } from "next/headers";
 import { CertificatesTable } from "@/components/tables/certificates-table";
-import { useGlobalFilters } from "@/lib/use-global-filters";
+import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 
-export function CertificatesContent() {
-  const searchParams = useSearchParams();
-  const { buildApiParams } = useGlobalFilters();
-  const [data, setData] = useState<{
-    data: [];
-    pagination: { page: 1; limit: 50; total: 0; totalPages: 0 };
-  }>({
-    data: [],
-    pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
+export async function CertificatesContent({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
-  // Page-local params (search, sort, pagination, serial/fingerprint lookup)
-  const page = searchParams.get("page") || "";
-  const search = searchParams.get("search") || "";
-  const sort = searchParams.get("sort") || "";
-  const dir = searchParams.get("dir") || "";
-  const serial = searchParams.get("serial") || "";
-  const fingerprint = searchParams.get("fingerprint") || "";
+  const hdrs = await headers();
+  const host = hdrs.get("host") || "localhost:3000";
+  const protocol = hdrs.get("x-forwarded-proto") || "http";
+  const baseUrl = `${protocol}://${host}`;
 
-  const apiQuery = buildApiParams({
-    ...(page && { page }),
-    ...(search && { search }),
-    ...(sort && { sort }),
-    ...(dir && { dir }),
-    ...(serial && { serial }),
-    ...(fingerprint && { fingerprint }),
-  });
-
-  useEffect(() => {
-    setError(null);
-    setLoading(true);
-    fetch(`/api/certificates?${apiQuery}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
-      .finally(() => setLoading(false));
-  }, [apiQuery, retryKey]);
-
-  if (error) {
+  let data: { data: []; pagination: { page: number; limit: number; total: number; totalPages: number } };
+  try {
+    const res = await fetch(`${baseUrl}/api/certificates?${apiQuery}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to load");
+    data = await res.json();
+  } catch {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
-        <p className="text-destructive">{error}</p>
-        <button
-          className="text-sm underline text-muted-foreground hover:text-foreground"
-          onClick={() => setRetryKey((k) => k + 1)}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        Loading certificates...
+        <p className="text-destructive">Failed to load certificates</p>
       </div>
     );
   }

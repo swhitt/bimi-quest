@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { caSlugToName } from "./ca-slugs";
+import { buildApiParamsFromSearchParams } from "./global-filter-params";
 
 /**
  * Reads global filter values from both the URL path (/ca/slug) and search params.
@@ -28,23 +29,19 @@ export function useGlobalFilters() {
   const industry = searchParams.get("industry") || null;
 
   function buildApiParams(extra?: Record<string, string>) {
-    const params = new URLSearchParams();
-    if (ca) params.set("ca", ca);
-    if (root) params.set("root", root);
-    if (type) params.set("type", type);
-    if (mark) params.set("mark", mark);
-    if (validity) params.set("validity", validity);
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    if (country) params.set("country", country);
-    if (precert) params.set("precert", precert);
-    if (industry) params.set("industry", industry);
-    if (extra) {
-      for (const [k, v] of Object.entries(extra)) {
-        if (v) params.set(k, v);
-      }
-    }
-    return params.toString();
+    const merged: Record<string, string | undefined> = {
+      ca: ca ?? undefined,
+      root: root ?? undefined,
+      type: type ?? undefined,
+      mark: mark ?? undefined,
+      validity: validity ?? undefined,
+      from: from ?? undefined,
+      to: to ?? undefined,
+      country: country ?? undefined,
+      precert: precert ?? undefined,
+      industry: industry ?? undefined,
+    };
+    return buildApiParamsFromSearchParams(merged, extra);
   }
 
   return { ca, root, type, mark, validity, from, to, country, precert, industry, buildApiParams };

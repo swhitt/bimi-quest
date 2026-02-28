@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   description: "Browse and filter all BIMI VMC and CMC certificates discovered from Certificate Transparency logs.",
 };
 
-export default function CertificatesPage() {
+export default async function CertificatesPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+
   return (
     <div className="space-y-8">
       <div>
@@ -25,7 +29,7 @@ export default function CertificatesPage() {
           </div>
         }
       >
-        <CertificatesContent />
+        <CertificatesContent searchParams={searchParams} />
       </Suspense>
     </div>
   );

@@ -3,12 +3,16 @@ import { DashboardContent } from "./dashboard-content";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HeroSearch } from "@/components/hero-search";
 
-export default function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+
   return (
     <div className="space-y-8">
       <HeroSearch />
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
+        <DashboardContent searchParams={searchParams} />
       </Suspense>
     </div>
   );

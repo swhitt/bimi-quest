@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { headers } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -10,20 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useGlobalFilters } from "@/lib/use-global-filters";
-import dynamic from "next/dynamic";
-
-const WorldMap = dynamic(
-  () => import("@/components/world-map").then((mod) => ({ default: mod.WorldMap })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-        Loading map...
-      </div>
-    ),
-  }
-);
+import { WorldMapWrapper } from "@/components/map/world-map-wrapper";
+import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 
 interface GeoEntry {
   country: string | null;
@@ -32,46 +18,30 @@ interface GeoEntry {
   cmcCount: number;
 }
 
-export function MapContent() {
-  const { buildApiParams } = useGlobalFilters();
-  const [data, setData] = useState<GeoEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
+export async function MapContent({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
-  const apiQuery = buildApiParams();
+  const hdrs = await headers();
+  const host = hdrs.get("host") || "localhost:3000";
+  const protocol = hdrs.get("x-forwarded-proto") || "http";
+  const baseUrl = `${protocol}://${host}`;
 
-  useEffect(() => {
-    setError(null);
-    setLoading(true);
-    fetch(`/api/stats/geo?${apiQuery}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then((json) => setData(json.geoData || []))
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load geographic data"))
-      .finally(() => setLoading(false));
-  }, [apiQuery, retryKey]);
-
-  if (error) {
+  let data: GeoEntry[];
+  try {
+    const res = await fetch(`${baseUrl}/api/stats/geo?${apiQuery}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to load");
+    const json = await res.json();
+    data = json.geoData || [];
+  } catch {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
-        <p className="text-destructive">{error}</p>
-        <button
-          className="text-sm underline text-muted-foreground hover:text-foreground"
-          onClick={() => setRetryKey((k) => k + 1)}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        Loading geographic data...
+        <p className="text-destructive">Failed to load geographic data</p>
       </div>
     );
   }
@@ -82,18 +52,20 @@ export function MapContent() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>
-            Global BIMI Certificate Distribution
-          </CardTitle>
+          <CardTitle>Global BIMI Certificate Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <WorldMap data={data.map((d) => ({ country: d.country || "", total: d.total }))} />
+          <WorldMapWrapper
+            data={data.map((d) => ({ country: d.country || "", total: d.total }))}
+          />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Certificates by Country ({total.toLocaleString()} total)</CardTitle>
+          <CardTitle>
+            Certificates by Country ({total.toLocaleString()} total)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

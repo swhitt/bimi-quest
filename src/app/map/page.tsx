@@ -7,7 +7,11 @@ export const metadata: Metadata = {
   description: "Global BIMI certificate distribution by country. See which regions are adopting BIMI.",
 };
 
-export default function MapPage() {
+export default async function MapPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+
   return (
     <div className="space-y-8">
       <div>
@@ -23,7 +27,7 @@ export default function MapPage() {
           </div>
         }
       >
-        <MapContent />
+        <MapContent searchParams={searchParams} />
       </Suspense>
     </div>
   );

@@ -135,14 +135,14 @@ export function WorldMap({ data, className }: WorldMapProps) {
         className="w-full h-auto"
         onMouseLeave={() => setTooltip(null)}
       >
-        {countriesGeo.features.map((feat) => {
+        {countriesGeo.features.map((feat, i) => {
           const numId = feat.id?.toString() || "";
           const alpha2 = NUM_TO_ALPHA2[numId];
           const d = pathGen(feat as GeoPermissibleObjects);
           if (!d) return null;
           return (
             <path
-              key={numId}
+              key={numId || `geo-${i}`}
               d={d}
               fill={getColor(alpha2)}
               stroke="var(--border)"
