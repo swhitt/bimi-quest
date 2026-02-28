@@ -19,17 +19,21 @@ export function CertificatesContent() {
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
-  // Page-local params (search, sort, pagination)
+  // Page-local params (search, sort, pagination, serial/fingerprint lookup)
   const page = searchParams.get("page") || "";
   const search = searchParams.get("search") || "";
   const sort = searchParams.get("sort") || "";
   const dir = searchParams.get("dir") || "";
+  const serial = searchParams.get("serial") || "";
+  const fingerprint = searchParams.get("fingerprint") || "";
 
   const apiQuery = buildApiParams({
     ...(page && { page }),
     ...(search && { search }),
     ...(sort && { sort }),
     ...(dir && { dir }),
+    ...(serial && { serial }),
+    ...(fingerprint && { fingerprint }),
   });
 
   useEffect(() => {

@@ -1,9 +1,32 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+export const INDUSTRIES = [
+  "Technology",
+  "Finance",
+  "Retail",
+  "Healthcare",
+  "Telecommunications",
+  "Media & Entertainment",
+  "Automotive",
+  "Travel & Hospitality",
+  "Government",
+  "Education",
+  "Energy",
+  "Manufacturing",
+  "Food & Beverage",
+  "Fashion & Luxury",
+  "Professional Services",
+  "Non-Profit",
+  "Other",
+] as const;
+
+export type Industry = (typeof INDUSTRIES)[number];
+
 export interface NotabilityResult {
   score: number;
   reason: string;
   description: string;
+  industry: Industry;
 }
 
 export interface BrandInput {
@@ -23,6 +46,8 @@ Score guide:
 
 Always use the provided tool to respond.`;
 
+const INDUSTRY_ENUM = [...INDUSTRIES];
+
 const SINGLE_TOOL: Anthropic.Messages.Tool = {
   name: "score_notability",
   description: "Record the notability score for a brand",
@@ -41,8 +66,13 @@ const SINGLE_TOOL: Anthropic.Messages.Tool = {
         type: "string",
         description: "What the company does, max 15 words",
       },
+      industry: {
+        type: "string",
+        enum: INDUSTRY_ENUM,
+        description: "Industry sector the company belongs to",
+      },
     },
-    required: ["score", "reason", "description"],
+    required: ["score", "reason", "description", "industry"],
   },
 };
 
@@ -61,8 +91,9 @@ const BATCH_TOOL: Anthropic.Messages.Tool = {
             score: { type: "number", description: "Notability score from 1-10" },
             reason: { type: "string", description: "Why this score, max 15 words" },
             description: { type: "string", description: "What the company does, max 15 words" },
+            industry: { type: "string", enum: INDUSTRY_ENUM, description: "Industry sector" },
           },
-          required: ["id", "score", "reason", "description"],
+          required: ["id", "score", "reason", "description", "industry"],
         },
         description: "One result per brand in the input, matched by id",
       },
@@ -172,16 +203,24 @@ export async function scoreNotabilityBatch(
   return results;
 }
 
-function isNotabilityInput(v: unknown): v is { score: number; reason: string; description: string; [key: string]: unknown } {
+function isNotabilityInput(v: unknown): v is { score: number; reason: string; description: string; industry?: string; [key: string]: unknown } {
   if (typeof v !== "object" || v === null) return false;
   const obj = v as Record<string, unknown>;
   return typeof obj.score === "number" && typeof obj.reason === "string" && typeof obj.description === "string";
 }
 
-function normalizeResult(input: { score: number; reason: string; description: string }): NotabilityResult {
+function normalizeIndustry(raw: unknown): Industry {
+  if (typeof raw === "string" && (INDUSTRIES as readonly string[]).includes(raw)) {
+    return raw as Industry;
+  }
+  return "Other";
+}
+
+function normalizeResult(input: { score: number; reason: string; description: string; industry?: string }): NotabilityResult {
   return {
     score: Math.max(1, Math.min(10, Math.round(input.score))),
     reason: (input.reason || "").slice(0, 200),
     description: (input.description || "").slice(0, 200),
+    industry: normalizeIndustry(input.industry),
   };
 }

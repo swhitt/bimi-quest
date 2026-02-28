@@ -3,6 +3,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { BimiCheckItem } from "@/lib/bimi/types";
 import { useState } from "react";
 
@@ -14,17 +20,36 @@ const STATUS_ICON: Record<BimiCheckItem["status"], { icon: string; color: string
   info: { icon: "i", color: "text-blue-500 dark:text-blue-400" },
 };
 
+const LPS_EXPLANATION =
+  "Local-Part Selector allows different logos for different email addresses (e.g., alice@example.com vs support@example.com)";
+
 function CheckItemCard({ item }: { item: BimiCheckItem }) {
   const [expanded, setExpanded] = useState(false);
   const { icon, color } = STATUS_ICON[item.status];
   const hasDetail = !!item.detail || !!item.specRef;
+  const isLps = item.id === "bimi-lps";
 
   return (
     <div className="flex items-start gap-3 py-2">
       <span className={`mt-0.5 text-lg font-bold leading-none ${color}`}>{icon}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm">{item.label}</span>
+          {isLps ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-medium text-sm cursor-help underline decoration-dotted underline-offset-4 decoration-muted-foreground/50">
+                    {item.label}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  {LPS_EXPLANATION}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span className="font-medium text-sm">{item.label}</span>
+          )}
           {item.specRef && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0">
               {item.specRef}
@@ -32,6 +57,11 @@ function CheckItemCard({ item }: { item: BimiCheckItem }) {
           )}
         </div>
         <p className="text-sm text-muted-foreground">{item.summary}</p>
+        {item.remediation && (item.status === "fail" || item.status === "warn") && (
+          <p className="text-xs text-primary/80 mt-1">
+            <span className="font-medium">Fix:</span> {item.remediation}
+          </p>
+        )}
         {hasDetail && item.detail && (
           <>
             <button

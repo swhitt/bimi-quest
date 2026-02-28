@@ -1,6 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -26,6 +28,7 @@ interface CABreakdown {
 interface MarketShareChartProps {
   data: CABreakdown[];
   selectedCA: string;
+  apiQuery?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +66,7 @@ function BarTooltip({ active, payload, colors }: any) {
   );
 }
 
-export function MarketShareChart({ data, selectedCA }: MarketShareChartProps) {
+export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShareChartProps) {
   const colors = useChartColors();
   const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
@@ -87,6 +90,19 @@ export function MarketShareChart({ data, selectedCA }: MarketShareChartProps) {
     <Card>
       <CardHeader>
         <CardTitle>Market Share by CA</CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Download market share as CSV"
+            onClick={() => {
+              const sep = apiQuery ? "&" : "";
+              window.location.href = `/api/export/dashboard?dataset=market-share${sep}${apiQuery}`;
+            }}
+          >
+            <Download />
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {chartData.length > 0 ? (

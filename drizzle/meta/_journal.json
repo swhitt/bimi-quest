@@ -15,6 +15,13 @@
       "when": 1772214436066,
       "tag": "0001_natural_silk_fever",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772240152518,
+      "tag": "0002_cuddly_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }

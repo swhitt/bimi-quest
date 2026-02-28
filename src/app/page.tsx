@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import { DashboardContent } from "./dashboard-content";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HeroSearch } from "@/components/hero-search";
 
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <HeroSearch />
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>

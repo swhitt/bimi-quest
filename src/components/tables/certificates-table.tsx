@@ -38,6 +38,11 @@ import {
   HoverCardContent,
 } from "@/components/ui/hover-card";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -68,6 +73,7 @@ export interface CertRow {
   isPrecert: boolean | null;
   notabilityScore: number | null;
   companyDescription: string | null;
+  industry: string | null;
 }
 
 interface CertificatesTableProps {
@@ -239,13 +245,24 @@ export function CertificatesTable({
                 {org}
               </Link>
               {score != null && (
-                <span className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                  score >= 9 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                    : score >= 7 ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                    : "bg-muted text-muted-foreground"
-                }`} title={row.original.companyDescription || undefined}>
-                  ★ {score}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium cursor-help ${
+                      score >= 9 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                        : score >= 7 ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                      ★ {score}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-64">
+                    <p className="font-medium">Notability: {score}/10</p>
+                    {row.original.companyDescription && (
+                      <p className="text-foreground/70 mt-0.5">{row.original.companyDescription}</p>
+                    )}
+                    <p className="text-foreground/50 mt-0.5">Brand recognition and email volume score.</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
               {country && (
                 <span className="shrink-0 text-[10px] text-muted-foreground font-mono">
@@ -261,8 +278,13 @@ export function CertificatesTable({
                 </span>
               )}
             </span>
-            {row.original.companyDescription && (
+            {(row.original.companyDescription || row.original.industry) && (
               <span className="text-[10px] text-muted-foreground/60 block truncate">
+                {row.original.industry && (
+                  <span className="inline-flex items-center rounded-full border border-border/50 px-1.5 py-px mr-1 text-[10px] font-medium text-muted-foreground/70">
+                    {row.original.industry}
+                  </span>
+                )}
                 {row.original.companyDescription}
               </span>
             )}
@@ -398,39 +420,58 @@ export function CertificatesTable({
               inputClassName="pl-9"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const csvHeader =
-                "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
-              const csvRows = data.map((r) =>
-                [
-                  `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
-                  r.sanList[0] || r.subjectCn || "",
-                  `"${r.sanList.join("; ")}"`,
-                  r.issuerOrg || "",
-                  r.certType || "",
-                  r.subjectCountry || "",
-                  r.notBefore || "",
-                  r.notAfter || "",
-                  r.ctLogTimestamp || "",
-                  r.serialNumber || "",
-                ].join(",")
-              );
-              const csv = [csvHeader, ...csvRows].join("\n");
-              const blob = new Blob([csv], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "bimi-certificates.csv";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download className="size-4" />
-            Export
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const csvHeader =
+                  "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
+                const csvRows = data.map((r) =>
+                  [
+                    `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
+                    r.sanList[0] || r.subjectCn || "",
+                    `"${r.sanList.join("; ")}"`,
+                    r.issuerOrg || "",
+                    r.certType || "",
+                    r.subjectCountry || "",
+                    r.notBefore || "",
+                    r.notAfter || "",
+                    r.ctLogTimestamp || "",
+                    r.serialNumber || "",
+                  ].join(",")
+                );
+                const csv = [csvHeader, ...csvRows].join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "bimi-certificates.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="size-4" />
+              Page
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const exportParams = new URLSearchParams(searchParams.toString());
+                exportParams.delete("page");
+                exportParams.delete("limit");
+                exportParams.delete("sort");
+                exportParams.delete("dir");
+                exportParams.set("format", "csv");
+                window.location.href = `/api/export/certificates?${exportParams.toString()}`;
+              }}
+              title="Export all certificates matching current filters (up to 50,000)"
+            >
+              <Download className="size-4" />
+              All
+            </Button>
+          </div>
         </div>
       )}
 

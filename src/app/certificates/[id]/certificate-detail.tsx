@@ -11,6 +11,15 @@ import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { computeDiff, type DiffLine } from "@/lib/diff";
 import { getMarkTypeInfo } from "@/lib/mark-types";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
+
+// Extension entry: new format has { v, c }, old format is a plain hex string
+type ExtensionValue = string | { v: string; c: boolean };
 
 interface CertData {
   certificate: {
@@ -37,11 +46,12 @@ interface CertData {
     rawPem: string;
     ctLogTimestamp: string | null;
     ctLogIndex: string | null;
-    extensionsJson: Record<string, string> | null;
+    extensionsJson: Record<string, ExtensionValue> | null;
     crtshId: string | null;
     notabilityScore: number | null;
     notabilityReason: string | null;
     companyDescription: string | null;
+    industry: string | null;
   };
   pairedCert: {
     id: number;
@@ -49,7 +59,7 @@ interface CertData {
     fingerprintSha256: string;
     ctLogIndex: string | null;
     ctLogTimestamp: string | null;
-    extensionsJson: Record<string, string> | null;
+    extensionsJson: Record<string, ExtensionValue> | null;
   } | null;
   chain: {
     id: number;
@@ -60,6 +70,9 @@ interface CertData {
     notBefore: string | null;
     notAfter: string | null;
     rawPem: string;
+    serialNumber: string | null;
+    subjectOrg: string | null;
+    issuerOrg: string | null;
   }[];
   bimiStates: {
     domain: string;
@@ -252,9 +265,22 @@ export function CertificateDetail({ id }: { id: string }) {
                 }`}>
                   {"★".repeat(Math.round(cert.notabilityScore / 2))} {cert.notabilityScore}/10
                 </span>
+                {cert.industry && (
+                  <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {cert.industry}
+                  </span>
+                )}
                 {cert.notabilityReason && (
                   <span className="text-xs text-muted-foreground">{cert.notabilityReason}</span>
                 )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="size-3.5 text-muted-foreground/50 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-64">
+                    Reflects the organization&apos;s global brand recognition and email volume (1-10). Higher scores indicate more widely recognized brands.
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
@@ -711,11 +737,23 @@ export function CertificateDetail({ id }: { id: string }) {
                 <div className="pt-1" />
                 <CertSection title="X509v3 Extensions" indent={2}>
                   {Object.entries(cert.extensionsJson).map(([oid, value]) => {
-                    const hexStr = typeof value === "string" ? value : JSON.stringify(value);
+                    const hexStr = typeof value === "string" ? value : typeof value === "object" && value && "v" in value ? (value as { v: string }).v : JSON.stringify(value);
+                    const isCritical = typeof value === "object" && value && "c" in value ? (value as { c: boolean }).c : false;
                     const ext = decodeExtension(oid, hexStr);
+                    const displayName = ext.name !== "Unknown" ? ext.name : oid;
+                    const showOid = ext.name !== "Unknown";
                     return (
                       <div key={oid} className="pl-[3.5rem] py-0.5">
-                        <span className="text-muted-foreground">{ext.name !== "Unknown" ? ext.name : oid}:</span>
+                        <span className="text-muted-foreground">
+                          {displayName}
+                          {showOid && <span className="text-muted-foreground/50 font-mono text-xs ml-1">({oid})</span>}
+                          :
+                        </span>
+                        {isCritical && (
+                          <Badge variant="destructive" className="ml-1.5 text-[10px] px-1 py-0 h-4 align-text-top">
+                            Critical
+                          </Badge>
+                        )}
                         {ext.decoded ? (
                           <span className="ml-2 whitespace-pre-wrap break-all">{ext.decoded}</span>
                         ) : (
@@ -740,50 +778,76 @@ export function CertificateDetail({ id }: { id: string }) {
             <CardTitle>Certificate Chain</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {/* Leaf cert */}
-              <div className="rounded-lg border-2 border-primary/50 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">Leaf Certificate</div>
-                  <Badge variant="outline" className="text-xs">Position 0</Badge>
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">{cert.subjectDn}</div>
-                <CopyableFingerprint
-                  value={cert.fingerprintSha256}
-                  copied={copied}
-                  onCopy={copyToClipboard}
-                />
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  <UtcTime date={cert.notBefore} /> <span>–</span> <UtcTime date={cert.notAfter} />
-                </div>
-              </div>
-              {/* Chain certs */}
-              {data.chain.map((c) => {
-                const label = chainLabel(c);
-                const isRoot = c.subjectDn === c.issuerDn;
-                return (
-                  <div
-                    key={c.id}
-                    className={`ml-6 rounded-lg border p-3 ${isRoot ? "border-amber-500/50" : ""}`}
-                  >
+            <div className="relative">
+              {/* Vertical connector line */}
+              <div className="absolute left-4 top-6 bottom-6 w-px bg-border" />
+
+              <div className="space-y-0">
+                {/* Leaf cert */}
+                <div className="relative pl-10 pb-4">
+                  <div className="absolute left-2.5 top-3 z-10 flex h-3 w-3 items-center justify-center rounded-full border-2 border-primary bg-background" />
+                  <div className="rounded-lg border-2 border-primary/50 p-3">
                     <div className="flex items-center justify-between">
-                      <div className="font-medium">{label}</div>
-                      <Badge variant="outline" className="text-xs">Position {c.chainPosition}</Badge>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Leaf Certificate</span>
+                        {cert.subjectOrg && <span className="text-sm text-muted-foreground">{cert.subjectOrg}</span>}
+                      </div>
+                      <Badge variant="outline" className="text-xs">Position 0</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">{c.subjectDn}</div>
+                    <div className="mt-1.5 grid gap-1 text-xs">
+                      <div><span className="text-muted-foreground">Subject:</span> <span className="break-all">{cert.subjectDn}</span></div>
+                      <div><span className="text-muted-foreground">Issuer:</span> <span className="break-all">{cert.issuerDn}</span></div>
+                      <div><span className="text-muted-foreground">Serial:</span> <span className="font-mono">{formatSerial(cert.serialNumber)}</span></div>
+                    </div>
                     <CopyableFingerprint
-                      value={c.fingerprintSha256}
+                      value={cert.fingerprintSha256}
                       copied={copied}
                       onCopy={copyToClipboard}
                     />
-                    {c.notBefore && c.notAfter && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <UtcTime date={c.notBefore} /> <span>–</span> <UtcTime date={c.notAfter} />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                      <UtcTime date={cert.notBefore} /> <span>–</span> <UtcTime date={cert.notAfter} />
+                    </div>
                   </div>
-                );
-              })}
+                </div>
+
+                {/* Chain certs */}
+                {data.chain.map((c, idx) => {
+                  const label = chainLabel(c);
+                  const isRoot = c.subjectDn === c.issuerDn;
+                  const isLast = idx === data.chain.length - 1;
+                  return (
+                    <div key={c.id} className={`relative pl-10 ${isLast ? "" : "pb-4"}`}>
+                      <div className={`absolute left-2.5 top-3 z-10 flex h-3 w-3 items-center justify-center rounded-full border-2 bg-background ${isRoot ? "border-amber-500" : "border-muted-foreground"}`} />
+                      <div className={`rounded-lg border p-3 ${isRoot ? "border-amber-500/50" : ""}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{label}</span>
+                            {c.subjectOrg && <span className="text-sm text-muted-foreground">{c.subjectOrg}</span>}
+                          </div>
+                          <Badge variant="outline" className="text-xs">Position {c.chainPosition}</Badge>
+                        </div>
+                        <div className="mt-1.5 grid gap-1 text-xs">
+                          <div><span className="text-muted-foreground">Subject:</span> <span className="break-all">{c.subjectDn}</span></div>
+                          <div><span className="text-muted-foreground">Issuer:</span> <span className="break-all">{c.issuerDn}</span></div>
+                          {c.serialNumber && (
+                            <div><span className="text-muted-foreground">Serial:</span> <span className="font-mono">{formatSerial(c.serialNumber)}</span></div>
+                          )}
+                        </div>
+                        <CopyableFingerprint
+                          value={c.fingerprintSha256}
+                          copied={copied}
+                          onCopy={copyToClipboard}
+                        />
+                        {c.notBefore && c.notAfter && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <UtcTime date={c.notBefore} /> <span>–</span> <UtcTime date={c.notAfter} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>

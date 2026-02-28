@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { resolveCertParam } from "@/lib/db/filters";
+import { extractDnField, pemToDer } from "@/lib/ct/parser";
+import { X509Certificate } from "@peculiar/x509";
 import { log } from "@/lib/logger";
 
 export async function GET(
@@ -54,7 +56,7 @@ export async function GET(
       .limit(1);
 
     // Fetch chain by joining links -> chain_certs
-    const chain = await db
+    const chainRaw = await db
       .select({
         id: chainCerts.id,
         chainPosition: certificateChainLinks.chainPosition,
@@ -69,6 +71,21 @@ export async function GET(
       .innerJoin(chainCerts, eq(certificateChainLinks.chainCertId, chainCerts.id))
       .where(eq(certificateChainLinks.leafCertId, certId))
       .orderBy(certificateChainLinks.chainPosition);
+
+    // Enrich chain certs with serial numbers and org names parsed from PEM
+    const chain = chainRaw.map((c) => {
+      let serialNumber: string | null = null;
+      let subjectOrg: string | null = null;
+      let issuerOrg: string | null = null;
+      try {
+        const der = pemToDer(c.rawPem);
+        const x509 = new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
+        serialNumber = x509.serialNumber;
+        subjectOrg = extractDnField(x509.subject, "O");
+        issuerOrg = extractDnField(x509.issuer, "O");
+      } catch { /* best-effort */ }
+      return { ...c, serialNumber, subjectOrg, issuerOrg };
+    });
 
     // Fetch BIMI state for associated domains
     const domains = cert.sanList.length > 0 ? cert.sanList : cert.subjectCn ? [cert.subjectCn] : [];

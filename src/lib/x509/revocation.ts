@@ -499,16 +499,25 @@ function normalizeSerialHex(hex: string): string {
 
 // ── AIA / CDP extraction from extensionsJson ────────────────────────
 
+/** Get the hex value from an extension entry, handling both old (string) and new ({ v, c }) formats */
+function getExtHex(entry: unknown): string | null {
+  if (typeof entry === "string") return entry;
+  if (entry && typeof entry === "object" && "v" in entry && typeof (entry as Record<string, unknown>).v === "string") {
+    return (entry as Record<string, unknown>).v as string;
+  }
+  return null;
+}
+
 /** Extract OCSP responder URL from AIA extension (OID 1.3.6.1.5.5.7.1.1) */
-export function extractOcspUrl(extensionsJson: Record<string, string>): string | null {
-  const aiaHex = extensionsJson["1.3.6.1.5.5.7.1.1"];
+export function extractOcspUrl(extensionsJson: Record<string, unknown>): string | null {
+  const aiaHex = getExtHex(extensionsJson["1.3.6.1.5.5.7.1.1"]);
   if (!aiaHex) return null;
   return extractUrlFromAia(aiaHex, "1.3.6.1.5.5.7.48.1");
 }
 
 /** Extract CRL Distribution Point URL from extension (OID 2.5.29.31) */
-export function extractCrlUrl(extensionsJson: Record<string, string>): string | null {
-  const cdpHex = extensionsJson["2.5.29.31"];
+export function extractCrlUrl(extensionsJson: Record<string, unknown>): string | null {
+  const cdpHex = getExtHex(extensionsJson["2.5.29.31"]);
   if (!cdpHex) return null;
   return extractUrlsFromCdp(cdpHex);
 }

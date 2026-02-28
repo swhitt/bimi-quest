@@ -14,6 +14,11 @@ export interface ParsedEntry {
   entryType: "x509" | "precert";
 }
 
+export interface ExtensionEntry {
+  v: string;   // hex-encoded DER value
+  c: boolean;  // critical flag
+}
+
 export interface BIMICertData {
   fingerprintSha256: string;
   serialNumber: string;
@@ -34,7 +39,7 @@ export interface BIMICertData {
   logotypeSvgHash: string | null;
   logotypeSvg: string | null;
   rawPem: string;
-  extensionsJson: Record<string, string>;
+  extensionsJson: Record<string, ExtensionEntry>;
 }
 
 function base64ToBuffer(b64: string): Uint8Array {
@@ -176,12 +181,13 @@ export async function extractBIMIData(
   // Try to extract logotype SVG
   const { svgHash, svgContent } = extractLogotypeSvg(cert);
 
-  // Build extensions JSON
-  const extensionsJson: Record<string, string> = {};
+  // Build extensions JSON with criticality flags
+  const extensionsJson: Record<string, ExtensionEntry> = {};
   for (const ext of cert.extensions) {
-    extensionsJson[ext.type] = bufferToHex(
-      new Uint8Array(ext.value)
-    );
+    extensionsJson[ext.type] = {
+      v: bufferToHex(new Uint8Array(ext.value)),
+      c: ext.critical,
+    };
   }
 
   return {

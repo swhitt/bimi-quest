@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useState, Suspense } from "react";
+import { useCallback, useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,6 +48,23 @@ function FilterBarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
+  const [industryOptions, setIndustryOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stats/industries")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.industries)) {
+          setIndustryOptions(
+            d.industries.map((i: { industry: string; count: number }) => ({
+              value: i.industry,
+              label: i.industry,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Read CA from path segment /ca/slug
   const pathMatch = pathname.match(/^\/ca\/([^/]+)/);
@@ -114,10 +131,13 @@ function FilterBarInner() {
   const mark = searchParams.get("mark") ?? "all";
   const validity = searchParams.get("validity") ?? "all";
   const precert = searchParams.get("precert") ?? "all";
+  const industry = searchParams.get("industry") ?? "all";
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
+  const expiresFrom = searchParams.get("expiresFrom") ?? "";
+  const expiresTo = searchParams.get("expiresTo") ?? "";
 
-  const hasFilters = ca || rootCa !== "all" || type !== "all" || mark !== "all" || validity !== "all" || precert !== "all" || dateFrom || dateTo;
+  const hasFilters = ca || rootCa !== "all" || type !== "all" || mark !== "all" || validity !== "all" || precert !== "all" || industry !== "all" || dateFrom || dateTo || expiresFrom || expiresTo;
 
   const filterCount =
     (ca ? 1 : 0) +
@@ -126,8 +146,11 @@ function FilterBarInner() {
     (mark !== "all" ? 1 : 0) +
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
+    (industry !== "all" ? 1 : 0) +
     (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0);
+    (dateTo ? 1 : 0) +
+    (expiresFrom ? 1 : 0) +
+    (expiresTo ? 1 : 0);
 
   // Shared filter controls rendered with optional width override for mobile
   const caSelect = (className?: string) => (
@@ -240,13 +263,34 @@ function FilterBarInner() {
     </Select>
   );
 
+  const industrySelect = (className?: string) =>
+    industryOptions.length > 0 ? (
+      <Select
+        value={industry}
+        onValueChange={(v) => updateSecondaryFilter("industry", v)}
+      >
+        <SelectTrigger size="sm" aria-label="Filter by industry" className={className ?? "w-[170px]"}>
+          <SelectValue placeholder="All Industries" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Industries</SelectItem>
+          {industryOptions.map((i) => (
+            <SelectItem key={i.value} value={i.value}>
+              {i.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : null;
+
   const dateRange = (fullWidth?: boolean) => (
     <div className="flex items-center gap-1.5">
+      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">Issued</span>
       <Input
         type="date"
         value={dateFrom}
         onChange={(e) => updateSecondaryFilter("from", e.target.value)}
-        aria-label="Filter from date"
+        aria-label="Issued from date"
         className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
       <span className="text-xs text-muted-foreground">to</span>
@@ -254,7 +298,28 @@ function FilterBarInner() {
         type="date"
         value={dateTo}
         onChange={(e) => updateSecondaryFilter("to", e.target.value)}
-        aria-label="Filter to date"
+        aria-label="Issued to date"
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+      />
+    </div>
+  );
+
+  const expiresRange = (fullWidth?: boolean) => (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">Expires</span>
+      <Input
+        type="date"
+        value={expiresFrom}
+        onChange={(e) => updateSecondaryFilter("expiresFrom", e.target.value)}
+        aria-label="Expires from date"
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+      />
+      <span className="text-xs text-muted-foreground">to</span>
+      <Input
+        type="date"
+        value={expiresTo}
+        onChange={(e) => updateSecondaryFilter("expiresTo", e.target.value)}
+        aria-label="Expires to date"
         className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
     </div>
@@ -300,7 +365,9 @@ function FilterBarInner() {
             {markSelect("w-full")}
             {validitySelect("w-full")}
             {precertSelect("w-full")}
+            {industrySelect("w-full")}
             {dateRange(true)}
+            {expiresRange(true)}
           </div>
         )}
 
@@ -313,7 +380,9 @@ function FilterBarInner() {
           {markSelect()}
           {validitySelect()}
           {precertSelect()}
+          {industrySelect()}
           {dateRange()}
+          {expiresRange()}
           {hasFilters && (
             <Button
               variant="ghost"

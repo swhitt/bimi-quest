@@ -43,6 +43,7 @@ export const certificates = pgTable(
     notabilityScore: integer("notability_score"),
     notabilityReason: text("notability_reason"),
     companyDescription: text("company_description"),
+    industry: text("industry"),
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
     discoverySource: text("discovery_source").default("ct-gorgon"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -67,6 +68,7 @@ export const certificates = pgTable(
     index("idx_certs_notafter_precert").on(table.notAfter, table.isPrecert),
     index("idx_certificates_san_list_gin").using("gin", table.sanList),
     index("idx_certificates_subject_org").on(table.subjectOrg),
+    index("idx_certificates_industry").on(table.industry),
   ]
 );
 

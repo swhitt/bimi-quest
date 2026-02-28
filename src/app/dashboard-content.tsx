@@ -100,8 +100,9 @@ export function DashboardContent() {
         <MarketShareChart
           data={data.caBreakdown}
           selectedCA={displayCA}
+          apiQuery={apiQuery}
         />
-        <TrendChart data={data.monthlyTrend} selectedCA={displayCA} />
+        <TrendChart data={data.monthlyTrend} selectedCA={displayCA} apiQuery={apiQuery} />
       </div>
 
       <RecentCerts />

@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import {
-  eq,
-  and,
-  gte,
-  lte,
-  desc,
-  asc,
-  ilike,
-  count,
-  sql,
-  or,
-} from "drizzle-orm";
-import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
+import { desc, asc, count } from "drizzle-orm";
+import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
@@ -23,52 +12,11 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(params.get("limit") ?? "", 10) || 50));
   const offset = (page - 1) * limit;
 
-  const ca = params.get("ca");
-  const root = params.get("root");
-  const certType = params.get("type");
-  const mark = params.get("mark");
-  const from = params.get("from");
-  const to = params.get("to");
-  const country = params.get("country");
-  const search = params.get("search");
-  const host = params.get("host");
-  const org = params.get("org");
   const sortBy = params.get("sort") || "notBefore";
   const sortDir = params.get("dir") || "desc";
-  const validity = params.get("validity");
 
   try {
-    const conditions = [buildPrecertCondition(params.get("precert"))];
-
-    if (ca) conditions.push(eq(certificates.issuerOrg, ca));
-    if (root) conditions.push(eq(certificates.rootCaOrg, root));
-    if (certType) conditions.push(eq(certificates.certType, certType));
-    if (mark) conditions.push(eq(certificates.markType, mark));
-    const fromDate = parseDate(from);
-    const toDate = parseDate(to);
-    if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
-    if (toDate) conditions.push(lte(certificates.notBefore, toDate));
-    if (country) conditions.push(eq(certificates.subjectCountry, country));
-    if (host) conditions.push(sql`${certificates.sanList} @> ARRAY[${host.toLowerCase()}]::text[]`);
-    if (org) conditions.push(sql`LOWER(${certificates.subjectOrg}) = LOWER(${org})`);
-
-    if (search) {
-      conditions.push(
-        or(
-          ilike(certificates.subjectCn, `%${search}%`),
-          ilike(certificates.subjectOrg, `%${search}%`),
-          sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE s ILIKE ${`%${search}%`})`
-        )!
-      );
-    }
-
-    if (validity === "valid") {
-      conditions.push(gte(certificates.notAfter, new Date()));
-    } else if (validity === "expired") {
-      conditions.push(lte(certificates.notAfter, new Date()));
-    }
-
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = buildCertificateConditions(params);
 
     // Sort column mapping
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,11 +48,11 @@ export async function GET(request: NextRequest) {
           notAfter: certificates.notAfter,
           sanList: certificates.sanList,
           ctLogTimestamp: certificates.ctLogTimestamp,
-          // TODO: logotypeSvg is large and should be lazy-loaded per-row in the future
           logotypeSvg: certificates.logotypeSvg,
           isPrecert: certificates.isPrecert,
           notabilityScore: certificates.notabilityScore,
           companyDescription: certificates.companyDescription,
+          industry: certificates.industry,
         })
         .from(certificates)
         .where(where)

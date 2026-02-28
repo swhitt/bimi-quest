@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import { ThemeToggle } from "./theme-toggle";
-import { DomainSearch } from "./domain-search";
+import { UniversalSearch } from "./universal-search";
 import { caNameToSlug } from "@/lib/ca-slugs";
 
 const navItems = [
@@ -93,7 +93,7 @@ export function Nav() {
         </Suspense>
 
         <div className="ml-auto flex items-center gap-3">
-          <DomainSearch />
+          <UniversalSearch variant="nav" />
           <Suspense>
             <ThemeToggle />
           </Suspense>

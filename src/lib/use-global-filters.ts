@@ -25,6 +25,7 @@ export function useGlobalFilters() {
   const to = searchParams.get("to") || null;
   const country = searchParams.get("country") || null;
   const precert = searchParams.get("precert") || null;
+  const industry = searchParams.get("industry") || null;
 
   function buildApiParams(extra?: Record<string, string>) {
     const params = new URLSearchParams();
@@ -37,6 +38,7 @@ export function useGlobalFilters() {
     if (to) params.set("to", to);
     if (country) params.set("country", country);
     if (precert) params.set("precert", precert);
+    if (industry) params.set("industry", industry);
     if (extra) {
       for (const [k, v] of Object.entries(extra)) {
         if (v) params.set(k, v);
@@ -45,5 +47,5 @@ export function useGlobalFilters() {
     return params.toString();
   }
 
-  return { ca, root, type, mark, validity, from, to, country, precert, buildApiParams };
+  return { ca, root, type, mark, validity, from, to, country, precert, industry, buildApiParams };
 }

@@ -116,7 +116,7 @@ function LogoTile({ logo }: { logo: Logo }) {
               }`}>{logo.certType}</span>
             )}
             {logo.score != null && (
-              <span className="text-gray-400 tabular-nums">{logo.score}/10</span>
+              <span className="text-gray-400 tabular-nums" title="Notability score: brand recognition and email volume">★ {logo.score}/10</span>
             )}
           </div>
           <div className="text-gray-400 truncate max-w-52">

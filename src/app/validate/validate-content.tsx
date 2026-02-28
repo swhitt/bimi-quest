@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 import { ValidationGrade } from "@/components/bimi/validation-grade";
 import { ValidationChecklist } from "@/components/bimi/validation-checklist";
+import { NextSteps } from "@/components/bimi/next-steps";
 import { TechnicalDetails } from "@/components/bimi/technical-details";
 import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
 
@@ -215,6 +216,9 @@ export function ValidateContent() {
               )}
             </CardContent>
           </Card>
+
+          {/* Next Steps: actionable guidance based on failures */}
+          <NextSteps checks={result.checks} overallValid={result.overallValid} />
 
           {/* Tier 2: The Checklist (tabbed) */}
           <ValidationChecklist checks={result.checks} />

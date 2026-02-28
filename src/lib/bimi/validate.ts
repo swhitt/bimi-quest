@@ -351,6 +351,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: "Domain has explicitly declined BIMI (empty l= and a= tags)",
         specRef: "draft-12 section 4.2",
+        remediation: "To enable BIMI, update the DNS TXT record to include a logo URL in the l= tag and optionally a certificate URL in the a= tag.",
       });
     } else {
       checks.push({
@@ -373,6 +374,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       status: "fail",
       summary: `No BIMI record found at ${input.selector}._bimi.${input.domain}`,
       specRef: "draft-12 section 4",
+      remediation: `Add a BIMI DNS TXT record at ${input.selector}._bimi.${input.domain}. Your DNS administrator can add: v=BIMI1; l=https://example.com/logo.svg; a=https://example.com/cert.pem;`,
     });
   }
 
@@ -419,6 +421,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: input.dmarcReason || "DMARC policy insufficient",
         specRef: "draft-12 section 3",
+        remediation: "Your IT team needs to update the domain's DMARC policy to \"quarantine\" or \"reject\" with pct=100. Update the _dmarc TXT record accordingly.",
       });
     }
   } else {
@@ -429,6 +432,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       status: "fail",
       summary: "No DMARC record found",
       specRef: "draft-12 section 3",
+      remediation: "Add a DMARC DNS TXT record at _dmarc." + input.domain + " with at least p=quarantine and pct=100. Your IT or email security team can help set this up.",
     });
   }
 
@@ -443,6 +447,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       label: "SVG Tiny PS",
       status: "fail",
       summary: "Could not fetch or validate SVG logo",
+      remediation: "Ensure the SVG logo URL in your BIMI record is publicly accessible over HTTPS and returns a valid SVG file.",
     });
   }
 
@@ -480,6 +485,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: "Chain validation issues found",
         detail: input.certResult.chain.chainErrors.join("\n"),
+        remediation: "The certificate chain is incomplete or invalid. Contact your Certificate Authority to get a correctly chained certificate file.",
       });
     }
 
@@ -501,6 +507,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: "Issuing CA is not in the authorized BIMI CA list",
         specRef: "VMC Requirements",
+        remediation: "BIMI certificates must be issued by an authorized CA (DigiCert, Entrust, GlobalSign, Sectigo, or SSL.com). You'll need to purchase a VMC or CMC from one of these providers.",
       });
     }
 
@@ -512,6 +519,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         label: "Certificate Validity",
         status: "fail",
         summary: "Certificate is expired",
+        remediation: "Your BIMI certificate has expired and needs to be renewed. Contact your Certificate Authority to renew it.",
       });
     } else {
       checks.push({
@@ -541,6 +549,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "warn",
         summary: "Certificate SVG differs from web-hosted indicator",
         specRef: "draft-12 section 5.2",
+        remediation: "The SVG embedded in your certificate doesn't match the one hosted at your logo URL. Re-upload the exact same SVG file that was submitted during certificate issuance.",
       });
     }
   } else if (input.bimiRecord?.authorityUrl) {
@@ -550,6 +559,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       label: "Certificate",
       status: "fail",
       summary: "Could not fetch or parse authority certificate",
+      remediation: "Ensure the certificate URL in your BIMI record's a= tag is publicly accessible over HTTPS and returns a valid PEM certificate.",
     });
   }
 

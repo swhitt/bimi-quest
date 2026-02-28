@@ -72,6 +72,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
           notabilityScore: notability.score,
           notabilityReason: notability.reason,
           companyDescription: notability.description,
+          industry: notability.industry,
         })
         .where(eq(certificates.id, cert.id));
     }

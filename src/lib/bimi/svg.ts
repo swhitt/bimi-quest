@@ -401,6 +401,7 @@ export function categorizeSvgChecks(
       label: isCompat ? "Compatibility" : "SVG Tiny PS",
       status: "fail",
       summary: error,
+      remediation: getSvgRemediation(error),
     });
   }
 
@@ -412,8 +413,50 @@ export function categorizeSvgChecks(
       label: isCompat ? "Compatibility" : "SVG Tiny PS",
       status: "warn",
       summary: warning,
+      remediation: getSvgRemediation(warning),
     });
   }
 
   return items;
+}
+
+const SVG_REMEDIATION_MAP: [RegExp, string][] = [
+  [/Missing.*viewBox/i, "Add a viewBox attribute to the root <svg> element, e.g. viewBox=\"0 0 100 100\" using your logo's dimensions."],
+  [/not square|aspect ratio/i, "Make the viewBox width and height equal (e.g., \"0 0 100 100\") so the logo is a perfect square."],
+  [/Contains <(\w+)> element/i, "Remove the disallowed element from your SVG. Only elements in the SVG Tiny PS profile are permitted."],
+  [/Missing required baseProfile/i, "Add baseProfile=\"tiny-ps\" to the root <svg> element."],
+  [/Missing required version/i, "Add version=\"1.2\" to the root <svg> element."],
+  [/Missing required xmlns/i, "Add xmlns=\"http://www.w3.org/2000/svg\" to the root <svg> element."],
+  [/Missing required <title>/i, "Add a <title> element inside your <svg> containing your brand name, e.g. <title>Acme Corp</title>."],
+  [/<title>.*empty/i, "Put your brand name inside the <title> element, e.g. <title>Acme Corp</title>."],
+  [/<title>.*exceeds/i, "Shorten your <title> text to 64 characters or fewer."],
+  [/event handler/i, "Remove all on* attributes (onclick, onload, etc.) from your SVG elements."],
+  [/javascript.*URI|javascript.*url/i, "Remove any javascript: references from href and url() values."],
+  [/external.*href|external.*url/i, "Remove all external URL references. SVG Tiny PS does not allow linking to external resources."],
+  [/animation elements/i, "Remove <animate>, <set>, and other animation elements. BIMI SVGs must be static."],
+  [/File size.*exceeds/i, "Reduce your SVG file size to under 32KB. Simplify paths, remove unnecessary metadata, or use an SVG optimizer."],
+  [/comma-delimited/i, "Change the viewBox value to use spaces instead of commas, e.g. viewBox=\"0 0 100 100\"."],
+  [/@import/i, "Remove @import rules from <style> blocks. External stylesheets are not allowed."],
+  [/external stylesheet/i, "Remove the <?xml-stylesheet?> processing instruction. External stylesheets are not allowed."],
+  [/data:text\/html/i, "Remove any data:text/html URIs from href attributes."],
+  [/relative unit/i, "Use absolute units (px, pt, cm, mm, in) or unitless values for width and height instead of relative units like em, rem, or %."],
+  [/Missing explicit width\/height/i, "Add explicit width and height attributes to the root <svg> element (e.g., width=\"100\" height=\"100\") for better Gmail compatibility."],
+  [/below Gmail minimum/i, "Increase the width and height attributes to at least 96x96 for Gmail compatibility."],
+  [/Missing recommended <desc>/i, "Add a <desc> element inside your <svg> with a brief description of the logo for accessibility."],
+  [/<desc>.*empty/i, "Add a description inside the <desc> element for accessibility."],
+  [/should not have an? [xy] attribute/i, "Remove the x and y attributes from the root <svg> element."],
+  [/<text> elements/i, "Convert <text> elements to <path> elements for consistent rendering across email clients. Most vector editors can do this via \"Convert to Outlines\"."],
+  [/High path count/i, "Simplify your SVG to reduce the number of paths. Complex logos may not render well at small sizes in some email clients."],
+  [/editable=.*must be "none"/i, "Set the editable attribute to \"none\" on all <text> elements, or remove it entirely."],
+  [/zoomAndPan/i, "Set zoomAndPan=\"disable\" on the root <svg> element, or remove the attribute."],
+  [/focusable/i, "Set focusable=\"false\" on the root <svg> element, or remove the attribute."],
+  [/externalResourcesRequired/i, "Set externalResourcesRequired=\"false\" on the root <svg> element, or remove the attribute."],
+  [/Invalid viewBox format/i, "The viewBox attribute needs exactly 4 space-separated numbers: min-x, min-y, width, and height (e.g., \"0 0 100 100\")."],
+];
+
+function getSvgRemediation(message: string): string | undefined {
+  for (const [pattern, fix] of SVG_REMEDIATION_MAP) {
+    if (pattern.test(message)) return fix;
+  }
+  return undefined;
 }

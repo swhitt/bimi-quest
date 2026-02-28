@@ -63,7 +63,7 @@ export async function GET(
       .where(eq(certificateChainLinks.leafCertId, certId))
       .orderBy(certificateChainLinks.chainPosition);
 
-    const extensionsJson = (cert.extensionsJson ?? {}) as Record<string, string>;
+    const extensionsJson = (cert.extensionsJson ?? {}) as Record<string, unknown>;
     const ocspUrl = extractOcspUrl(extensionsJson);
     const crlUrl = extractCrlUrl(extensionsJson);
 

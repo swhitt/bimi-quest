@@ -6,6 +6,7 @@ export interface BimiCheckItem {
   summary: string;
   detail?: string;
   specRef?: string;
+  remediation?: string;
 }
 
 export type BimiGrade = "A" | "B" | "C" | "D" | "F";

@@ -311,7 +311,8 @@ async function rescore(maxCerts = 0) {
             UPDATE certificates SET
               notability_score = ${result.score},
               notability_reason = ${result.reason},
-              company_description = ${result.description}
+              company_description = ${result.description},
+              industry = ${result.industry}
             WHERE id = ${r.id}
           `;
           scored++;

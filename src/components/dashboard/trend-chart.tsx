@@ -1,6 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -24,6 +26,7 @@ interface TrendDataPoint {
 interface TrendChartProps {
   data: TrendDataPoint[];
   selectedCA: string;
+  apiQuery?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,7 +62,7 @@ function TrendTooltip({ active, payload, label, colors }: any) {
   );
 }
 
-export function TrendChart({ data, selectedCA }: TrendChartProps) {
+export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps) {
   const colors = useChartColors();
   const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
@@ -104,6 +107,19 @@ export function TrendChart({ data, selectedCA }: TrendChartProps) {
         <CardTitle>
           {isFiltered ? `${selectedCA} Issuance Trend` : "Issuance Trends"}
         </CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Download trend data as CSV"
+            onClick={() => {
+              const sep = apiQuery ? "&" : "";
+              window.location.href = `/api/export/dashboard?dataset=trends${sep}${apiQuery}`;
+            }}
+          >
+            <Download />
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {pivoted.length > 0 ? (
