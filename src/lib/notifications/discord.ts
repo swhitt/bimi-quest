@@ -1,4 +1,5 @@
 import { log } from "@/lib/logger";
+import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
 
 export interface DiscordCertPayload {
   domain: string;
@@ -37,23 +38,25 @@ export async function sendDiscordNotification(
     return;
   }
 
-  const color = CA_COLORS[payload.rootCa] ?? CA_COLORS[payload.issuer] ?? DEFAULT_COLOR;
+  const issuerDisplay = displayIssuerOrg(payload.issuer);
+  const rootDisplay = displayRootCa(payload.rootCa);
+  const color = CA_COLORS[rootDisplay] ?? CA_COLORS[issuerDisplay] ?? DEFAULT_COLOR;
   const certUrl = `${payload.baseUrl}/certificates/${payload.fingerprintSha256.slice(0, 12)}`;
 
   const alwaysShowRoot = payload.alwaysShowRootCas ?? [];
   const showRootCa =
-    payload.rootCa !== payload.issuer ||
+    issuerDisplay !== rootDisplay ||
     alwaysShowRoot.some((ca) => payload.rootCa.includes(ca) || payload.issuer.includes(ca));
 
   const embed = {
     title: `New ${payload.certType} Certificate`,
-    description: `**${payload.org || payload.domain}** obtained a BIMI ${payload.certType} from **${payload.issuer}**`,
+    description: `**${payload.org || payload.domain}** obtained a BIMI ${payload.certType} from **${issuerDisplay}**`,
     color,
     fields: [
       { name: "Domain", value: payload.domain, inline: true },
-      { name: "Issuer", value: payload.issuer, inline: true },
+      { name: "Issuer", value: issuerDisplay, inline: true },
       ...(showRootCa
-        ? [{ name: "Root CA", value: payload.rootCa, inline: true }]
+        ? [{ name: "Root CA", value: rootDisplay, inline: true }]
         : []),
       { name: "Type", value: payload.certType, inline: true },
       ...(payload.country

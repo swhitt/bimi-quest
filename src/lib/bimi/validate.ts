@@ -10,15 +10,12 @@ import { extractDnField, pemToDer, deriveCertType } from "@/lib/ct/parser";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 
 // CAs authorized to issue BIMI certificates per CA/Browser Forum VMC requirements.
-// Includes both raw DB org names and common display variants.
+// Values match what normalizeIssuerOrg() produces from raw certificate DNs.
 const AUTHORIZED_CAS = new Set([
   "DigiCert",
   "Entrust",
-  "SSL.com",
   "SSL Corporation",
-  "GlobalSign",
   "GlobalSign nv-sa",
-  "Sectigo",
   "Sectigo Limited",
 ]);
 

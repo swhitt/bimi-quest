@@ -29,12 +29,6 @@ const ISSUER_DISPLAY: Record<string, string> = {
   "Sectigo Limited": "Sectigo",
 };
 
-// Which issuing CAs operate under a different root CA
-// Key: issuer_org, Value: root_ca_org display name
-const ISSUER_TO_ROOT: Record<string, string> = {
-  "Sectigo Limited": "SSL.com",
-};
-
 export function displayRootCa(rootCaOrg: string | null): string {
   if (!rootCaOrg) return "Unknown";
   return ROOT_CA_DISPLAY[rootCaOrg] || rootCaOrg;
@@ -65,10 +59,9 @@ export function displayIssuerWithRoot(
  */
 export function normalizeIssuerOrg(raw: string | null): string | null {
   if (!raw) return null;
-  // Remove trailing escaped characters
   const cleaned = raw.replace(/\\$/, "").trim();
-  // Merge known variants
   if (cleaned === "DigiCert, Inc." || cleaned === "DigiCert\\, Inc.") return "DigiCert";
   if (cleaned === "Entrust, Inc." || cleaned === "Entrust\\, Inc.") return "Entrust";
+  if (cleaned === "GlobalSign" || cleaned === "GlobalSign NV-SA") return "GlobalSign nv-sa";
   return cleaned;
 }
