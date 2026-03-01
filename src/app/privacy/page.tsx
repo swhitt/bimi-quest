@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = {
@@ -6,7 +7,8 @@ export const metadata: Metadata = {
   description: "BIMI Quest privacy information. No tracking, no cookies, no accounts.",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  await connection();
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Privacy</h1>

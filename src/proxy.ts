@@ -13,18 +13,21 @@ const CA_SLUGS: Record<string, string> = {
 const isDev = process.env.NODE_ENV === "development";
 
 /**
- * Proxy handles URL rewrites and CSP nonce injection.
+ * Proxy handles URL rewrites, request ID injection, and CSP nonce generation.
  *
  * URL rewrites:
  *  1. /certificates/ca/digicert -> /certificates?ca=DigiCert
  *  2. /logos/page/3             -> /logos?page=3
  * Both can combine: /certificates/ca/digicert/page/2 -> /certificates?ca=DigiCert&page=2
  *
- * CSP: generates a per-request nonce, removing the need for 'unsafe-inline' on scripts.
+ * CSP: generates a per-request nonce and sets it in the Content-Security-Policy
+ * header. Next.js reads the header, extracts the nonce, and applies it to all
+ * framework scripts automatically. Pages must be dynamically rendered for this
+ * to work (see Next.js CSP docs).
  */
 export function proxy(request: NextRequest) {
   const requestId = crypto.randomUUID();
-  const nonce = Buffer.from(requestId).toString("base64");
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const csp = [
     "default-src 'self'",

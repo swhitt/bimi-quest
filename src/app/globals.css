@@ -92,6 +92,14 @@
   --chart-5: oklch(0.65 0.22 25);
 }
 
+/* Prevent white flash for dark-mode users before next-themes loads */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    background-color: oklch(0.13 0.005 260);
+    color-scheme: dark;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

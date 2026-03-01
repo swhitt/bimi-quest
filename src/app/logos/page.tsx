@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { GalleryContent } from "./gallery-content";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -22,7 +23,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function GalleryPage() {
+export default async function GalleryPage() {
+  await connection();
   return (
     <div className="space-y-8">
       <div>
