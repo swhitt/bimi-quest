@@ -285,7 +285,7 @@ export function GalleryContent() {
   const [activePreset, setActivePreset] = useState<PresetKey | null>(initPreset);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [customFilters, setCustomFilters] = useState<CustomFilters>(DEFAULT_FILTERS);
-  const [dedupSvg, setDedupSvg] = useState(false);
+  const [dedupSvg, setDedupSvg] = useState(searchParams.get("unique") === "1");
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
   const [total, setTotal] = useState(0);
@@ -334,6 +334,7 @@ export function GalleryContent() {
           // Update URL: ?view=<preset> for presets, nothing for custom
           const urlParams = new URLSearchParams();
           if (activePreset) urlParams.set("view", activePreset);
+          if (dedupSvg) urlParams.set("unique", "1");
           const basePath = window.location.pathname.replace(/\/page\/\d+$/, "");
           const pageSuffix = p > 1 ? `/page/${p}` : "";
           const qs = urlParams.toString();

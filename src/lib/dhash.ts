@@ -10,7 +10,11 @@ export async function computeVisualHash(
   svg: string
 ): Promise<string | null> {
   try {
-    const trimmed = await sharp(Buffer.from(svg))
+    // Strip UTF-8 BOM and fix XML 1.2 declarations — sharp/librsvg rejects both
+    const clean = svg
+      .replace(/^\uFEFF/, "")
+      .replace(/<\?xml\s+version=["']1\.2["']/, '<?xml version="1.0"');
+    const trimmed = await sharp(Buffer.from(clean))
       .resize(256, 256, { fit: "contain", background: "#ffffff" })
       .flatten({ background: "#ffffff" })
       .grayscale()

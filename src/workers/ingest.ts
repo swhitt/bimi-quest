@@ -556,6 +556,11 @@ async function backfillVisualHash(recalc = false) {
   let hashed = 0;
   let lastHash = "";
 
+  const [{ count: totalRemaining }] = recalc
+    ? await sql`SELECT COUNT(DISTINCT logotype_svg_hash) as count FROM certificates WHERE logotype_svg IS NOT NULL`
+    : await sql`SELECT COUNT(DISTINCT logotype_svg_hash) as count FROM certificates WHERE logotype_svg IS NOT NULL AND logotype_visual_hash IS NULL`;
+  console.log(`  ${totalRemaining} unique SVGs to hash\n`);
+
   while (true) {
     const rows = recalc
       ? await sql`
@@ -574,7 +579,9 @@ async function backfillVisualHash(recalc = false) {
           FROM certificates
           WHERE logotype_svg IS NOT NULL
             AND logotype_visual_hash IS NULL
+            AND logotype_svg_hash > ${lastHash}
           GROUP BY logotype_svg_hash
+          ORDER BY logotype_svg_hash
           LIMIT ${BATCH}
         `;
     if (rows.length === 0) break;
@@ -591,7 +598,7 @@ async function backfillVisualHash(recalc = false) {
       lastHash = hash;
       hashed++;
       if (hashed % 100 === 0) {
-        process.stdout.write(`\r  Hashed ${hashed} unique SVGs...`);
+        process.stdout.write(`\r  Hashed ${hashed} / ${totalRemaining} unique SVGs...`);
       }
     }
   }
