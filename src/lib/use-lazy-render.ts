@@ -12,7 +12,7 @@ import { useRef, useState, useEffect } from "react";
  *                    Defaults to "200px" so content loads just before it's visible.
  */
 export function useLazyRender<T extends HTMLElement = HTMLDivElement>(
-  rootMargin = "200px"
+  rootMargin = "200px",
 ): [React.RefObject<T | null>, boolean] {
   const ref = useRef<T | null>(null);
   const [visible, setVisible] = useState(false);
@@ -28,7 +28,7 @@ export function useLazyRender<T extends HTMLElement = HTMLDivElement>(
           observer.disconnect();
         }
       },
-      { rootMargin }
+      { rootMargin },
     );
 
     observer.observe(el);

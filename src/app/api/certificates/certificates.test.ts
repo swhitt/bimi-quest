@@ -10,9 +10,7 @@ let mockDbExecuteResult: { rows: unknown[] } = { rows: [] };
 
 const chainable = () => {
   const chain: Record<string, unknown> = {};
-  const methods = [
-    "select", "from", "where", "limit", "orderBy", "innerJoin",
-  ];
+  const methods = ["select", "from", "where", "limit", "orderBy", "innerJoin"];
   for (const m of methods) {
     chain[m] = vi.fn(() => chain);
   }
@@ -34,8 +32,29 @@ vi.mock("@/lib/db", () => {
 });
 
 vi.mock("@/lib/db/schema", () => ({
-  certificates: { id: "id", serialNumber: "serial_number", isPrecert: "is_precert", issuerDn: "issuer_dn", fingerprintSha256: "fingerprint_sha256", ctLogIndex: "ct_log_index", ctLogTimestamp: "ct_log_timestamp", extensionsJson: "extensions_json", rawPem: "raw_pem", sanList: "san_list", subjectCn: "subject_cn", isSuperseded: "is_superseded" },
-  chainCerts: { id: "id", fingerprintSha256: "fingerprint_sha256", subjectDn: "subject_dn", issuerDn: "issuer_dn", rawPem: "raw_pem", notBefore: "not_before", notAfter: "not_after" },
+  certificates: {
+    id: "id",
+    serialNumber: "serial_number",
+    isPrecert: "is_precert",
+    issuerDn: "issuer_dn",
+    fingerprintSha256: "fingerprint_sha256",
+    ctLogIndex: "ct_log_index",
+    ctLogTimestamp: "ct_log_timestamp",
+    extensionsJson: "extensions_json",
+    rawPem: "raw_pem",
+    sanList: "san_list",
+    subjectCn: "subject_cn",
+    isSuperseded: "is_superseded",
+  },
+  chainCerts: {
+    id: "id",
+    fingerprintSha256: "fingerprint_sha256",
+    subjectDn: "subject_dn",
+    issuerDn: "issuer_dn",
+    rawPem: "raw_pem",
+    notBefore: "not_before",
+    notAfter: "not_after",
+  },
   certificateChainLinks: { leafCertId: "leaf_cert_id", chainCertId: "chain_cert_id", chainPosition: "chain_position" },
   domainBimiState: { domain: "domain" },
 }));

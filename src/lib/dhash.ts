@@ -6,25 +6,17 @@ import sharp from "sharp";
  * hash that's invariant to XML formatting, zoom, padding, and translation.
  * Returns a 16-char hex string, or null on failure.
  */
-export async function computeVisualHash(
-  svg: string
-): Promise<string | null> {
+export async function computeVisualHash(svg: string): Promise<string | null> {
   try {
     // Strip UTF-8 BOM and fix XML 1.2 declarations — sharp/librsvg rejects both
-    const clean = svg
-      .replace(/^\uFEFF/, "")
-      .replace(/<\?xml\s+version=["']1\.2["']/, '<?xml version="1.0"');
+    const clean = svg.replace(/^\uFEFF/, "").replace(/<\?xml\s+version=["']1\.2["']/, '<?xml version="1.0"');
     const trimmed = await sharp(Buffer.from(clean))
       .resize(256, 256, { fit: "contain", background: "#ffffff" })
       .flatten({ background: "#ffffff" })
       .grayscale()
       .toBuffer();
 
-    const cropped = await sharp(trimmed)
-      .trim()
-      .resize(9, 8, { fit: "fill" })
-      .raw()
-      .toBuffer();
+    const cropped = await sharp(trimmed).trim().resize(9, 8, { fit: "fill" }).raw().toBuffer();
 
     // 9 wide × 8 tall = 72 pixels; compare adjacent pairs per row → 8 bytes (64 bits)
     const bytes = new Uint8Array(8);

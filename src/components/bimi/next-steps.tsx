@@ -20,7 +20,7 @@ const CHECK_GUIDANCE: Record<string, { owner: string; guidance: string }> = {
   },
   "dmarc-policy": {
     owner: "IT / Email Security",
-    guidance: "Update your DMARC policy to \"quarantine\" or \"reject\" with pct=100.",
+    guidance: 'Update your DMARC policy to "quarantine" or "reject" with pct=100.',
   },
   "cert-chain": {
     owner: "Certificate Authority",
@@ -82,7 +82,8 @@ export function NextSteps({ checks, overallValid }: NextStepsProps) {
             <div>
               <p className="font-medium text-sm">Everything looks good</p>
               <p className="text-sm text-muted-foreground mt-1">
-                This domain's BIMI setup passes all required checks. Email clients that support BIMI should display the brand logo alongside messages from this domain.
+                This domain&apos;s BIMI setup passes all required checks. Email clients that support BIMI should display
+                the brand logo alongside messages from this domain.
               </p>
             </div>
           </div>
@@ -91,9 +92,7 @@ export function NextSteps({ checks, overallValid }: NextStepsProps) {
     );
   }
 
-  const failingChecks = checks.filter(
-    (c) => c.status === "fail" || c.status === "warn"
-  );
+  const failingChecks = checks.filter((c) => c.status === "fail" || c.status === "warn");
 
   if (failingChecks.length === 0) return null;
 
@@ -112,9 +111,7 @@ export function NextSteps({ checks, overallValid }: NextStepsProps) {
     groupMap.set(info.owner, existing);
   }
 
-  const groups: ActionGroup[] = Array.from(groupMap.entries()).map(
-    ([owner, actions]) => ({ owner, actions })
-  );
+  const groups: ActionGroup[] = Array.from(groupMap.entries()).map(([owner, actions]) => ({ owner, actions }));
 
   if (groups.length === 0) return null;
 

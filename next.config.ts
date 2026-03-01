@@ -2,10 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_COMMIT_SHA:
-      process.env.VERCEL_GIT_COMMIT_SHA ??
-      process.env.NEXT_PUBLIC_COMMIT_SHA ??
-      "",
+    NEXT_PUBLIC_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_COMMIT_SHA ?? "",
   },
   // Allow SVG images from any domain via our proxy
   images: {
@@ -32,9 +29,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/api/:path*",
-        headers: [
-          { key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" },
-        ],
+        headers: [{ key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" }],
       },
     ];
   },

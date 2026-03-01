@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ingestionCursors } from "@/lib/db/schema";
@@ -16,10 +16,7 @@ export async function GET(request: NextRequest) {
   // Fail-closed: reject if CRON_SECRET is not configured
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET is not configured" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 500 });
   }
 
   const authHeader = request.headers.get("authorization");
@@ -31,11 +28,7 @@ export async function GET(request: NextRequest) {
     const sth = await getSTH();
     const treeSize = sth.tree_size;
 
-    const cursor = await db
-      .select()
-      .from(ingestionCursors)
-      .where(eq(ingestionCursors.logName, "gorgon"))
-      .limit(1);
+    const cursor = await db.select().from(ingestionCursors).where(eq(ingestionCursors.logName, "gorgon")).limit(1);
     const startIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
 
     if (startIndex >= treeSize) {
@@ -67,10 +60,7 @@ export async function GET(request: NextRequest) {
       batchesRun: result.batchesRun,
     });
   } catch (error) {
-    log('error', 'cron.ingest.failed', { error: String(error), route: '/api/cron/ingest' });
-    return NextResponse.json(
-      { error: "Ingestion failed" },
-      { status: 500 }
-    );
+    log("error", "cron.ingest.failed", { error: String(error), route: "/api/cron/ingest" });
+    return NextResponse.json({ error: "Ingestion failed" }, { status: 500 });
   }
 }

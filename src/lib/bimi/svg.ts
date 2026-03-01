@@ -72,9 +72,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   // --- BIMI-level: file size (32KB max) ---
   const sizeBytes = new TextEncoder().encode(trimmed).length;
   if (sizeBytes > MAX_SIZE_BYTES) {
-    errors.push(
-      `File size ${(sizeBytes / 1024).toFixed(1)}KB exceeds 32KB limit`
-    );
+    errors.push(`File size ${(sizeBytes / 1024).toFixed(1)}KB exceeds 32KB limit`);
   }
 
   // Extract the <svg> opening tag attributes
@@ -114,9 +112,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
     }
   }
   for (const el of disallowedElements) {
-    errors.push(
-      `Contains <${el}> element (not in SVG Tiny PS allowed elements)`
-    );
+    errors.push(`Contains <${el}> element (not in SVG Tiny PS allowed elements)`);
   }
 
   // =============================================
@@ -127,17 +123,13 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   if (!/viewBox\s*=/i.test(svgAttrs)) {
     warnings.push("Missing viewBox attribute (recommended for consistent rendering)");
   } else {
-    const viewBoxMatch = svgAttrs.match(
-      /viewBox\s*=\s*["']([^"']*)["']/i
-    );
+    const viewBoxMatch = svgAttrs.match(/viewBox\s*=\s*["']([^"']*)["']/i);
     if (viewBoxMatch) {
       const raw = viewBoxMatch[1].trim();
 
       // viewBox must be space-delimited per BIMI guidelines
       if (raw.includes(",")) {
-        errors.push(
-          "viewBox uses comma-delimited values (must be space-delimited per BIMI spec)"
-        );
+        errors.push("viewBox uses comma-delimited values (must be space-delimited per BIMI spec)");
       }
 
       const parts = raw.split(/[\s,]+/);
@@ -145,14 +137,10 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
         const width = parseFloat(parts[2]);
         const height = parseFloat(parts[3]);
         if (Math.abs(width - height) > 0.01) {
-          errors.push(
-            `viewBox is not square: ${width}x${height} (BIMI requires 1:1 aspect ratio)`
-          );
+          errors.push(`viewBox is not square: ${width}x${height} (BIMI requires 1:1 aspect ratio)`);
         }
       } else {
-        errors.push(
-          `Invalid viewBox format: expected 4 values, got ${parts.length}`
-        );
+        errors.push(`Invalid viewBox format: expected 4 values, got ${parts.length}`);
       }
     }
   }
@@ -166,9 +154,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
     if (titleText.length === 0) {
       errors.push("<title> element is empty (must contain brand name)");
     } else if (titleText.length > MAX_TITLE_LENGTH) {
-      errors.push(
-        `<title> exceeds ${MAX_TITLE_LENGTH} characters (${titleText.length})`
-      );
+      errors.push(`<title> exceeds ${MAX_TITLE_LENGTH} characters (${titleText.length})`);
     }
   }
 
@@ -252,28 +238,20 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   const heightMatch = svgAttrs.match(/\bheight\s*=\s*["']([^"']*)["']/i);
 
   if (widthMatch && RELATIVE_UNITS.test(widthMatch[1].trim())) {
-    errors.push(
-      `width uses relative unit "${widthMatch[1].trim()}" (only absolute units allowed)`
-    );
+    errors.push(`width uses relative unit "${widthMatch[1].trim()}" (only absolute units allowed)`);
   }
   if (heightMatch && RELATIVE_UNITS.test(heightMatch[1].trim())) {
-    errors.push(
-      `height uses relative unit "${heightMatch[1].trim()}" (only absolute units allowed)`
-    );
+    errors.push(`height uses relative unit "${heightMatch[1].trim()}" (only absolute units allowed)`);
   }
 
   if (!widthMatch || !heightMatch) {
-    warnings.push(
-      "Missing explicit width/height attributes (recommended for Gmail compatibility)"
-    );
+    warnings.push("Missing explicit width/height attributes (recommended for Gmail compatibility)");
   } else {
     const w = parseFloat(widthMatch[1]);
     const h = parseFloat(heightMatch[1]);
     if (!isNaN(w) && !isNaN(h)) {
       if (w < 96 || h < 96) {
-        warnings.push(
-          `Dimensions ${w}x${h} below Gmail minimum of 96x96`
-        );
+        warnings.push(`Dimensions ${w}x${h} below Gmail minimum of 96x96`);
       }
     }
   }
@@ -288,20 +266,14 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
 
   // <text> elements work but paths are more portable
   if (/<text[\s>]/i.test(trimmed)) {
-    warnings.push(
-      "Contains <text> elements (converting to paths improves cross-client portability)"
-    );
+    warnings.push("Contains <text> elements (converting to paths improves cross-client portability)");
   }
 
   // <text editable> must be "none" if present (SVG Tiny PS constraint)
-  const textEditableMatches = trimmed.matchAll(
-    /<text[^>]*\beditable\s*=\s*["']([^"']*)["'][^>]*/gi
-  );
+  const textEditableMatches = trimmed.matchAll(/<text[^>]*\beditable\s*=\s*["']([^"']*)["'][^>]*/gi);
   for (const m of textEditableMatches) {
     if (m[1].trim().toLowerCase() !== "none") {
-      errors.push(
-        `<text> has editable="${m[1].trim()}" (must be "none" per SVG Tiny PS)`
-      );
+      errors.push(`<text> has editable="${m[1].trim()}" (must be "none" per SVG Tiny PS)`);
     }
   }
 
@@ -313,9 +285,7 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
   // Complex SVGs with very fine detail may not render well at small sizes.
   const pathCount = (trimmed.match(/<path[\s>]/gi) || []).length;
   if (pathCount > 500) {
-    warnings.push(
-      `High path count (${pathCount}) may render poorly at Apple Mail's smaller display sizes (14pt)`
-    );
+    warnings.push(`High path count (${pathCount}) may render poorly at Apple Mail's smaller display sizes (14pt)`);
   }
 
   // Check for transforms that might cause rendering differences across clients
@@ -335,18 +305,11 @@ export function validateSVGTinyPS(svgContent: string): SVGValidationResult {
  * These are SVG Tiny PS constraints: the attributes are optional, but if present
  * they must have a specific value.
  */
-function checkAttrValue(
-  svgAttrs: string,
-  attr: string,
-  expected: string,
-  errors: string[]
-) {
+function checkAttrValue(svgAttrs: string, attr: string, expected: string, errors: string[]) {
   const re = new RegExp(`\\b${attr}\\s*=\\s*["']([^"']*)["']`, "i");
   const match = svgAttrs.match(re);
   if (match && match[1].trim().toLowerCase() !== expected.toLowerCase()) {
-    errors.push(
-      `${attr}="${match[1].trim()}" (must be "${expected}" per SVG Tiny PS)`
-    );
+    errors.push(`${attr}="${match[1].trim()}" (must be "${expected}" per SVG Tiny PS)`);
   }
 }
 
@@ -364,14 +327,11 @@ export const computeSvgHash = sha256Hex;
 /**
  * Map SVG validation errors/warnings to structured BimiCheckItem entries.
  */
-export function categorizeSvgChecks(
-  result: SVGValidationResult
-): BimiCheckItem[] {
+export function categorizeSvgChecks(result: SVGValidationResult): BimiCheckItem[] {
   const items: BimiCheckItem[] = [];
 
   // Compatibility-related keywords (Gmail, Apple Mail, dimensions, portability)
-  const compatPatterns =
-    /gmail|apple mail|portability|dimensions|width\/height|display size/i;
+  const compatPatterns = /gmail|apple mail|portability|dimensions|width\/height|display size/i;
 
   if (result.errors.length === 0 && result.warnings.length === 0) {
     items.push({
@@ -412,37 +372,79 @@ export function categorizeSvgChecks(
 }
 
 const SVG_REMEDIATION_MAP: [RegExp, string][] = [
-  [/Missing.*viewBox/i, "Add a viewBox attribute to the root <svg> element, e.g. viewBox=\"0 0 100 100\" using your logo's dimensions."],
-  [/not square|aspect ratio/i, "Make the viewBox width and height equal (e.g., \"0 0 100 100\") so the logo is a perfect square."],
-  [/Contains <(\w+)> element/i, "Remove the disallowed element from your SVG. Only elements in the SVG Tiny PS profile are permitted."],
-  [/Missing required baseProfile/i, "Add baseProfile=\"tiny-ps\" to the root <svg> element."],
-  [/Missing required version/i, "Add version=\"1.2\" to the root <svg> element."],
-  [/Missing required xmlns/i, "Add xmlns=\"http://www.w3.org/2000/svg\" to the root <svg> element."],
-  [/Missing required <title>/i, "Add a <title> element inside your <svg> containing your brand name, e.g. <title>Acme Corp</title>."],
+  [
+    /Missing.*viewBox/i,
+    'Add a viewBox attribute to the root <svg> element, e.g. viewBox="0 0 100 100" using your logo\'s dimensions.',
+  ],
+  [
+    /not square|aspect ratio/i,
+    'Make the viewBox width and height equal (e.g., "0 0 100 100") so the logo is a perfect square.',
+  ],
+  [
+    /Contains <(\w+)> element/i,
+    "Remove the disallowed element from your SVG. Only elements in the SVG Tiny PS profile are permitted.",
+  ],
+  [/Missing required baseProfile/i, 'Add baseProfile="tiny-ps" to the root <svg> element.'],
+  [/Missing required version/i, 'Add version="1.2" to the root <svg> element.'],
+  [/Missing required xmlns/i, 'Add xmlns="http://www.w3.org/2000/svg" to the root <svg> element.'],
+  [
+    /Missing required <title>/i,
+    "Add a <title> element inside your <svg> containing your brand name, e.g. <title>Acme Corp</title>.",
+  ],
   [/<title>.*empty/i, "Put your brand name inside the <title> element, e.g. <title>Acme Corp</title>."],
   [/<title>.*exceeds/i, "Shorten your <title> text to 64 characters or fewer."],
   [/event handler/i, "Remove all on* attributes (onclick, onload, etc.) from your SVG elements."],
   [/javascript.*URI|javascript.*url/i, "Remove any javascript: references from href and url() values."],
-  [/external.*href|external.*url/i, "Remove all external URL references. SVG Tiny PS does not allow linking to external resources."],
+  [
+    /external.*href|external.*url/i,
+    "Remove all external URL references. SVG Tiny PS does not allow linking to external resources.",
+  ],
   [/animation elements/i, "Remove <animate>, <set>, and other animation elements. BIMI SVGs must be static."],
-  [/File size.*exceeds/i, "Reduce your SVG file size to under 32KB. Simplify paths, remove unnecessary metadata, or use an SVG optimizer."],
-  [/comma-delimited/i, "Change the viewBox value to use spaces instead of commas, e.g. viewBox=\"0 0 100 100\"."],
+  [
+    /File size.*exceeds/i,
+    "Reduce your SVG file size to under 32KB. Simplify paths, remove unnecessary metadata, or use an SVG optimizer.",
+  ],
+  [/comma-delimited/i, 'Change the viewBox value to use spaces instead of commas, e.g. viewBox="0 0 100 100".'],
   [/@import/i, "Remove @import rules from <style> blocks. External stylesheets are not allowed."],
-  [/external stylesheet/i, "Remove the <?xml-stylesheet?> processing instruction. External stylesheets are not allowed."],
+  [
+    /external stylesheet/i,
+    "Remove the <?xml-stylesheet?> processing instruction. External stylesheets are not allowed.",
+  ],
   [/data:text\/html/i, "Remove any data:text/html URIs from href attributes."],
-  [/relative unit/i, "Use absolute units (px, pt, cm, mm, in) or unitless values for width and height instead of relative units like em, rem, or %."],
-  [/Missing explicit width\/height/i, "Add explicit width and height attributes to the root <svg> element (e.g., width=\"100\" height=\"100\") for better Gmail compatibility."],
+  [
+    /relative unit/i,
+    "Use absolute units (px, pt, cm, mm, in) or unitless values for width and height instead of relative units like em, rem, or %.",
+  ],
+  [
+    /Missing explicit width\/height/i,
+    'Add explicit width and height attributes to the root <svg> element (e.g., width="100" height="100") for better Gmail compatibility.',
+  ],
   [/below Gmail minimum/i, "Increase the width and height attributes to at least 96x96 for Gmail compatibility."],
-  [/Missing recommended <desc>/i, "Add a <desc> element inside your <svg> with a brief description of the logo for accessibility."],
+  [
+    /Missing recommended <desc>/i,
+    "Add a <desc> element inside your <svg> with a brief description of the logo for accessibility.",
+  ],
   [/<desc>.*empty/i, "Add a description inside the <desc> element for accessibility."],
   [/should not have an? [xy] attribute/i, "Remove the x and y attributes from the root <svg> element."],
-  [/<text> elements/i, "Convert <text> elements to <path> elements for consistent rendering across email clients. Most vector editors can do this via \"Convert to Outlines\"."],
-  [/High path count/i, "Simplify your SVG to reduce the number of paths. Complex logos may not render well at small sizes in some email clients."],
-  [/editable=.*must be "none"/i, "Set the editable attribute to \"none\" on all <text> elements, or remove it entirely."],
-  [/zoomAndPan/i, "Set zoomAndPan=\"disable\" on the root <svg> element, or remove the attribute."],
-  [/focusable/i, "Set focusable=\"false\" on the root <svg> element, or remove the attribute."],
-  [/externalResourcesRequired/i, "Set externalResourcesRequired=\"false\" on the root <svg> element, or remove the attribute."],
-  [/Invalid viewBox format/i, "The viewBox attribute needs exactly 4 space-separated numbers: min-x, min-y, width, and height (e.g., \"0 0 100 100\")."],
+  [
+    /<text> elements/i,
+    'Convert <text> elements to <path> elements for consistent rendering across email clients. Most vector editors can do this via "Convert to Outlines".',
+  ],
+  [
+    /High path count/i,
+    "Simplify your SVG to reduce the number of paths. Complex logos may not render well at small sizes in some email clients.",
+  ],
+  [/editable=.*must be "none"/i, 'Set the editable attribute to "none" on all <text> elements, or remove it entirely.'],
+  [/zoomAndPan/i, 'Set zoomAndPan="disable" on the root <svg> element, or remove the attribute.'],
+  [/focusable/i, 'Set focusable="false" on the root <svg> element, or remove the attribute.'],
+  [
+    /externalResourcesRequired/i,
+    'Set externalResourcesRequired="false" on the root <svg> element, or remove the attribute.',
+  ],
+  [
+    /Invalid viewBox format/i,
+    'The viewBox attribute needs exactly 4 space-separated numbers: min-x, min-y, width, and height (e.g., "0 0 100 100").',
+  ],
 ];
 
 function getSvgRemediation(message: string): string | undefined {

@@ -1,0 +1,14 @@
+pre-commit:
+  parallel: true
+  commands:
+    biome-format:
+      glob: "*.{ts,tsx,mjs,json,css}"
+      run: bunx biome format --no-errors-on-unmatched --staged {staged_files}
+    eslint:
+      glob: "*.{ts,tsx}"
+      run: bunx eslint --no-warn-ignored --max-warnings=-1 {staged_files}
+    markdownlint:
+      glob: "*.md"
+      run: bunx markdownlint-cli2 {staged_files}
+    typecheck:
+      run: bun run typecheck

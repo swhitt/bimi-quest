@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 
 interface UtcTimeProps {
@@ -47,16 +42,11 @@ export function UtcTime({ date, showTime, relative, expired }: UtcTimeProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="inline-block">
-            <time
-              dateTime={d.toISOString()}
-              className={`text-sm tabular-nums ${expired ? "text-destructive" : ""}`}
-            >
+            <time dateTime={d.toISOString()} className={`text-sm tabular-nums ${expired ? "text-destructive" : ""}`}>
               {showTime ? utcDateTime(d) : utcDate(d)}
             </time>
             {relative && (
-              <span
-                className={`text-xs block ${expired ? "text-destructive" : "text-muted-foreground"}`}
-              >
+              <span className={`text-xs block ${expired ? "text-destructive" : "text-muted-foreground"}`}>
                 {formatDistanceToNow(d, { addSuffix: true })}
               </span>
             )}

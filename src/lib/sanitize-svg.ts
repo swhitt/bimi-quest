@@ -99,12 +99,14 @@ function ensureViewBox(svg: string): string {
 /** Strip attributes/content that browsers silently remove from parsed SVG DOM,
  *  so server-rendered HTML matches what the browser produces during hydration. */
 function stripBrowserDropped(svg: string): string {
-  return svg
-    // baseProfile is deprecated in SVG 2; browsers drop it from the DOM
-    .replace(/\s+baseProfile\s*=\s*"[^"]*"/gi, "")
-    .replace(/\s+baseProfile\s*=\s*'[^']*'/gi, "")
-    // HTML/XML comments are stripped by DOMPurify and some browser parsers
-    .replace(/<!--[\s\S]*?-->/g, "");
+  return (
+    svg
+      // baseProfile is deprecated in SVG 2; browsers drop it from the DOM
+      .replace(/\s+baseProfile\s*=\s*"[^"]*"/gi, "")
+      .replace(/\s+baseProfile\s*=\s*'[^']*'/gi, "")
+      // HTML/XML comments are stripped by DOMPurify and some browser parsers
+      .replace(/<!--[\s\S]*?-->/g, "")
+  );
 }
 
 /** Sanitize SVG markup, stripping scripts and event handlers */

@@ -39,9 +39,6 @@ export function useChartColors(): Record<string, string> {
   return colors;
 }
 
-export function getCAColor(
-  colors: Record<string, string>,
-  ca: string
-): string {
+export function getCAColor(colors: Record<string, string>, ca: string): string {
   return colors[ca] || "oklch(0.55 0 0)";
 }

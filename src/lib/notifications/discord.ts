@@ -24,14 +24,12 @@ const CA_COLORS: Record<string, number> = {
   "SSL.com": 0x1a73e8,
   DigiCert: 0x0057b8,
   Entrust: 0xe31937,
-  "GlobalSign": 0x00a651,
-  "Sectigo": 0xff6600,
+  GlobalSign: 0x00a651,
+  Sectigo: 0xff6600,
 };
 const DEFAULT_COLOR = 0x6b7280;
 
-export async function sendDiscordNotification(
-  payload: DiscordCertPayload
-): Promise<void> {
+export async function sendDiscordNotification(payload: DiscordCertPayload): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) {
     console.warn("DISCORD_WEBHOOK_URL not set, skipping notification");
@@ -55,13 +53,9 @@ export async function sendDiscordNotification(
     fields: [
       { name: "Domain", value: payload.domain, inline: true },
       { name: "Issuer", value: issuerDisplay, inline: true },
-      ...(showRootCa
-        ? [{ name: "Root CA", value: rootDisplay, inline: true }]
-        : []),
+      ...(showRootCa ? [{ name: "Root CA", value: rootDisplay, inline: true }] : []),
       { name: "Type", value: payload.certType, inline: true },
-      ...(payload.country
-        ? [{ name: "Country", value: payload.country, inline: true }]
-        : []),
+      ...(payload.country ? [{ name: "Country", value: payload.country, inline: true }] : []),
       ...(payload.notabilityScore && payload.notabilityScore >= 5
         ? [
             {
@@ -100,11 +94,11 @@ export async function sendDiscordNotification(
         continue;
       }
 
-      log('error', 'discord.webhook.failed', { status: res.status, statusText: res.statusText, attempt });
+      log("error", "discord.webhook.failed", { status: res.status, statusText: res.statusText, attempt });
       return;
     } catch (err) {
       if (attempt === maxRetries - 1) {
-        log('error', 'discord.webhook.error', { error: String(err), attempt });
+        log("error", "discord.webhook.error", { error: String(err), attempt });
       }
     }
   }

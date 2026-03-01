@@ -1,15 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  pgTable,
-  serial,
-  text,
-  timestamp,
-  bigint,
-  integer,
-  boolean,
-  jsonb,
-  index,
-} from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, bigint, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
 
 export const certificates = pgTable(
   "certificates",
@@ -64,10 +54,7 @@ export const certificates = pgTable(
     index("idx_certificates_not_before").on(table.notBefore),
     index("idx_certificates_issuer_org").on(table.issuerOrg),
     index("idx_certificates_subject_country").on(table.subjectCountry),
-    index("idx_certificates_serial_precert").on(
-      table.serialNumber,
-      table.isPrecert
-    ),
+    index("idx_certificates_serial_precert").on(table.serialNumber, table.isPrecert),
     index("idx_certs_type_notbefore").on(table.certType, table.notBefore),
     index("idx_certs_rootca_notbefore").on(table.rootCaOrg, table.notBefore),
     index("idx_certs_type_rootca_notbefore").on(table.certType, table.rootCaOrg, table.notBefore),
@@ -78,7 +65,7 @@ export const certificates = pgTable(
     index("idx_certificates_visual_hash").on(table.logotypeVisualHash),
     // Partial index: most queries filter out superseded certs
     index("idx_certs_active_notbefore").on(table.notBefore).where(sql`${table.isSuperseded} = false`),
-  ]
+  ],
 );
 
 export const chainCerts = pgTable("chain_certs", {
@@ -103,7 +90,7 @@ export const certificateChainLinks = pgTable(
       .references(() => chainCerts.id),
     chainPosition: integer("chain_position").notNull(),
   },
-  (table) => [index("idx_chain_links_leaf_cert_id").on(table.leafCertId)]
+  (table) => [index("idx_chain_links_leaf_cert_id").on(table.leafCertId)],
 );
 
 export const domainBimiState = pgTable("domain_bimi_state", {

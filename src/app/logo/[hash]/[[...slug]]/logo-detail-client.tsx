@@ -73,24 +73,23 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
     return tileBgForSvg(stripped);
   }, [logo.svg]);
   const autoIsLight = isLightBg(autoBg);
-  const strippedSvg = useMemo(() => logo.svg ? stripWhiteSvgBg(logo.svg) : null, [logo.svg]);
+  const strippedSvg = useMemo(() => (logo.svg ? stripWhiteSvgBg(logo.svg) : null), [logo.svg]);
 
   const [bgMode, setBgMode] = useState<"auto" | "dark" | "light">("auto");
   const now = new Date();
   const isExpired = logo.notAfter ? new Date(logo.notAfter) < now : false;
   const mtInfo = getMarkTypeInfo(logo.markType);
 
-  const certTypeLabel = logo.certType === "VMC"
-    ? "Verified Mark Certificate"
-    : logo.certType === "CMC"
-    ? "Common Mark Certificate"
-    : null;
+  const certTypeLabel =
+    logo.certType === "VMC" ? "Verified Mark Certificate" : logo.certType === "CMC" ? "Common Mark Certificate" : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/logos" className="hover:text-foreground transition-colors">Gallery</Link>
+        <Link href="/logos" className="hover:text-foreground transition-colors">
+          Gallery
+        </Link>
         <span className="text-muted-foreground/50">/</span>
         <span className="text-foreground truncate font-medium">{logo.org}</span>
       </nav>
@@ -102,23 +101,18 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           <div
             className={`w-72 h-72 rounded-2xl p-5 ring-1 transition-colors duration-200
               [&>div>svg]:h-full [&>div>svg]:w-full
-              ${bgMode === "light" || (bgMode === "auto" && autoIsLight)
-                ? "ring-black/10"
-                : "ring-white/10"
-              }`}
+              ${bgMode === "light" || (bgMode === "auto" && autoIsLight) ? "ring-black/10" : "ring-white/10"}`}
             style={{
-              backgroundColor:
-                bgMode === "auto" ? autoBg
-                : bgMode === "dark" ? DARK_BG
-                : LIGHT_BG,
+              backgroundColor: bgMode === "auto" ? autoBg : bgMode === "dark" ? DARK_BG : LIGHT_BG,
             }}
           >
             {logo.svg ? (
-              <LogoSvg svg={bgMode === "light" ? logo.svg : (strippedSvg ?? logo.svg)} className="h-full w-full [&>svg]:h-full [&>svg]:w-full" />
+              <LogoSvg
+                svg={bgMode === "light" ? logo.svg : (strippedSvg ?? logo.svg)}
+                className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
+              />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                No image
-              </div>
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">No image</div>
             )}
           </div>
           {/* Background toggle */}
@@ -130,9 +124,11 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
               title={`Background: ${bgMode} (click to cycle)`}
               className="backdrop-blur-sm bg-background/80 shadow-md"
             >
-              {(bgMode === "dark" || (bgMode === "auto" && !autoIsLight))
-                ? <Sun className="size-3.5" />
-                : <Moon className="size-3.5" />}
+              {bgMode === "dark" || (bgMode === "auto" && !autoIsLight) ? (
+                <Sun className="size-3.5" />
+              ) : (
+                <Moon className="size-3.5" />
+              )}
             </Button>
           </div>
         </div>
@@ -141,14 +137,14 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
             {logo.country && (
-              <span title={logo.country} className="text-xl">{countryFlag(logo.country)}</span>
+              <span title={logo.country} className="text-xl">
+                {countryFlag(logo.country)}
+              </span>
             )}
             {logo.org}
           </h1>
 
-          {logo.description && (
-            <p className="text-sm text-muted-foreground max-w-md">{logo.description}</p>
-          )}
+          {logo.description && <p className="text-sm text-muted-foreground max-w-md">{logo.description}</p>}
 
           {/* Badges row */}
           <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -160,29 +156,38 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
             )}
             {mtInfo && (
               <Badge variant="secondary" className={mtInfo.badgeClass}>
-                <svg className="mr-1 size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  {mtInfo.iconPaths.map((d, i) => <path key={i} d={d} />)}
+                <svg
+                  className="mr-1 size-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {mtInfo.iconPaths.map((d, i) => (
+                    <path key={i} d={d} />
+                  ))}
                 </svg>
                 {mtInfo.label}
               </Badge>
             )}
             {logo.isPrecert && (
-              <Badge variant="secondary" className="border-amber-500/50 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              <Badge
+                variant="secondary"
+                className="border-amber-500/50 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+              >
                 Precert
               </Badge>
             )}
-            {isExpired && (
-              <Badge variant="destructive">Expired</Badge>
-            )}
+            {isExpired && <Badge variant="destructive">Expired</Badge>}
           </div>
 
           {/* Score */}
           {logo.score != null && (
             <div className="flex flex-col items-center gap-1 pt-1">
               <ScoreStars score={logo.score} />
-              {logo.reason && (
-                <p className="text-xs text-muted-foreground max-w-sm">{logo.reason}</p>
-              )}
+              {logo.reason && <p className="text-xs text-muted-foreground max-w-sm">{logo.reason}</p>}
             </div>
           )}
 
@@ -265,20 +270,11 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
         </div>
       </div>
-
     </div>
   );
 }
 
-function DetailRow({
-  label,
-  href,
-  children,
-}: {
-  label: string;
-  href?: string;
-  children: React.ReactNode;
-}) {
+function DetailRow({ label, href, children }: { label: string; href?: string; children: React.ReactNode }) {
   const value = href ? (
     <Link href={href} className="text-primary hover:underline">
       {children}

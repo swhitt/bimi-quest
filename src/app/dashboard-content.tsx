@@ -46,10 +46,7 @@ export async function DashboardContent({
     );
   }
 
-  const displayCA =
-    data.selectedCA === "All Issuers"
-      ? "All Issuers"
-      : displayIssuerOrg(data.selectedCA);
+  const displayCA = data.selectedCA === "All Issuers" ? "All Issuers" : displayIssuerOrg(data.selectedCA);
 
   return (
     <div className="space-y-5">
@@ -76,8 +73,7 @@ export async function DashboardContent({
 
       {data.lastUpdated && (
         <p className="text-xs text-muted-foreground text-right">
-          Data last updated{" "}
-          {formatDistanceToNow(new Date(data.lastUpdated), { addSuffix: true })}
+          Data last updated {formatDistanceToNow(new Date(data.lastUpdated), { addSuffix: true })}
         </p>
       )}
     </div>

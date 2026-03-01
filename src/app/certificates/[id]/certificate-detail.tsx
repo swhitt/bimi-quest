@@ -9,13 +9,9 @@ import { formatDistanceToNow } from "date-fns";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
-import { computeDiff, type DiffLine } from "@/lib/diff";
+import { computeDiff } from "@/lib/diff";
 import { getMarkTypeInfo } from "@/lib/mark-types";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
 
 // Extension entry: new format has { v, c }, old format is a plain hex string
@@ -125,7 +121,6 @@ interface BimiCheckResult {
   }[];
 }
 
-
 function chainLabel(chainCert: { chainPosition: number; subjectDn: string; issuerDn: string }): string {
   // Self-signed cert (subject matches issuer) is a root CA
   if (chainCert.subjectDn === chainCert.issuerDn) return "Root CA";
@@ -201,22 +196,16 @@ export function CertificateDetail({ id }: { id: string }) {
 
   const sanitizedSvg = useMemo<string | null>(
     () => (data?.certificate.logotypeSvg ? sanitizeSvg(data.certificate.logotypeSvg) : null),
-    [data?.certificate.logotypeSvg]
+    [data?.certificate.logotypeSvg],
   );
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        Loading certificate...
-      </div>
-    );
+    return <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificate...</div>;
   }
 
   if (error || !data) {
     return (
-      <div className="flex h-64 items-center justify-center text-destructive">
-        {error || "Certificate not found"}
-      </div>
+      <div className="flex h-64 items-center justify-center text-destructive">{error || "Certificate not found"}</div>
     );
   }
 
@@ -228,9 +217,13 @@ export function CertificateDetail({ id }: { id: string }) {
     <div className="space-y-6">
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">Dashboard</Link>
+        <Link href="/" className="hover:text-foreground">
+          Dashboard
+        </Link>
         <span>/</span>
-        <Link href="/certificates" className="hover:text-foreground">Certificates</Link>
+        <Link href="/certificates" className="hover:text-foreground">
+          Certificates
+        </Link>
         <span>/</span>
         <span className="text-foreground">{cert.subjectOrg || cert.subjectCn || cert.sanList[0] || `#${cert.id}`}</span>
       </nav>
@@ -258,11 +251,15 @@ export function CertificateDetail({ id }: { id: string }) {
             )}
             {cert.notabilityScore != null && (
               <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                  cert.notabilityScore >= 8 ? "bg-amber-500/15 text-amber-500" :
-                  cert.notabilityScore >= 5 ? "bg-blue-500/15 text-blue-500" :
-                  "bg-muted text-muted-foreground"
-                }`}>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                    cert.notabilityScore >= 8
+                      ? "bg-amber-500/15 text-amber-500"
+                      : cert.notabilityScore >= 5
+                        ? "bg-blue-500/15 text-blue-500"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
                   {"★".repeat(Math.round(cert.notabilityScore / 2))} {cert.notabilityScore}/10
                 </span>
                 {cert.industry && (
@@ -278,7 +275,8 @@ export function CertificateDetail({ id }: { id: string }) {
                     <HelpCircle className="size-3.5 text-muted-foreground/50 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-64">
-                    Reflects the organization&apos;s global brand recognition and email volume (1-10). Higher scores indicate more widely recognized brands.
+                    Reflects the organization&apos;s global brand recognition and email volume (1-10). Higher scores
+                    indicate more widely recognized brands.
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -306,24 +304,44 @@ export function CertificateDetail({ id }: { id: string }) {
           )}
           {cert.certType && (
             <Badge variant="outline">
-              <abbr title={cert.certType === "VMC" ? "Verified Mark Certificate" : cert.certType === "CMC" ? "Common Mark Certificate" : undefined} className="no-underline">
+              <abbr
+                title={
+                  cert.certType === "VMC"
+                    ? "Verified Mark Certificate"
+                    : cert.certType === "CMC"
+                      ? "Common Mark Certificate"
+                      : undefined
+                }
+                className="no-underline"
+              >
                 {cert.certType}
               </abbr>
             </Badge>
           )}
-          {cert.markType && (() => {
-            const mtInfo = getMarkTypeInfo(cert.markType);
-            return (
-              <Badge variant="secondary" className={mtInfo?.badgeClass ?? ""}>
-                {mtInfo && (
-                  <svg className="mr-1 size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    {mtInfo.iconPaths.map((d, i) => <path key={i} d={d} />)}
-                  </svg>
-                )}
-                {mtInfo?.label ?? cert.markType}
-              </Badge>
-            );
-          })()}
+          {cert.markType &&
+            (() => {
+              const mtInfo = getMarkTypeInfo(cert.markType);
+              return (
+                <Badge variant="secondary" className={mtInfo?.badgeClass ?? ""}>
+                  {mtInfo && (
+                    <svg
+                      className="mr-1 size-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {mtInfo.iconPaths.map((d, i) => (
+                        <path key={i} d={d} />
+                      ))}
+                    </svg>
+                  )}
+                  {mtInfo?.label ?? cert.markType}
+                </Badge>
+              );
+            })()}
           {data.pairedCert && (
             <Link
               href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`}
@@ -339,7 +357,9 @@ export function CertificateDetail({ id }: { id: string }) {
             className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary"
           >
             crt.sh
-            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3.5 3h5.5v5.5M9 3L3 9" />
+            </svg>
           </a>
           {data.pairedCert && (
             <a
@@ -349,7 +369,9 @@ export function CertificateDetail({ id }: { id: string }) {
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               crt.sh {cert.isPrecert ? "Final" : "Precert"}
-              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3.5 3h5.5v5.5M9 3L3 9" />
+              </svg>
             </a>
           )}
           <a
@@ -359,7 +381,9 @@ export function CertificateDetail({ id }: { id: string }) {
             className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             Censys
-            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3.5 3h5.5v5.5M9 3L3 9" />
+            </svg>
           </a>
         </div>
       </div>
@@ -401,7 +425,10 @@ export function CertificateDetail({ id }: { id: string }) {
                 <span className="break-all">
                   {cert.subjectOrg ? (
                     <>
-                      <Link href={`/orgs/${encodeURIComponent(cert.subjectOrg)}`} className="text-primary hover:underline">
+                      <Link
+                        href={`/orgs/${encodeURIComponent(cert.subjectOrg)}`}
+                        className="text-primary hover:underline"
+                      >
                         {cert.subjectOrg}
                       </Link>
                       {cert.subjectCountry && `, ${cert.subjectCountry}`}
@@ -438,7 +465,15 @@ export function CertificateDetail({ id }: { id: string }) {
                             aria-label={`Run BIMI check for ${san}`}
                             title={`Run BIMI check for ${san}`}
                           >
-                            <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              className="size-3.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
                             </svg>
                           </Link>
@@ -455,7 +490,8 @@ export function CertificateDetail({ id }: { id: string }) {
                   {cert.ctLogIndex && <span className="text-muted-foreground"> #{cert.ctLogIndex}</span>}
                   {cert.ctLogTimestamp && (
                     <span className="text-muted-foreground">
-                      {" · "}<UtcTime date={cert.ctLogTimestamp} showTime />
+                      {" · "}
+                      <UtcTime date={cert.ctLogTimestamp} showTime />
                       <span> ({formatDistanceToNow(new Date(cert.ctLogTimestamp), { addSuffix: true })})</span>
                     </span>
                   )}
@@ -468,110 +504,117 @@ export function CertificateDetail({ id }: { id: string }) {
 
       {/* Embedded Logo + Revocation Status side by side */}
       <div className="grid gap-6 lg:grid-cols-2">
-      {cert.logotypeSvg && (
-        <Card className="self-start">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Embedded Logo</CardTitle>
-            <div className="flex items-center gap-2">
-              {cert.fingerprintSha256 && (
-                <Link
-                  href={`/logo/${cert.fingerprintSha256.slice(0, 16)}/${((cert.sanList?.[0] || cert.subjectCn || "logo").toLowerCase().replace(/[^a-z0-9.\-]/g, "").split(".").slice(-2, -1)[0]) || "logo"}`}
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                >
-                  <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
-                  Share
-                </Link>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSvgBgDark(!svgBgDark)}
-              >
-                {svgBgDark ? "Light BG" : "Dark BG"}
-              </Button>
-              {bimiCheck?.certSvgValidation && (
-                <Badge variant={bimiCheck.certSvgValidation.valid ? "default" : "destructive"}>
-                  SVG {bimiCheck.certSvgValidation.valid ? "Valid" : "Invalid"}
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6">
-              {/* Large SVG preview */}
-              <div
-                className={`flex h-40 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
-                  svgBgDark ? "bg-zinc-900" : "bg-white"
-                }`}
-                dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
-              />
-              <div className="flex-1 space-y-3">
-                {bimiCheck?.certSvgSizeBytes && (
-                  <Row label="Size" value={`${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB`} />
+        {cert.logotypeSvg && (
+          <Card className="self-start">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Embedded Logo</CardTitle>
+              <div className="flex items-center gap-2">
+                {cert.fingerprintSha256 && (
+                  <Link
+                    href={`/logo/${cert.fingerprintSha256.slice(0, 16)}/${
+                      (cert.sanList?.[0] || cert.subjectCn || "logo")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9.\-]/g, "")
+                        .split(".")
+                        .slice(-2, -1)[0] || "logo"
+                    }`}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <svg
+                      className="size-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    Share
+                  </Link>
                 )}
-                {cert.logotypeSvgHash && (
-                  <Row label="SVG Hash" value={cert.logotypeSvgHash} mono />
-                )}
+                <Button variant="outline" size="sm" onClick={() => setSvgBgDark(!svgBgDark)}>
+                  {svgBgDark ? "Light BG" : "Dark BG"}
+                </Button>
                 {bimiCheck?.certSvgValidation && (
-                  <>
-                    {bimiCheck.certSvgValidation.errors.length > 0 && (
-                      <div>
-                        <span className="text-sm font-medium text-destructive">Errors:</span>
-                        <ul className="mt-1 list-disc pl-5 text-sm text-destructive">
-                          {bimiCheck.certSvgValidation.errors.map((e, i) => (
-                            <li key={i}>{e}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {bimiCheck.certSvgValidation.warnings.length > 0 && (
-                      <div>
-                        <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Warnings:</span>
-                        <ul className="mt-1 list-disc pl-5 text-sm text-yellow-600 dark:text-yellow-400">
-                          {bimiCheck.certSvgValidation.warnings.map((w, i) => (
-                            <li key={i}>{w}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {bimiCheck.certSvgValidation.valid && bimiCheck.certSvgValidation.warnings.length === 0 && (
-                      <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                        Passes all SVG Tiny PS checks
-                      </p>
-                    )}
-                  </>
+                  <Badge variant={bimiCheck.certSvgValidation.valid ? "default" : "destructive"}>
+                    SVG {bimiCheck.certSvgValidation.valid ? "Valid" : "Invalid"}
+                  </Badge>
                 )}
               </div>
-            </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-6">
+                {/* Large SVG preview */}
+                <div
+                  className={`flex h-40 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
+                    svgBgDark ? "bg-zinc-900" : "bg-white"
+                  }`}
+                  dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
+                />
+                <div className="flex-1 space-y-3">
+                  {bimiCheck?.certSvgSizeBytes && (
+                    <Row label="Size" value={`${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB`} />
+                  )}
+                  {cert.logotypeSvgHash && <Row label="SVG Hash" value={cert.logotypeSvgHash} mono />}
+                  {bimiCheck?.certSvgValidation && (
+                    <>
+                      {bimiCheck.certSvgValidation.errors.length > 0 && (
+                        <div>
+                          <span className="text-sm font-medium text-destructive">Errors:</span>
+                          <ul className="mt-1 list-disc pl-5 text-sm text-destructive">
+                            {bimiCheck.certSvgValidation.errors.map((e, i) => (
+                              <li key={i}>{e}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {bimiCheck.certSvgValidation.warnings.length > 0 && (
+                        <div>
+                          <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Warnings:</span>
+                          <ul className="mt-1 list-disc pl-5 text-sm text-yellow-600 dark:text-yellow-400">
+                            {bimiCheck.certSvgValidation.warnings.map((w, i) => (
+                              <li key={i}>{w}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {bimiCheck.certSvgValidation.valid && bimiCheck.certSvgValidation.warnings.length === 0 && (
+                        <p className="text-sm text-emerald-600 dark:text-emerald-400">Passes all SVG Tiny PS checks</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
 
-            {/* SVG source (collapsed) */}
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                View SVG source
-              </summary>
-              <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs font-mono">
-                {cert.logotypeSvg}
-              </pre>
-            </details>
-          </CardContent>
-        </Card>
-      )}
+              {/* SVG source (collapsed) */}
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                  View SVG source
+                </summary>
+                <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs font-mono">
+                  {cert.logotypeSvg}
+                </pre>
+              </details>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Revocation Status */}
-      <div className="self-start">
-        <RevocationStatusCard
-          revocation={revocation}
-          loading={revocationLoading}
-          onRecheck={runRevocationCheck}
-          error={revocationError}
-        />
-      </div>
+        {/* Revocation Status */}
+        <div className="self-start">
+          <RevocationStatusCard
+            revocation={revocation}
+            loading={revocationLoading}
+            onRecheck={runRevocationCheck}
+            error={revocationError}
+          />
+        </div>
       </div>
 
       {/* BIMI error */}
-      {bimiError && (
-        <p className="text-destructive text-sm">{bimiError}</p>
-      )}
+      {bimiError && <p className="text-destructive text-sm">{bimiError}</p>}
 
       {/* BIMI Domain Analysis - full width */}
       {bimiCheck && bimiCheck.domains.length > 0 && (
@@ -585,94 +628,126 @@ export function CertificateDetail({ id }: { id: string }) {
           <CardContent className="space-y-4">
             {bimiCheck.domains.map((dc) => {
               const checks = buildBimiChecks(dc, bimiCheck);
-              const failCount = checks.filter(c => c.status === "fail").length;
+              const failCount = checks.filter((c) => c.status === "fail").length;
               return (
-              <div key={dc.domain} className="rounded-lg border p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-medium">{dc.domain}</span>
-                  <Badge
-                    variant={failCount === 0 ? "default" : "secondary"}
-                    className={failCount === 0
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                    }
-                  >
-                    {failCount === 0 ? "BIMI Ready" : `${failCount} issue${failCount > 1 ? "s" : ""}`}
-                  </Badge>
-                </div>
+                <div key={dc.domain} className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-medium">{dc.domain}</span>
+                    <Badge
+                      variant={failCount === 0 ? "default" : "secondary"}
+                      className={
+                        failCount === 0
+                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                      }
+                    >
+                      {failCount === 0 ? "BIMI Ready" : `${failCount} issue${failCount > 1 ? "s" : ""}`}
+                    </Badge>
+                  </div>
 
-                {/* Requirements + Logo Comparison side by side */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
-                  {/* Requirements checklist */}
-                  <div className="rounded-md border bg-muted/30 p-3 min-w-0">
-                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Requirements</h4>
-                    <div className="divide-y divide-border">
-                      {checks.map((check) => (
-                        <div key={check.label} className="flex items-start gap-3 py-2">
-                          <span className="mt-0.5 shrink-0">
-                            {check.status === "pass" ? (
-                              <svg className="size-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-                            ) : check.status === "warn" ? (
-                              <svg className="size-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                            ) : (
-                              <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
-                            )}
-                          </span>
-                          <span className="w-32 shrink-0 text-sm text-muted-foreground">{check.label}</span>
-                          <span className="text-sm">{check.detail}</span>
+                  {/* Requirements + Logo Comparison side by side */}
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
+                    {/* Requirements checklist */}
+                    <div className="rounded-md border bg-muted/30 p-3 min-w-0">
+                      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Requirements
+                      </h4>
+                      <div className="divide-y divide-border">
+                        {checks.map((check) => (
+                          <div key={check.label} className="flex items-start gap-3 py-2">
+                            <span className="mt-0.5 shrink-0">
+                              {check.status === "pass" ? (
+                                <svg
+                                  className="size-4 text-emerald-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                  <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                              ) : check.status === "warn" ? (
+                                <svg
+                                  className="size-4 text-amber-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                                  <line x1="12" y1="9" x2="12" y2="13" />
+                                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                                </svg>
+                              ) : (
+                                <svg
+                                  className="size-4 text-red-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <line x1="15" y1="9" x2="9" y2="15" />
+                                  <line x1="9" y1="9" x2="15" y2="15" />
+                                </svg>
+                              )}
+                            </span>
+                            <span className="w-32 shrink-0 text-sm text-muted-foreground">{check.label}</span>
+                            <span className="text-sm">{check.detail}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {dc.webSvgFound && cert.logotypeSvg && (
+                      <LogoComparison
+                        certSvgHtml={sanitizedSvg!}
+                        certSvgSizeBytes={bimiCheck.certSvgSizeBytes}
+                        certSvgValidation={bimiCheck.certSvgValidation}
+                        certSvgSource={cert.logotypeSvg}
+                        logoUrl={dc.logoUrl}
+                        webSvgSizeBytes={dc.webSvgSizeBytes}
+                        webSvgValidation={dc.webSvgValidation}
+                        webSvgSource={dc.webSvgSource}
+                        svgMatch={dc.svgMatch}
+                        showDiff={showDiff === dc.domain}
+                        onToggleDiff={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
+                      />
+                    )}
+                  </div>
+
+                  {/* DNS Records */}
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      DNS Records
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="mb-1 flex items-baseline gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">BIMI TXT</span>
+                          <span className="font-mono text-xs text-muted-foreground/70">default._bimi.{dc.domain}</span>
                         </div>
-                      ))}
+                        <pre className="overflow-x-auto rounded-md bg-background p-2.5 font-mono text-xs text-foreground whitespace-pre-wrap break-all">
+                          {dc.bimiRecord ?? "No record found"}
+                        </pre>
+                      </div>
+                      <div>
+                        <div className="mb-1 flex items-baseline gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">DMARC TXT</span>
+                          <span className="font-mono text-xs text-muted-foreground/70">_dmarc.{dc.domain}</span>
+                        </div>
+                        <pre className="overflow-x-auto rounded-md bg-background p-2.5 font-mono text-xs text-foreground whitespace-pre-wrap break-all">
+                          {dc.dmarcRecord ?? "No record found"}
+                        </pre>
+                      </div>
                     </div>
                   </div>
 
-                  {dc.webSvgFound && cert.logotypeSvg && (
-                    <LogoComparison
-                      certSvgHtml={sanitizedSvg!}
-                      certSvgSizeBytes={bimiCheck.certSvgSizeBytes}
-                      certSvgValidation={bimiCheck.certSvgValidation}
-                      certSvgSource={cert.logotypeSvg}
-                      logoUrl={dc.logoUrl}
-                      webSvgSizeBytes={dc.webSvgSizeBytes}
-                      webSvgValidation={dc.webSvgValidation}
-                      webSvgSource={dc.webSvgSource}
-                      svgMatch={dc.svgMatch}
-                      showDiff={showDiff === dc.domain}
-                      onToggleDiff={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
-                    />
+                  {dc.logoUrl && !dc.webSvgFound && (
+                    <p className="text-sm text-muted-foreground">Could not fetch web SVG from {dc.logoUrl}</p>
                   )}
                 </div>
-
-                {/* DNS Records */}
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">DNS Records</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="mb-1 flex items-baseline gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">BIMI TXT</span>
-                        <span className="font-mono text-xs text-muted-foreground/70">default._bimi.{dc.domain}</span>
-                      </div>
-                      <pre className="overflow-x-auto rounded-md bg-background p-2.5 font-mono text-xs text-foreground whitespace-pre-wrap break-all">
-                        {dc.bimiRecord ?? "No record found"}
-                      </pre>
-                    </div>
-                    <div>
-                      <div className="mb-1 flex items-baseline gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">DMARC TXT</span>
-                        <span className="font-mono text-xs text-muted-foreground/70">_dmarc.{dc.domain}</span>
-                      </div>
-                      <pre className="overflow-x-auto rounded-md bg-background p-2.5 font-mono text-xs text-foreground whitespace-pre-wrap break-all">
-                        {dc.dmarcRecord ?? "No record found"}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-
-                {dc.logoUrl && !dc.webSvgFound && (
-                  <p className="text-sm text-muted-foreground">
-                    Could not fetch web SVG from {dc.logoUrl}
-                  </p>
-                )}
-              </div>
               );
             })}
           </CardContent>
@@ -695,7 +770,12 @@ export function CertificateDetail({ id }: { id: string }) {
             <div className="pt-1" />
             <CertSection title="Validity" indent={2}>
               <CertLine label="Not Before" value={formatCertDate(cert.notBefore)} indent={3} />
-              <CertLine label="Not After" value={formatCertDate(cert.notAfter)} indent={3} highlight={isExpired ? "destructive" : undefined} />
+              <CertLine
+                label="Not After"
+                value={formatCertDate(cert.notAfter)}
+                indent={3}
+                highlight={isExpired ? "destructive" : undefined}
+              />
             </CertSection>
             <div className="pt-1" />
             <CertSection title="Subject" indent={2}>
@@ -737,8 +817,14 @@ export function CertificateDetail({ id }: { id: string }) {
                 <div className="pt-1" />
                 <CertSection title="X509v3 Extensions" indent={2}>
                   {Object.entries(cert.extensionsJson).map(([oid, value]) => {
-                    const hexStr = typeof value === "string" ? value : typeof value === "object" && value && "v" in value ? (value as { v: string }).v : JSON.stringify(value);
-                    const isCritical = typeof value === "object" && value && "c" in value ? (value as { c: boolean }).c : false;
+                    const hexStr =
+                      typeof value === "string"
+                        ? value
+                        : typeof value === "object" && value && "v" in value
+                          ? (value as { v: string }).v
+                          : JSON.stringify(value);
+                    const isCritical =
+                      typeof value === "object" && value && "c" in value ? (value as { c: boolean }).c : false;
                     const ext = decodeExtension(oid, hexStr);
                     const displayName = ext.name !== "Unknown" ? ext.name : oid;
                     const showOid = ext.name !== "Unknown";
@@ -746,8 +832,7 @@ export function CertificateDetail({ id }: { id: string }) {
                       <div key={oid} className="pl-[3.5rem] py-0.5">
                         <span className="text-muted-foreground">
                           {displayName}
-                          {showOid && <span className="text-muted-foreground/50 font-mono text-xs ml-1">({oid})</span>}
-                          :
+                          {showOid && <span className="text-muted-foreground/50 font-mono text-xs ml-1">({oid})</span>}:
                         </span>
                         {isCritical && (
                           <Badge variant="destructive" className="ml-1.5 text-[10px] px-1 py-0 h-4 align-text-top">
@@ -758,7 +843,8 @@ export function CertificateDetail({ id }: { id: string }) {
                           <span className="ml-2 whitespace-pre-wrap break-all">{ext.decoded}</span>
                         ) : (
                           <span className="ml-2 text-muted-foreground/60 break-all">
-                            {hexStr.substring(0, 64)}{hexStr.length > 64 ? "..." : ""}
+                            {hexStr.substring(0, 64)}
+                            {hexStr.length > 64 ? "..." : ""}
                           </span>
                         )}
                       </div>
@@ -792,18 +878,25 @@ export function CertificateDetail({ id }: { id: string }) {
                         <span className="font-medium">Leaf Certificate</span>
                         {cert.subjectOrg && <span className="text-sm text-muted-foreground">{cert.subjectOrg}</span>}
                       </div>
-                      <Badge variant="outline" className="text-xs">Position 0</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Position 0
+                      </Badge>
                     </div>
                     <div className="mt-1.5 grid gap-1 text-xs">
-                      <div><span className="text-muted-foreground">Subject:</span> <span className="break-all">{cert.subjectDn}</span></div>
-                      <div><span className="text-muted-foreground">Issuer:</span> <span className="break-all">{cert.issuerDn}</span></div>
-                      <div><span className="text-muted-foreground">Serial:</span> <span className="font-mono">{formatSerial(cert.serialNumber)}</span></div>
+                      <div>
+                        <span className="text-muted-foreground">Subject:</span>{" "}
+                        <span className="break-all">{cert.subjectDn}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Issuer:</span>{" "}
+                        <span className="break-all">{cert.issuerDn}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Serial:</span>{" "}
+                        <span className="font-mono">{formatSerial(cert.serialNumber)}</span>
+                      </div>
                     </div>
-                    <CopyableFingerprint
-                      value={cert.fingerprintSha256}
-                      copied={copied}
-                      onCopy={copyToClipboard}
-                    />
+                    <CopyableFingerprint value={cert.fingerprintSha256} copied={copied} onCopy={copyToClipboard} />
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                       <UtcTime date={cert.notBefore} /> <span>–</span> <UtcTime date={cert.notAfter} />
                     </div>
@@ -817,27 +910,36 @@ export function CertificateDetail({ id }: { id: string }) {
                   const isLast = idx === data.chain.length - 1;
                   return (
                     <div key={c.id} className={`relative pl-10 ${isLast ? "" : "pb-4"}`}>
-                      <div className={`absolute left-2.5 top-3 z-10 flex h-3 w-3 items-center justify-center rounded-full border-2 bg-background ${isRoot ? "border-amber-500" : "border-muted-foreground"}`} />
+                      <div
+                        className={`absolute left-2.5 top-3 z-10 flex h-3 w-3 items-center justify-center rounded-full border-2 bg-background ${isRoot ? "border-amber-500" : "border-muted-foreground"}`}
+                      />
                       <div className={`rounded-lg border p-3 ${isRoot ? "border-amber-500/50" : ""}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{label}</span>
                             {c.subjectOrg && <span className="text-sm text-muted-foreground">{c.subjectOrg}</span>}
                           </div>
-                          <Badge variant="outline" className="text-xs">Position {c.chainPosition}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            Position {c.chainPosition}
+                          </Badge>
                         </div>
                         <div className="mt-1.5 grid gap-1 text-xs">
-                          <div><span className="text-muted-foreground">Subject:</span> <span className="break-all">{c.subjectDn}</span></div>
-                          <div><span className="text-muted-foreground">Issuer:</span> <span className="break-all">{c.issuerDn}</span></div>
+                          <div>
+                            <span className="text-muted-foreground">Subject:</span>{" "}
+                            <span className="break-all">{c.subjectDn}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Issuer:</span>{" "}
+                            <span className="break-all">{c.issuerDn}</span>
+                          </div>
                           {c.serialNumber && (
-                            <div><span className="text-muted-foreground">Serial:</span> <span className="font-mono">{formatSerial(c.serialNumber)}</span></div>
+                            <div>
+                              <span className="text-muted-foreground">Serial:</span>{" "}
+                              <span className="font-mono">{formatSerial(c.serialNumber)}</span>
+                            </div>
                           )}
                         </div>
-                        <CopyableFingerprint
-                          value={c.fingerprintSha256}
-                          copied={copied}
-                          onCopy={copyToClipboard}
-                        />
+                        <CopyableFingerprint value={c.fingerprintSha256} copied={copied} onCopy={copyToClipboard} />
                         {c.notBefore && c.notAfter && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <UtcTime date={c.notBefore} /> <span>–</span> <UtcTime date={c.notAfter} />
@@ -858,18 +960,10 @@ export function CertificateDetail({ id }: { id: string }) {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Raw PEM</CardTitle>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPem(!showPem)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowPem(!showPem)}>
               {showPem ? "Hide" : "Show"}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(cert.rawPem, "pem")}
-            >
+            <Button variant="outline" size="sm" onClick={() => copyToClipboard(cert.rawPem, "pem")}>
               {copied === "pem" ? "Copied" : "Copy PEM"}
             </Button>
             <Button
@@ -918,7 +1012,13 @@ function buildBimiChecks(
   if (dc.dmarcValid === true) {
     checks.push({ label: "DMARC Policy", status: "pass", detail: `${dc.dmarcPolicy} (meets BIMI requirements)` });
   } else if (dc.dmarcValid === false) {
-    checks.push({ label: "DMARC Policy", status: "fail", detail: dc.dmarcPolicy ? `Policy "${dc.dmarcPolicy}" does not meet BIMI requirements (need quarantine or reject)` : "No DMARC record found" });
+    checks.push({
+      label: "DMARC Policy",
+      status: "fail",
+      detail: dc.dmarcPolicy
+        ? `Policy "${dc.dmarcPolicy}" does not meet BIMI requirements (need quarantine or reject)`
+        : "No DMARC record found",
+    });
   } else {
     checks.push({ label: "DMARC Policy", status: "warn", detail: "Could not check" });
   }
@@ -926,13 +1026,25 @@ function buildBimiChecks(
   // 3. Certificate
   const cv = bimiCheck.certValidity;
   if (cv.isExpired) {
-    checks.push({ label: "Certificate", status: "fail", detail: `${cv.certType ?? "BIMI"} expired ${Math.abs(cv.daysRemaining)} days ago` });
+    checks.push({
+      label: "Certificate",
+      status: "fail",
+      detail: `${cv.certType ?? "BIMI"} expired ${Math.abs(cv.daysRemaining)} days ago`,
+    });
   } else if (cv.isNotYetValid) {
     checks.push({ label: "Certificate", status: "fail", detail: `${cv.certType ?? "BIMI"} not yet valid` });
   } else if (cv.daysRemaining <= 30) {
-    checks.push({ label: "Certificate", status: "warn", detail: `${cv.certType ?? "BIMI"}, expires in ${cv.daysRemaining} days` });
+    checks.push({
+      label: "Certificate",
+      status: "warn",
+      detail: `${cv.certType ?? "BIMI"}, expires in ${cv.daysRemaining} days`,
+    });
   } else {
-    checks.push({ label: "Certificate", status: "pass", detail: `${cv.certType ?? "BIMI"}, expires in ${cv.daysRemaining} days` });
+    checks.push({
+      label: "Certificate",
+      status: "pass",
+      detail: `${cv.certType ?? "BIMI"}, expires in ${cv.daysRemaining} days`,
+    });
   }
 
   // 4. Certificate SVG
@@ -948,7 +1060,11 @@ function buildBimiChecks(
   if (dc.logoUrl) {
     if (dc.webSvgFound) {
       if (dc.webSvgValidation?.valid) {
-        checks.push({ label: "Web SVG", status: "pass", detail: `Valid${dc.webSvgSizeBytes ? `, ${(dc.webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}` });
+        checks.push({
+          label: "Web SVG",
+          status: "pass",
+          detail: `Valid${dc.webSvgSizeBytes ? `, ${(dc.webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}`,
+        });
       } else if (dc.webSvgValidation) {
         checks.push({ label: "Web SVG", status: "fail", detail: dc.webSvgValidation.errors.join("; ") });
       } else {
@@ -969,21 +1085,11 @@ function buildBimiChecks(
   return checks;
 }
 
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string | null | undefined;
-  mono?: boolean;
-}) {
+function Row({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div className="flex gap-4">
       <span className="w-40 shrink-0 text-muted-foreground">{label}</span>
-      <span className={`break-all ${mono ? "font-mono text-xs" : ""}`}>
-        {value || "-"}
-      </span>
+      <span className={`break-all ${mono ? "font-mono text-xs" : ""}`}>{value || "-"}</span>
     </div>
   );
 }
@@ -1026,9 +1132,7 @@ function RevocationStatusCard({
         </Button>
       </CardHeader>
       <CardContent>
-        {error && (
-          <p className="text-destructive text-sm mb-3">{error}</p>
-        )}
+        {error && <p className="text-destructive text-sm mb-3">{error}</p>}
         {loading && !revocation ? (
           <p className="text-sm text-muted-foreground">Checking OCSP and CRL status...</p>
         ) : !hasAnyData ? (
@@ -1049,9 +1153,7 @@ function RevocationStatusCard({
               </div>
               {revocation?.ocsp && (
                 <div className="space-y-1 text-xs">
-                  <div className="text-muted-foreground font-mono break-all">
-                    {revocation.ocsp.url}
-                  </div>
+                  <div className="text-muted-foreground font-mono break-all">{revocation.ocsp.url}</div>
                   {revocation.ocsp.thisUpdate && (
                     <div className="flex gap-2">
                       <span className="text-muted-foreground shrink-0">This Update:</span>
@@ -1083,9 +1185,7 @@ function RevocationStatusCard({
               </div>
               {revocation?.crl && (
                 <div className="space-y-1 text-xs">
-                  <div className="text-muted-foreground font-mono break-all">
-                    {revocation.crl.url}
-                  </div>
+                  <div className="text-muted-foreground font-mono break-all">{revocation.crl.url}</div>
                   {revocation.crl.thisUpdate && (
                     <div className="flex gap-2">
                       <span className="text-muted-foreground shrink-0">This Update:</span>
@@ -1098,9 +1198,7 @@ function RevocationStatusCard({
                       <UtcTime date={revocation.crl.nextUpdate} showTime />
                     </div>
                   )}
-                  {revocation.crl.errorMessage && (
-                    <div className="text-destructive">{revocation.crl.errorMessage}</div>
-                  )}
+                  {revocation.crl.errorMessage && <div className="text-destructive">{revocation.crl.errorMessage}</div>}
                 </div>
               )}
             </div>
@@ -1158,28 +1256,18 @@ function CertLine({
   return (
     <div style={{ paddingLeft: `${pad}rem` }}>
       <span className="text-muted-foreground">{label}:</span>{" "}
-      <span className={
-        highlight === "destructive"
-          ? "text-destructive font-medium"
-          : muted
-            ? "text-muted-foreground/70"
-            : ""
-      }>
+      <span
+        className={
+          highlight === "destructive" ? "text-destructive font-medium" : muted ? "text-muted-foreground/70" : ""
+        }
+      >
         {value}
       </span>
     </div>
   );
 }
 
-function CertSection({
-  title,
-  indent,
-  children,
-}: {
-  title: string;
-  indent: number;
-  children: React.ReactNode;
-}) {
+function CertSection({ title, indent, children }: { title: string; indent: number; children: React.ReactNode }) {
   const pad = indent * 1.25;
   return (
     <div>
@@ -1272,8 +1360,14 @@ function LogoComparison({
           <div className="mb-1.5 flex items-center justify-between gap-1">
             <span className="text-xs font-medium">Web SVG</span>
             <div className="flex items-center gap-1">
-              {svgMatch === true && <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px] px-1.5 py-0">Match</Badge>}
-              {svgMatch === false && <Badge variant="destructive" className="text-xs px-1.5 py-0">Mismatch</Badge>}
+              {svgMatch === true && (
+                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px] px-1.5 py-0">Match</Badge>
+              )}
+              {svgMatch === false && (
+                <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                  Mismatch
+                </Badge>
+              )}
               {webSvgValidation && (
                 <Badge variant={webSvgValidation.valid ? "default" : "destructive"} className="text-xs px-1.5 py-0">
                   {webSvgValidation.valid ? "Valid" : `${webSvgValidation.errors.length} err`}
@@ -1297,12 +1391,7 @@ function LogoComparison({
       </div>
       {svgMatch === false && webSvgSource && (
         <div className="mt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-6 text-xs"
-            onClick={onToggleDiff}
-          >
+          <Button variant="outline" size="sm" className="h-6 text-xs" onClick={onToggleDiff}>
             {showDiff ? "Hide Diff" : "View Diff"}
           </Button>
           {showDiff && (
@@ -1368,4 +1457,3 @@ function SVGDiffViewer({ certSvg, webSvg }: { certSvg: string; webSvg: string })
     </div>
   );
 }
-

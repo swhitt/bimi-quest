@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { eq, desc, isNotNull } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { displayIssuerOrg } from "@/lib/ca-display";
@@ -30,12 +30,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const certCount = rows.length;
   const types = [...new Set(rows.map((r) => r.certType).filter(Boolean))];
-  const issuers = [...new Set(rows.map((r) => r.issuerOrg ? displayIssuerOrg(r.issuerOrg) : null).filter(Boolean))];
+  const issuers = [...new Set(rows.map((r) => (r.issuerOrg ? displayIssuerOrg(r.issuerOrg) : null)).filter(Boolean))];
   const allDomains = [...new Set(rows.flatMap((r) => r.sanList ?? []))];
 
-  const domainsText = allDomains.length <= 3
-    ? allDomains.join(", ")
-    : `${allDomains.slice(0, 3).join(", ")} +${allDomains.length - 3} more`;
+  const domainsText =
+    allDomains.length <= 3
+      ? allDomains.join(", ")
+      : `${allDomains.slice(0, 3).join(", ")} +${allDomains.length - 3} more`;
 
   // Pick the best cert for OG image (highest score, then most recent)
   const bestCert = rows.reduce<(typeof rows)[number] | null>((best, r) => {
@@ -52,9 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     "Browse on bimi.quest",
   ].filter(Boolean);
 
-  const ogImageUrl = bestCert
-    ? `/api/og/cert/${bestCert.fingerprintSha256.slice(0, 12)}`
-    : undefined;
+  const ogImageUrl = bestCert ? `/api/og/cert/${bestCert.fingerprintSha256.slice(0, 12)}` : undefined;
 
   return {
     title: `Certificates for ${decoded}`,

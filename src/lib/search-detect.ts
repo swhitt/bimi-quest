@@ -1,11 +1,7 @@
 // Classifies a search query into a type based on its format.
 // Used by both the hero search and the nav search.
 
-export type SearchType =
-  | "domain"
-  | "serial"
-  | "fingerprint"
-  | "text";
+export type SearchType = "domain" | "serial" | "fingerprint" | "text";
 
 // Hex with standard separators (colons, dashes, spaces) but NOT dots
 const HEX_SEPARATED = /^[0-9a-f][0-9a-f:\- ]*$/i;
@@ -39,12 +35,7 @@ export function detectSearchType(raw: string): SearchType {
   }
 
   // Serial number: 16-40 hex chars
-  if (
-    stripped.length >= 16 &&
-    stripped.length <= 40 &&
-    isHex(stripped) &&
-    HEX_SEPARATED.test(input)
-  ) {
+  if (stripped.length >= 16 && stripped.length <= 40 && isHex(stripped) && HEX_SEPARATED.test(input)) {
     return "serial";
   }
 

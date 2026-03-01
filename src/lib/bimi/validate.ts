@@ -1,7 +1,13 @@
 import { X509Certificate, BasicConstraintsExtension, SubjectAlternativeNameExtension } from "@peculiar/x509";
 import { lookupBIMIRecord, type BIMIRecord } from "./dns";
 import { lookupDMARC, isDMARCValidForBIMI, getDMARCBIMIReason, type DMARCRecord } from "./dmarc";
-import { validateSVGTinyPS, decompressSvgIfNeeded, computeSvgHash, categorizeSvgChecks, type SVGValidationResult } from "./svg";
+import {
+  validateSVGTinyPS,
+  decompressSvgIfNeeded,
+  computeSvgHash,
+  categorizeSvgChecks,
+  type SVGValidationResult,
+} from "./svg";
 import { validateSvgRng, rngToCheckItems } from "./svg-rng";
 import { computeGrade } from "./grade";
 import type { BimiCheckItem, BimiGrade } from "./types";
@@ -13,13 +19,7 @@ import { normalizeIssuerOrg } from "@/lib/ca-display";
 
 // CAs authorized to issue BIMI certificates per CA/Browser Forum VMC requirements.
 // Values match what normalizeIssuerOrg() produces from raw certificate DNs.
-const AUTHORIZED_CAS = new Set([
-  "DigiCert",
-  "Entrust",
-  "SSL Corporation",
-  "GlobalSign nv-sa",
-  "Sectigo Limited",
-]);
+const AUTHORIZED_CAS = new Set(["DigiCert", "Entrust", "SSL Corporation", "GlobalSign nv-sa", "Sectigo Limited"]);
 
 export interface ChainValidationResult {
   chainValid: boolean;
@@ -78,18 +78,12 @@ export interface BIMIValidationResult {
 }
 
 /** Run full BIMI validation for a domain */
-export async function validateDomain(
-  domain: string,
-  selector: string = "default"
-): Promise<BIMIValidationResult> {
+export async function validateDomain(domain: string, selector: string = "default"): Promise<BIMIValidationResult> {
   const errors: string[] = [];
   const now = new Date();
 
   // 1 & 2. BIMI + DMARC DNS lookups (independent, run in parallel)
-  const [bimiRecord, dmarcLookup] = await Promise.all([
-    lookupBIMIRecord(domain, selector),
-    lookupDMARC(domain),
-  ]);
+  const [bimiRecord, dmarcLookup] = await Promise.all([lookupBIMIRecord(domain, selector), lookupDMARC(domain)]);
   if (!bimiRecord) {
     errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
   }
@@ -138,19 +132,13 @@ export async function validateDomain(
           indicatorHash: hash,
         };
         if (!validation.valid) {
-          errors.push(
-            `SVG validation failed: ${validation.errors.join("; ")}`
-          );
+          errors.push(`SVG validation failed: ${validation.errors.join("; ")}`);
         }
       } else {
-        errors.push(
-          `Failed to fetch SVG logo: HTTP ${res.status} from ${bimiRecord.logoUrl}`
-        );
+        errors.push(`Failed to fetch SVG logo: HTTP ${res.status} from ${bimiRecord.logoUrl}`);
       }
     } catch (err) {
-      errors.push(
-        `Failed to fetch SVG logo: ${err instanceof Error ? err.message : "unknown error"}`
-      );
+      errors.push(`Failed to fetch SVG logo: ${err instanceof Error ? err.message : "unknown error"}`);
     }
   }
 
@@ -184,9 +172,7 @@ export async function validateDomain(
 
           // Check if issuing CA is authorized for BIMI
           const normalizedIssuer = normalizeIssuerOrg(certInfo.issuerOrg);
-          const authorizedCa = normalizedIssuer
-            ? AUTHORIZED_CAS.has(normalizedIssuer)
-            : false;
+          const authorizedCa = normalizedIssuer ? AUTHORIZED_CAS.has(normalizedIssuer) : false;
 
           // Compare cert-embedded SVG hash with web-fetched SVG hash
           let svgMatch: boolean | null = null;
@@ -219,29 +205,21 @@ export async function validateDomain(
           if (certInfo.sans.length > 0) {
             const covered = certInfo.sans.some((san) => sanCoversDomain(san, domain));
             if (!covered) {
-              errors.push(
-                `Certificate does not cover domain ${domain} (SANs: ${certInfo.sans.join(", ")})`
-              );
+              errors.push(`Certificate does not cover domain ${domain} (SANs: ${certInfo.sans.join(", ")})`);
             }
           }
           if (!authorizedCa) {
-            errors.push(
-              `Issuer "${normalizedIssuer || "unknown"}" is not an authorized BIMI CA`
-            );
+            errors.push(`Issuer "${normalizedIssuer || "unknown"}" is not an authorized BIMI CA`);
           }
           if (svgMatch === false) {
             errors.push("Certificate SVG does not match web-hosted SVG indicator");
           }
         }
       } else {
-        errors.push(
-          `Failed to fetch authority certificate: HTTP ${res.status}`
-        );
+        errors.push(`Failed to fetch authority certificate: HTTP ${res.status}`);
       }
     } catch (err) {
-      errors.push(
-        `Failed to fetch authority certificate: ${err instanceof Error ? err.message : "unknown error"}`
-      );
+      errors.push(`Failed to fetch authority certificate: ${err instanceof Error ? err.message : "unknown error"}`);
     }
   }
 
@@ -252,13 +230,15 @@ export async function validateDomain(
       const rngResult = await validateSvgRng(svgContent);
       rngChecks = rngToCheckItems(rngResult);
     } catch {
-      rngChecks = [{
-        id: "rng-error",
-        category: "spec",
-        label: "RELAX NG schema",
-        status: "skip",
-        summary: "RNG validation could not be performed",
-      }];
+      rngChecks = [
+        {
+          id: "rng-error",
+          category: "spec",
+          label: "RELAX NG schema",
+          status: "skip",
+          summary: "RNG validation could not be performed",
+        },
+      ];
     }
   }
 
@@ -285,8 +265,7 @@ export async function validateDomain(
   const authResult = buildAuthResult(domain, selector, bimiRecord, svgResult, certResult, dmarcValid, declined);
   const responseHeaders = buildResponseHeaders(bimiRecord, svgContent);
 
-  const overallValid =
-    bimiRecord !== null && !declined && dmarcValid && svgResult.found && errors.length === 0;
+  const overallValid = bimiRecord !== null && !declined && dmarcValid && svgResult.found && errors.length === 0;
 
   return {
     domain,
@@ -353,7 +332,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: "Domain has explicitly declined BIMI (empty l= and a= tags)",
         specRef: "draft-12 section 4.2",
-        remediation: "To enable BIMI, update the DNS TXT record to include a logo URL in the l= tag and optionally a certificate URL in the a= tag.",
+        remediation:
+          "To enable BIMI, update the DNS TXT record to include a logo URL in the l= tag and optionally a certificate URL in the a= tag.",
       });
     } else {
       checks.push({
@@ -423,7 +403,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: input.dmarcReason || "DMARC policy insufficient",
         specRef: "draft-12 section 3",
-        remediation: "Your IT team needs to update the domain's DMARC policy to \"quarantine\" or \"reject\" with pct=100. Update the _dmarc TXT record accordingly.",
+        remediation:
+          'Your IT team needs to update the domain\'s DMARC policy to "quarantine" or "reject" with pct=100. Update the _dmarc TXT record accordingly.',
       });
     }
   } else {
@@ -434,7 +415,10 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       status: "fail",
       summary: "No DMARC record found",
       specRef: "draft-12 section 3",
-      remediation: "Add a DMARC DNS TXT record at _dmarc." + input.domain + " with at least p=quarantine and pct=100. Your IT or email security team can help set this up.",
+      remediation:
+        "Add a DMARC DNS TXT record at _dmarc." +
+        input.domain +
+        " with at least p=quarantine and pct=100. Your IT or email security team can help set this up.",
     });
   }
 
@@ -449,7 +433,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       label: "SVG Tiny PS",
       status: "fail",
       summary: "Could not fetch or validate SVG logo",
-      remediation: "Ensure the SVG logo URL in your BIMI record is publicly accessible over HTTPS and returns a valid SVG file.",
+      remediation:
+        "Ensure the SVG logo URL in your BIMI record is publicly accessible over HTTPS and returns a valid SVG file.",
     });
   }
 
@@ -487,7 +472,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: "Chain validation issues found",
         detail: input.certResult.chain.chainErrors.join("\n"),
-        remediation: "The certificate chain is incomplete or invalid. Contact your Certificate Authority to get a correctly chained certificate file.",
+        remediation:
+          "The certificate chain is incomplete or invalid. Contact your Certificate Authority to get a correctly chained certificate file.",
       });
     }
 
@@ -509,7 +495,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "fail",
         summary: "Issuing CA is not in the authorized BIMI CA list",
         specRef: "VMC Requirements",
-        remediation: "BIMI certificates must be issued by an authorized CA (DigiCert, Entrust, GlobalSign, Sectigo, or SSL.com). You'll need to purchase a VMC or CMC from one of these providers.",
+        remediation:
+          "BIMI certificates must be issued by an authorized CA (DigiCert, Entrust, GlobalSign, Sectigo, or SSL.com). You'll need to purchase a VMC or CMC from one of these providers.",
       });
     }
 
@@ -521,7 +508,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         label: "Certificate Validity",
         status: "fail",
         summary: "Certificate is expired",
-        remediation: "Your BIMI certificate has expired and needs to be renewed. Contact your Certificate Authority to renew it.",
+        remediation:
+          "Your BIMI certificate has expired and needs to be renewed. Contact your Certificate Authority to renew it.",
       });
     } else {
       checks.push({
@@ -551,7 +539,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         status: "warn",
         summary: "Certificate SVG differs from web-hosted indicator",
         specRef: "draft-12 section 5.2",
-        remediation: "The SVG embedded in your certificate doesn't match the one hosted at your logo URL. Re-upload the exact same SVG file that was submitted during certificate issuance.",
+        remediation:
+          "The SVG embedded in your certificate doesn't match the one hosted at your logo URL. Re-upload the exact same SVG file that was submitted during certificate issuance.",
       });
     }
   } else if (input.bimiRecord?.authorityUrl) {
@@ -561,7 +550,8 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       label: "Certificate",
       status: "fail",
       summary: "Could not fetch or parse authority certificate",
-      remediation: "Ensure the certificate URL in your BIMI record's a= tag is publicly accessible over HTTPS and returns a valid PEM certificate.",
+      remediation:
+        "Ensure the certificate URL in your BIMI record's a= tag is publicly accessible over HTTPS and returns a valid PEM certificate.",
     });
   }
 
@@ -578,9 +568,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
         category: "compatibility",
         label: "Gmail Dimensions",
         status: "warn",
-        summary: missingDims
-          ? "Missing explicit width/height attributes"
-          : "Dimensions below Gmail's 96x96 minimum",
+        summary: missingDims ? "Missing explicit width/height attributes" : "Dimensions below Gmail's 96x96 minimum",
       });
     } else {
       checks.push({
@@ -673,10 +661,7 @@ function buildAuthResult(
     return `bimi=none header.d=${domain} header.selector=${selector}`;
   }
   if (!dmarcValid || !svgResult.found) {
-    const props = [
-      `header.d=${domain}`,
-      `header.selector=${selector}`,
-    ];
+    const props = [`header.d=${domain}`, `header.selector=${selector}`];
     if (bimiRecord.authorityUrl) {
       props.push(`policy.authority=${bimiRecord.authorityUrl}`);
     }
@@ -686,10 +671,7 @@ function buildAuthResult(
     return `bimi=fail ${props.join(" ")}`;
   }
 
-  const props = [
-    `header.d=${domain}`,
-    `header.selector=${selector}`,
-  ];
+  const props = [`header.d=${domain}`, `header.selector=${selector}`];
   if (certResult.authorityUrl) {
     props.push(`policy.authority=${certResult.authorityUrl}`);
   }
@@ -706,10 +688,7 @@ function buildAuthResult(
   return `bimi=pass ${props.join(" ")}`;
 }
 
-function buildResponseHeaders(
-  bimiRecord: BIMIRecord | null,
-  svgContent: string | null,
-): Record<string, string> {
+function buildResponseHeaders(bimiRecord: BIMIRecord | null, svgContent: string | null): Record<string, string> {
   const headers: Record<string, string> = {};
   if (!bimiRecord) return headers;
 
@@ -754,9 +733,7 @@ function sanCoversDomain(san: string, domain: string): boolean {
 }
 
 /** Extract basic info from a PEM certificate (best effort, no full parser) */
-function parsePemBasicInfo(
-  pem: string
-): {
+function parsePemBasicInfo(pem: string): {
   issuer: string;
   issuerOrg: string | null;
   notBefore: Date;
@@ -836,9 +813,7 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
     const chainErrors: string[] = [];
 
     // Extract all PEM blocks
-    const pemBlocks = pem.match(
-      /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g
-    );
+    const pemBlocks = pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g);
     if (!pemBlocks || pemBlocks.length === 0) {
       return { chainValid: false, chainErrors: ["No certificates found in PEM"], chainLength: 0 };
     }
@@ -882,9 +857,7 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
       if (i < certs.length - 1) {
         const issuer = certs[i + 1];
         if (cert.issuer !== issuer.subject) {
-          chainErrors.push(
-            `Chain break at position ${i}: issuer DN does not match next certificate's subject`
-          );
+          chainErrors.push(`Chain break at position ${i}: issuer DN does not match next certificate's subject`);
         }
 
         try {

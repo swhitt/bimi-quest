@@ -8,10 +8,7 @@ import { colors, OG_WIDTH, OG_HEIGHT } from "@/lib/og/card-styles";
 
 export const runtime = "nodejs";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ hostname: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ hostname: string }> }) {
   const { hostname } = await params;
   const decoded = decodeURIComponent(hostname).toLowerCase();
 
@@ -23,9 +20,7 @@ export async function GET(
       certType: certificates.certType,
     })
     .from(certificates)
-    .where(
-      sql`${decoded} = ANY(${certificates.sanList})`,
-    )
+    .where(sql`${decoded} = ANY(${certificates.sanList})`)
     .orderBy(desc(certificates.notBefore))
     .limit(20);
 
@@ -44,93 +39,82 @@ export async function GET(
   }
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: OG_WIDTH,
+        height: OG_HEIGHT,
+        background: `linear-gradient(145deg, ${colors.bg} 0%, #0F1A2E 100%)`,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "IBM Plex Sans",
+        gap: 24,
+      }}
+    >
+      {/* Logo if available */}
+      {logoDataUri && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 180,
+            height: 180,
+            borderRadius: 20,
+            background: colors.cardBg,
+            border: `2px solid ${colors.border}`,
+          }}
+        >
+          <img src={logoDataUri} width={140} height={140} style={{ objectFit: "contain" }} />
+        </div>
+      )}
+
+      {/* Hostname */}
       <div
         style={{
-          width: OG_WIDTH,
-          height: OG_HEIGHT,
-          background: `linear-gradient(145deg, ${colors.bg} 0%, #0F1A2E 100%)`,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "IBM Plex Sans",
-          gap: 24,
+          fontSize: 48,
+          fontWeight: 700,
+          color: colors.textPrimary,
         }}
       >
-        {/* Logo if available */}
-        {logoDataUri && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 180,
-              height: 180,
-              borderRadius: 20,
-              background: colors.cardBg,
-              border: `2px solid ${colors.border}`,
-            }}
-          >
-            <img
-              src={logoDataUri}
-              width={140}
-              height={140}
-              style={{ objectFit: "contain" }}
-            />
-          </div>
-        )}
+        {decoded.length > 35 ? decoded.slice(0, 33) + "…" : decoded}
+      </div>
 
-        {/* Hostname */}
+      {/* Cert count badge */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div
           style={{
-            fontSize: 48,
-            fontWeight: 700,
-            color: colors.textPrimary,
-          }}
-        >
-          {decoded.length > 35 ? decoded.slice(0, 33) + "…" : decoded}
-        </div>
-
-        {/* Cert count badge */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              display: "flex",
-              background: colors.badgeBg,
-              color: colors.badgeText,
-              padding: "8px 20px",
-              borderRadius: 10,
-              fontSize: 22,
-              fontWeight: 700,
-            }}
-          >
-            {`${certCount === 20 ? "20+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""}`}
-          </div>
-        </div>
-
-        {/* Org name */}
-        {org !== decoded && (
-          <div style={{ fontSize: 24, color: colors.textSecondary }}>
-            {org}
-          </div>
-        )}
-
-        {/* Watermark */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 24,
-            left: 56,
-            fontSize: 18,
-            color: colors.watermark,
+            display: "flex",
+            background: colors.badgeBg,
+            color: colors.badgeText,
+            padding: "8px 20px",
+            borderRadius: 10,
+            fontSize: 22,
             fontWeight: 700,
           }}
         >
-          bimi.quest
+          {`${certCount === 20 ? "20+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""}`}
         </div>
       </div>
-    ),
+
+      {/* Org name */}
+      {org !== decoded && <div style={{ fontSize: 24, color: colors.textSecondary }}>{org}</div>}
+
+      {/* Watermark */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 24,
+          left: 56,
+          fontSize: 18,
+          color: colors.watermark,
+          fontWeight: 700,
+        }}
+      >
+        bimi.quest
+      </div>
+    </div>,
     {
       width: OG_WIDTH,
       height: OG_HEIGHT,

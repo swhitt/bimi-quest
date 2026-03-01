@@ -41,9 +41,7 @@ describe("safeFetch", () => {
     mockResolve4.mockResolvedValue(["127.0.0.1"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
-    await expect(safeFetch("https://evil.example.com/test")).rejects.toThrow(
-      /DNS rebinding blocked.*127\.0\.0\.1/
-    );
+    await expect(safeFetch("https://evil.example.com/test")).rejects.toThrow(/DNS rebinding blocked.*127\.0\.0\.1/);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -51,9 +49,7 @@ describe("safeFetch", () => {
     mockResolve4.mockRejectedValue(new Error("no A"));
     mockResolve6.mockResolvedValue(["::1"]);
 
-    await expect(safeFetch("https://evil.example.com/test")).rejects.toThrow(
-      /DNS rebinding blocked.*::1/
-    );
+    await expect(safeFetch("https://evil.example.com/test")).rejects.toThrow(/DNS rebinding blocked.*::1/);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -62,15 +58,11 @@ describe("safeFetch", () => {
     mockResolve4.mockResolvedValue(["8.8.8.8", "10.0.0.1"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
-    await expect(safeFetch("https://mixed.example.com")).rejects.toThrow(
-      /DNS rebinding blocked.*10\.0\.0\.1/
-    );
+    await expect(safeFetch("https://mixed.example.com")).rejects.toThrow(/DNS rebinding blocked.*10\.0\.0\.1/);
   });
 
   it("blocks private hostnames before DNS resolution", async () => {
-    await expect(safeFetch("https://localhost/test")).rejects.toThrow(
-      /private\/internal host/
-    );
+    await expect(safeFetch("https://localhost/test")).rejects.toThrow(/private\/internal host/);
     expect(mockResolve4).not.toHaveBeenCalled();
   });
 
@@ -78,31 +70,23 @@ describe("safeFetch", () => {
     mockResolve4.mockRejectedValue(new Error("NXDOMAIN"));
     mockResolve6.mockRejectedValue(new Error("NXDOMAIN"));
 
-    await expect(safeFetch("https://nonexistent.example.com")).rejects.toThrow(
-      /DNS resolution failed/
-    );
+    await expect(safeFetch("https://nonexistent.example.com")).rejects.toThrow(/DNS resolution failed/);
   });
 
   it("checks IP literals directly without DNS", async () => {
-    await expect(safeFetch("https://127.0.0.1/test")).rejects.toThrow(
-      /private\/internal host/
-    );
+    await expect(safeFetch("https://127.0.0.1/test")).rejects.toThrow(/private\/internal host/);
     expect(mockResolve4).not.toHaveBeenCalled();
   });
 
   it("rejects unsupported protocols", async () => {
-    await expect(safeFetch("ftp://example.com/file")).rejects.toThrow(
-      /Unsupported protocol/
-    );
+    await expect(safeFetch("ftp://example.com/file")).rejects.toThrow(/Unsupported protocol/);
   });
 
   it("blocks RFC 1918 addresses via DNS", async () => {
     mockResolve4.mockResolvedValue(["192.168.1.1"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
-    await expect(safeFetch("https://rebind.example.com")).rejects.toThrow(
-      /DNS rebinding blocked.*192\.168\.1\.1/
-    );
+    await expect(safeFetch("https://rebind.example.com")).rejects.toThrow(/DNS rebinding blocked.*192\.168\.1\.1/);
   });
 
   it("blocks cloud metadata IPs via DNS", async () => {
@@ -110,7 +94,7 @@ describe("safeFetch", () => {
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
     await expect(safeFetch("https://metadata-stealer.com")).rejects.toThrow(
-      /DNS rebinding blocked.*169\.254\.169\.254/
+      /DNS rebinding blocked.*169\.254\.169\.254/,
     );
   });
 });

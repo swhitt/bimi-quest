@@ -19,8 +19,7 @@ export function TechnicalDetails({
   rawBimiRecord,
   rawDmarcRecord,
 }: TechnicalDetailsProps) {
-  const hasContent =
-    authResult || responseHeaders || rngChecks?.length || rawBimiRecord || rawDmarcRecord;
+  const hasContent = authResult || responseHeaders || rngChecks?.length || rawBimiRecord || rawDmarcRecord;
 
   if (!hasContent) return null;
 
@@ -58,11 +57,7 @@ export function TechnicalDetails({
               {rngChecks.map((check, i) => (
                 <div key={i} className="text-xs">
                   <span
-                    className={
-                      check.status === "pass"
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-destructive"
-                    }
+                    className={check.status === "pass" ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}
                   >
                     {check.status === "pass" ? "\u2713" : "\u2717"}
                   </span>{" "}
@@ -116,12 +111,7 @@ function HeaderLine({ name, value }: { name: string; value: string }) {
         {name}: {display}
       </span>
       {truncated && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-auto px-1.5 py-0.5 text-[10px]"
-          onClick={copyFull}
-        >
+        <Button variant="ghost" size="sm" className="h-auto px-1.5 py-0.5 text-[10px]" onClick={copyFull}>
           {copied ? "Copied" : "Copy full"}
         </Button>
       )}

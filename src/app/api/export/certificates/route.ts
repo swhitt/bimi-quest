@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { desc, count } from "drizzle-orm";
@@ -105,10 +105,7 @@ export async function GET(request: NextRequest) {
   try {
     const where = buildCertificateConditions(params);
 
-    const [totalRow] = await db
-      .select({ count: count() })
-      .from(certificates)
-      .where(where);
+    const [totalRow] = await db.select({ count: count() }).from(certificates).where(where);
 
     const total = totalRow?.count || 0;
 
@@ -117,7 +114,7 @@ export async function GET(request: NextRequest) {
         JSON.stringify({
           error: `Export limited to ${MAX_ROWS.toLocaleString()} rows. Your query matches ${total.toLocaleString()}. Please narrow your filters.`,
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -178,9 +175,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     log("error", "export.certificates.failed", { error: String(error) });
-    return new Response(
-      JSON.stringify({ error: "Failed to export certificates" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to export certificates" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

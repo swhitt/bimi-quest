@@ -50,10 +50,7 @@ const svg = `<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2
 </svg>`;
 
 async function main() {
-  await sharp(Buffer.from(svg))
-    .resize(WIDTH, HEIGHT)
-    .png()
-    .toFile("public/og-default.png");
+  await sharp(Buffer.from(svg)).resize(WIDTH, HEIGHT).png().toFile("public/og-default.png");
   console.log("Generated public/og-default.png");
 }
 

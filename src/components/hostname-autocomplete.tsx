@@ -51,10 +51,7 @@ export function HostnameAutocomplete({
     abortRef.current = controller;
 
     try {
-      const res = await fetch(
-        `/api/autocomplete?q=${encodeURIComponent(query)}`,
-        { signal: controller.signal }
-      );
+      const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`, { signal: controller.signal });
       if (!res.ok) return;
       const data: Suggestion[] = await res.json();
       setSuggestions(data);
@@ -169,9 +166,7 @@ export function HostnameAutocomplete({
                 {s.type === "domain" ? "host" : "org"}
               </span>
               <span className="truncate flex-1">{s.label}</span>
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {s.count}
-              </span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{s.count}</span>
             </button>
           ))}
         </div>

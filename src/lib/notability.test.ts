@@ -79,7 +79,7 @@ describe("scoreNotability", () => {
         reason: "Well-known tech company",
         description: "Cloud infrastructure provider",
         industry: "Technology",
-      })
+      }),
     );
 
     const result = await scoreNotability("Cloudflare", ["cloudflare.com"], "US");
@@ -97,7 +97,7 @@ describe("scoreNotability", () => {
         reason: "Unknown",
         description: "Unknown entity",
         industry: "Other",
-      })
+      }),
     );
 
     const result = await scoreNotability("Nobody", ["nobody.test"], null);
@@ -113,7 +113,7 @@ describe("scoreNotability", () => {
         reason: "Famous",
         description: "Mega corp",
         industry: "Technology",
-      })
+      }),
     );
 
     const result = await scoreNotability("MegaCorp", ["mega.com"], "US");
@@ -129,7 +129,7 @@ describe("scoreNotability", () => {
         reason: "Mid-market company",
         description: "Does stuff",
         industry: "Widgets & Gadgets",
-      })
+      }),
     );
 
     const result = await scoreNotability("WidgetCo", ["widget.co"], "US");
@@ -145,7 +145,7 @@ describe("scoreNotability", () => {
         reason: "Major bank",
         description: "Financial institution",
         industry: "Finance",
-      })
+      }),
     );
 
     const result = await scoreNotability("HSBC", ["hsbc.com"], "GB");
@@ -169,12 +169,10 @@ describe("scoreNotabilityBatch", () => {
         reason: "Known regionally",
         description: "Regional bank",
         industry: "Finance",
-      })
+      }),
     );
 
-    const brands: BrandInput[] = [
-      { id: "1", org: "Regional Bank", domain: "regional.com", country: "US" },
-    ];
+    const brands: BrandInput[] = [{ id: "1", org: "Regional Bank", domain: "regional.com", country: "US" }];
     const result = await scoreNotabilityBatch(brands);
     expect(result.size).toBe(1);
     expect(result.get("1")!.score).toBe(6);
@@ -192,7 +190,7 @@ describe("scoreNotabilityBatch", () => {
           { id: "a", score: 9, reason: "Global tech giant", description: "Search engine", industry: "Technology" },
           { id: "b", score: 3, reason: "Small shop", description: "Local business", industry: "Retail" },
         ],
-      })
+      }),
     );
 
     const brands: BrandInput[] = [
@@ -219,9 +217,7 @@ describe("scoreNotabilityBatch", () => {
 describe("classifyIndustryBatch", () => {
   it("returns empty map when no API key", async () => {
     delete process.env.ANTHROPIC_API_KEY;
-    const brands: BrandInput[] = [
-      { id: "1", org: "Test", domain: "test.com", country: "US" },
-    ];
+    const brands: BrandInput[] = [{ id: "1", org: "Test", domain: "test.com", country: "US" }];
     const result = await classifyIndustryBatch(brands);
     expect(result.size).toBe(0);
   });
@@ -240,7 +236,7 @@ describe("classifyIndustryBatch", () => {
           { id: "x", industry: "Technology" },
           { id: "y", industry: "Finance" },
         ],
-      })
+      }),
     );
 
     const brands: BrandInput[] = [
@@ -258,12 +254,10 @@ describe("classifyIndustryBatch", () => {
     mockCreate.mockResolvedValue(
       toolUseResponse("classify_industry_batch", {
         results: [{ id: "z", industry: "Space Exploration" }],
-      })
+      }),
     );
 
-    const brands: BrandInput[] = [
-      { id: "z", org: "SpaceX", domain: "spacex.com", country: "US" },
-    ];
+    const brands: BrandInput[] = [{ id: "z", org: "SpaceX", domain: "spacex.com", country: "US" }];
     const result = await classifyIndustryBatch(brands);
     expect(result.get("z")).toBe("Other");
   });

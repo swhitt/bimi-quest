@@ -44,9 +44,7 @@ export function OrgContent({ org }: OrgContentProps) {
         return res.json();
       })
       .then(setData)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load certificates")
-      )
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
       .finally(() => setLoading(false));
   }, [apiQuery]);
 
@@ -59,9 +57,7 @@ export function OrgContent({ org }: OrgContentProps) {
         counts.set(san, (counts.get(san) || 0) + 1);
       }
     }
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
   }, [data.data]);
 
   const country = data.data.length > 0 ? data.data[0].subjectCountry : null;
@@ -71,9 +67,13 @@ export function OrgContent({ org }: OrgContentProps) {
       {/* Header */}
       <div>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2" aria-label="Breadcrumb">
-          <Link href="/" className="hover:text-foreground">Dashboard</Link>
+          <Link href="/" className="hover:text-foreground">
+            Dashboard
+          </Link>
           <span>/</span>
-          <Link href="/certificates" className="hover:text-foreground">Certificates</Link>
+          <Link href="/certificates" className="hover:text-foreground">
+            Certificates
+          </Link>
           <span>/</span>
           <span className="text-foreground">{org}</span>
         </nav>
@@ -102,9 +102,7 @@ export function OrgContent({ org }: OrgContentProps) {
           <p className="text-destructive">{error}</p>
         </div>
       ) : loading ? (
-        <div className="flex h-64 items-center justify-center text-muted-foreground">
-          Loading certificates...
-        </div>
+        <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificates...</div>
       ) : data.data.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
           <p className="text-muted-foreground">

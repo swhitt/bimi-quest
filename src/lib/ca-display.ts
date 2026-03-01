@@ -9,20 +9,20 @@
 // Canonical display names for root CAs.
 // Sectigo is intentionally absent: they always chain to SSL.com roots for BIMI.
 const ROOT_CA_DISPLAY: Record<string, string> = {
-  "DigiCert": "DigiCert",
+  DigiCert: "DigiCert",
   "DigiCert, Inc.": "DigiCert",
-  "Entrust": "Entrust",
+  Entrust: "Entrust",
   "Entrust, Inc.": "Entrust",
-  "GlobalSign": "GlobalSign",
+  GlobalSign: "GlobalSign",
   "GlobalSign nv-sa": "GlobalSign",
   "SSL Corporation": "SSL.com",
 };
 
 // Canonical display names for issuing CAs (intermediates)
 const ISSUER_DISPLAY: Record<string, string> = {
-  "DigiCert": "DigiCert",
+  DigiCert: "DigiCert",
   "DigiCert, Inc.": "DigiCert",
-  "Entrust": "Entrust",
+  Entrust: "Entrust",
   "Entrust, Inc.": "Entrust",
   "GlobalSign nv-sa": "GlobalSign",
   "SSL Corporation": "SSL.com",
@@ -43,10 +43,7 @@ export function displayIssuerOrg(issuerOrg: string | null): string {
  * Returns the issuer display name with root CA context when they differ.
  * e.g. "Sectigo (via SSL.com)" or just "DigiCert" when root = issuer.
  */
-export function displayIssuerWithRoot(
-  issuerOrg: string | null,
-  rootCaOrg: string | null
-): string {
+export function displayIssuerWithRoot(issuerOrg: string | null, rootCaOrg: string | null): string {
   const issuer = displayIssuerOrg(issuerOrg);
   const root = displayRootCa(rootCaOrg);
   if (issuer === root || !rootCaOrg) return issuer;

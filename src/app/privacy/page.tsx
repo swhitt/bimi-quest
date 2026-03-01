@@ -29,9 +29,8 @@ export default async function PrivacyPage() {
         <section className="space-y-3 text-sm leading-relaxed">
           <h2 className="text-lg font-semibold">Certificate data</h2>
           <p>
-            All certificate data displayed on this site is already public. It is
-            sourced from Certificate Transparency logs, which are designed to be
-            openly auditable by anyone.
+            All certificate data displayed on this site is already public. It is sourced from Certificate Transparency
+            logs, which are designed to be openly auditable by anyone.
           </p>
         </section>
 
@@ -40,9 +39,8 @@ export default async function PrivacyPage() {
         <section className="space-y-3 text-sm leading-relaxed">
           <h2 className="text-lg font-semibold">BIMI Validator</h2>
           <p>
-            When you use the BIMI Validator, live DNS lookups are performed from
-            our servers to check the domain&apos;s BIMI and DMARC records. The
-            domains you query are not stored or logged.
+            When you use the BIMI Validator, live DNS lookups are performed from our servers to check the domain&apos;s
+            BIMI and DMARC records. The domains you query are not stored or logged.
           </p>
         </section>
 

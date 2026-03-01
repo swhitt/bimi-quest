@@ -43,9 +43,7 @@ export function HostContent({ hostname }: HostContentProps) {
         return res.json();
       })
       .then(setData)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load certificates")
-      )
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
       .finally(() => setLoading(false));
   }, [apiQuery]);
 
@@ -54,9 +52,13 @@ export function HostContent({ hostname }: HostContentProps) {
       {/* Header */}
       <div>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2" aria-label="Breadcrumb">
-          <Link href="/" className="hover:text-foreground">Dashboard</Link>
+          <Link href="/" className="hover:text-foreground">
+            Dashboard
+          </Link>
           <span>/</span>
-          <Link href="/certificates" className="hover:text-foreground">Certificates</Link>
+          <Link href="/certificates" className="hover:text-foreground">
+            Certificates
+          </Link>
           <span>/</span>
           <span className="text-foreground">{hostname}</span>
         </nav>
@@ -74,7 +76,15 @@ export function HostContent({ hostname }: HostContentProps) {
               href={`/domains/${encodeURIComponent(hostname)}`}
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary"
             >
-              <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                className="size-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
               </svg>
               Run BIMI Check
@@ -86,7 +96,9 @@ export function HostContent({ hostname }: HostContentProps) {
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               crt.sh
-              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3.5 3h5.5v5.5M9 3L3 9" />
+              </svg>
             </a>
             <a
               href={`https://mxtoolbox.com/SuperTool.aspx?action=dmarc%3a${encodeURIComponent(hostname)}&run=toolpage`}
@@ -95,7 +107,9 @@ export function HostContent({ hostname }: HostContentProps) {
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               MX Toolbox
-              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3.5 3h5.5v5.5M9 3L3 9"/></svg>
+              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3.5 3h5.5v5.5M9 3L3 9" />
+              </svg>
             </a>
           </div>
         </div>
@@ -107,9 +121,7 @@ export function HostContent({ hostname }: HostContentProps) {
           <p className="text-destructive">{error}</p>
         </div>
       ) : loading ? (
-        <div className="flex h-64 items-center justify-center text-muted-foreground">
-          Loading certificates...
-        </div>
+        <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificates...</div>
       ) : data.data.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
           <p className="text-muted-foreground">
@@ -118,10 +130,7 @@ export function HostContent({ hostname }: HostContentProps) {
           <p className="text-sm text-muted-foreground">
             This hostname has not appeared in any VMC or CMC certificates in our CT log data.
           </p>
-          <Link
-            href={`/domains/${encodeURIComponent(hostname)}`}
-            className="text-sm text-primary hover:underline"
-          >
+          <Link href={`/domains/${encodeURIComponent(hostname)}`} className="text-sm text-primary hover:underline">
             Run a BIMI check to see if this domain has BIMI configured
           </Link>
         </div>

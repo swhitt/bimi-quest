@@ -12,9 +12,7 @@ export interface RngValidationResult {
 }
 
 /** Validate an SVG string against the SVG Tiny PS RELAX NG schema */
-export async function validateSvgRng(
-  svgContent: string
-): Promise<RngValidationResult> {
+export async function validateSvgRng(svgContent: string): Promise<RngValidationResult> {
   try {
     const { validateXML } = await import("xmllint-wasm");
 

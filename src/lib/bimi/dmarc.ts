@@ -29,9 +29,7 @@ export interface DMARCLookupResult {
 
 /** Look up the DMARC TXT record for a domain, falling back to the
  *  organizational domain per RFC 7489 section 6.6.3 */
-export async function lookupDMARC(
-  domain: string
-): Promise<DMARCLookupResult | null> {
+export async function lookupDMARC(domain: string): Promise<DMARCLookupResult | null> {
   // Try exact domain first
   const record = await lookupDMARCAt(domain);
   if (record) return { record, isSubdomain: false };
@@ -89,9 +87,7 @@ export function isDMARCValidForBIMI(record: DMARCRecord, isSubdomain = false): b
  *  When checking a subdomain, the sp= tag (subdomain policy) takes
  *  precedence over p= if present. */
 export function getDMARCBIMIReason(record: DMARCRecord, isSubdomain = false): string | null {
-  const effectivePolicy = isSubdomain && record.sp
-    ? record.sp
-    : record.policy;
+  const effectivePolicy = isSubdomain && record.sp ? record.sp : record.policy;
 
   if (effectivePolicy !== "quarantine" && effectivePolicy !== "reject") {
     if (isSubdomain && record.sp === "none") {

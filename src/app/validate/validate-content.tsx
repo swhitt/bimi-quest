@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
@@ -93,7 +93,7 @@ export function ValidateContent() {
     if (urlDomain) {
       doValidate(urlDomain.trim());
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function doValidate(target: string, sel?: string) {
@@ -135,7 +135,8 @@ export function ValidateContent() {
       <div>
         <h1 className="text-xl font-semibold">BIMI Validator</h1>
         <p className="text-muted-foreground">
-          Check if a domain is ready for BIMI (Brand Indicators for Message Identification). Tests DNS records, DMARC policy, SVG logo compliance, and certificate status.
+          Check if a domain is ready for BIMI (Brand Indicators for Message Identification). Tests DNS records, DMARC
+          policy, SVG logo compliance, and certificate status.
         </p>
       </div>
 
@@ -187,10 +188,7 @@ export function ValidateContent() {
             <CardHeader className="flex flex-row flex-wrap items-center gap-4">
               <ValidationGrade grade={result.grade} summary={result.gradeSummary} />
               <div className="ml-auto flex items-center gap-2">
-                <Badge
-                  variant={result.overallValid ? "default" : "destructive"}
-                  className="text-base px-4 py-1"
-                >
+                <Badge variant={result.overallValid ? "default" : "destructive"} className="text-base px-4 py-1">
                   {result.overallValid ? "PASS" : "FAIL"}
                 </Badge>
               </div>
@@ -203,9 +201,7 @@ export function ValidateContent() {
                 </p>
               )}
               {result.bimi.declined && (
-                <p className="text-sm text-destructive">
-                  This domain has explicitly declined BIMI participation
-                </p>
+                <p className="text-sm text-destructive">This domain has explicitly declined BIMI participation</p>
               )}
               {result.errors.length > 0 && (
                 <ul className="space-y-1 text-sm text-destructive">

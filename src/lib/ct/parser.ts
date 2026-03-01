@@ -16,8 +16,8 @@ export interface ParsedEntry {
 }
 
 export interface ExtensionEntry {
-  v: string;   // hex-encoded DER value
-  c: boolean;  // critical flag
+  v: string; // hex-encoded DER value
+  c: boolean; // critical flag
 }
 
 export interface BIMICertData {
@@ -54,7 +54,6 @@ function base64ToBuffer(b64: string): Uint8Array {
   }
   return bytes;
 }
-
 
 function derToPem(der: Uint8Array): string {
   let b64: string;
@@ -127,10 +126,7 @@ export function parseCTLogEntry(entry: CTLogEntry): ParsedEntry | null {
     }
 
     const cert = new X509Certificate(toArrayBuffer(certDer));
-    const chainPems = parseChainFromExtraData(
-      base64ToBuffer(entry.extra_data),
-      entryType
-    );
+    const chainPems = parseChainFromExtraData(base64ToBuffer(entry.extra_data), entryType);
 
     return {
       cert,
@@ -150,10 +146,7 @@ export function hasBIMIOID(cert: X509Certificate): boolean {
 }
 
 /** Extract all BIMI-relevant data from a certificate */
-export async function extractBIMIData(
-  cert: X509Certificate,
-  certDer: Uint8Array
-): Promise<BIMICertData> {
+export async function extractBIMIData(cert: X509Certificate, certDer: Uint8Array): Promise<BIMICertData> {
   const fingerprint = await sha256(certDer);
   const pem = derToPem(certDer);
 
@@ -211,10 +204,7 @@ export async function extractBIMIData(
 }
 
 /** Parse certificate chain from extra_data */
-export function parseChainFromExtraData(
-  extraBuf: Uint8Array,
-  entryType: number
-): string[] {
+export function parseChainFromExtraData(extraBuf: Uint8Array, entryType: number): string[] {
   const pems: string[] = [];
   try {
     let offset = 0;
@@ -276,7 +266,7 @@ export function extractDnField(dn: string, field: string): string | null {
 function extractSANs(cert: X509Certificate): string[] {
   try {
     const sanExt = cert.extensions.find(
-      (ext) => ext.type === "2.5.29.17" // subjectAltName OID
+      (ext) => ext.type === "2.5.29.17", // subjectAltName OID
     );
     if (!sanExt) return [];
 
@@ -284,9 +274,7 @@ function extractSANs(cert: X509Certificate): string[] {
     // but we'll parse the extension value manually for DNS names
     // The SAN extension contains a SEQUENCE of GeneralNames
     // GeneralName with tag [2] (context-specific, primitive) is dNSName
-    const value = new Uint8Array(
-      sanExt.value
-    );
+    const value = new Uint8Array(sanExt.value);
     return parseSANDnsNames(value);
   } catch {
     return [];
@@ -327,10 +315,7 @@ function parseSANDnsNames(data: Uint8Array): string[] {
 }
 
 /** Read a DER length field (handles short and long forms) */
-function readDerLength(
-  data: Uint8Array,
-  offset: number
-): { length: number; bytesRead: number } {
+function readDerLength(data: Uint8Array, offset: number): { length: number; bytesRead: number } {
   const first = data[offset];
   if (first < 0x80) {
     return { length: first, bytesRead: 1 };
@@ -362,9 +347,7 @@ export function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
 
 /** Try to extract SVG logotype from the logotype extension (RFC 3709).
  *  SVGs are embedded as gzip-compressed base64 data URIs inside the ASN.1 structure. */
-function extractLogotypeSvg(
-  cert: X509Certificate
-): { svgHash: string | null; svgContent: string | null } {
+function extractLogotypeSvg(cert: X509Certificate): { svgHash: string | null; svgContent: string | null } {
   try {
     const ext = cert.extensions.find((e) => e.type === LOGOTYPE_OID);
     if (!ext) return { svgHash: null, svgContent: null };
@@ -391,8 +374,12 @@ function extractLogotypeSvg(
     for (let i = b64Start; i < rawBytes.length; i++) {
       const ch = rawBytes[i];
       if (
-        (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) ||
-        (ch >= 48 && ch <= 57) || ch === 43 || ch === 47 || ch === 61
+        (ch >= 65 && ch <= 90) ||
+        (ch >= 97 && ch <= 122) ||
+        (ch >= 48 && ch <= 57) ||
+        ch === 43 ||
+        ch === 47 ||
+        ch === 61
       ) {
         b64 += String.fromCharCode(ch);
       } else if (ch === 10 || ch === 13 || ch === 32) {
@@ -416,7 +403,6 @@ function extractLogotypeSvg(
   }
 }
 
-
 // Re-export pemToDer (validate.ts and others import it from here)
 export { pemToDer };
 
@@ -428,7 +414,7 @@ export async function computePemFingerprint(pem: string): Promise<string> {
 
 /** Parse a chain cert minimally to extract subject/issuer DNs */
 export function parseChainCert(
-  pem: string
+  pem: string,
 ): { subjectDn: string; issuerDn: string; notBefore: Date; notAfter: Date } | null {
   try {
     const der = pemToDer(pem);

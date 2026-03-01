@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,10 +7,7 @@ import sharp from "sharp";
 
 const PNG_SIZE = 256;
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await params;
 
   const { id: certId, error } = await resolveCertParam(rawId);
@@ -41,10 +38,7 @@ export async function GET(
   }
 
   // Default: convert to PNG for broad compatibility (Discord, social previews, etc.)
-  const png = await sharp(Buffer.from(cert.logotypeSvg))
-    .resize(PNG_SIZE, PNG_SIZE)
-    .png()
-    .toBuffer();
+  const png = await sharp(Buffer.from(cert.logotypeSvg)).resize(PNG_SIZE, PNG_SIZE).png().toBuffer();
 
   return new NextResponse(new Uint8Array(png), {
     headers: {

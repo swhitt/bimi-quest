@@ -48,16 +48,14 @@ export async function svgToPng(svg: string): Promise<Buffer> {
  * Returns scores for each logo in the batch.
  */
 export async function scoreLogoQualityBatch(
-  logos: { svgHash: string; png: Buffer }[]
+  logos: { svgHash: string; png: Buffer }[],
 ): Promise<Map<string, LogoQualityResult>> {
   const results = new Map<string, LogoQualityResult>();
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || logos.length === 0) return results;
 
   // Build parts: text prompt followed by interleaved labels + images
-  const parts: GeminiPart[] = [
-    { text: `Score these ${logos.length} logo images. Each is labeled with an ID.\n` },
-  ];
+  const parts: GeminiPart[] = [{ text: `Score these ${logos.length} logo images. Each is labeled with an ID.\n` }];
   for (let i = 0; i < logos.length; i++) {
     parts.push({ text: `Logo ID: "${logos[i].svgHash}"` });
     parts.push({

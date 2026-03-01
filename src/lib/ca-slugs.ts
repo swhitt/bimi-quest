@@ -8,7 +8,7 @@ export const CA_SLUG_TO_NAME: Record<string, string> = {
 };
 
 export const CA_NAME_TO_SLUG: Record<string, string> = Object.fromEntries(
-  Object.entries(CA_SLUG_TO_NAME).map(([slug, name]) => [name, slug])
+  Object.entries(CA_SLUG_TO_NAME).map(([slug, name]) => [name, slug]),
 );
 
 // Display-friendly label for each issuer CA

@@ -34,10 +34,7 @@ function cleanup(windowMs: number) {
   }
 }
 
-function checkInMemoryRateLimit(
-  key: string,
-  config: RateLimitConfig
-): RateLimitResult {
+function checkInMemoryRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
   const now = Date.now();
   cleanup(config.windowMs);
 
@@ -45,10 +42,7 @@ function checkInMemoryRateLimit(
   entry.timestamps = entry.timestamps.filter((t) => now - t < config.windowMs);
 
   const remaining = Math.max(0, config.max - entry.timestamps.length);
-  const resetMs =
-    entry.timestamps.length > 0
-      ? entry.timestamps[0] + config.windowMs
-      : now + config.windowMs;
+  const resetMs = entry.timestamps.length > 0 ? entry.timestamps[0] + config.windowMs : now + config.windowMs;
 
   const headers: Record<string, string> = {
     "X-RateLimit-Limit": String(config.max),
@@ -57,9 +51,7 @@ function checkInMemoryRateLimit(
   };
 
   if (entry.timestamps.length >= config.max) {
-    headers["Retry-After"] = String(
-      Math.ceil((resetMs - now) / 1000)
-    );
+    headers["Retry-After"] = String(Math.ceil((resetMs - now) / 1000));
     store.set(key, entry);
     log("warn", "rate_limit.exceeded", { key, max: config.max, windowMs: config.windowMs });
     return { allowed: false, remaining: 0, resetMs, headers };
@@ -79,10 +71,7 @@ function checkInMemoryRateLimit(
  * Try the Vercel WAF rate limiter. Returns null if unavailable (local dev,
  * package not configured, or firewall rule missing).
  */
-async function checkFirewallRateLimit(
-  ruleId: string,
-  request: Request
-): Promise<boolean | null> {
+async function checkFirewallRateLimit(ruleId: string, request: Request): Promise<boolean | null> {
   try {
     const { checkRateLimit: vercelCheck } = await import("@vercel/firewall");
     const { rateLimited } = await vercelCheck(ruleId, { request });
@@ -121,7 +110,7 @@ export interface RateLimitResult {
 export async function checkRateLimit(
   key: string,
   config: RateLimitConfig,
-  request?: Request
+  request?: Request,
 ): Promise<RateLimitResult> {
   // On Vercel, try the distributed firewall check first
   if (process.env.VERCEL && request) {
@@ -181,8 +170,5 @@ export function getClientIP(request: Request): string {
  * Return a 429 response with rate limit headers.
  */
 export function rateLimitResponse(headers: Record<string, string>): NextResponse {
-  return NextResponse.json(
-    { error: "Too many requests. Try again later." },
-    { status: 429, headers }
-  );
+  return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429, headers });
 }

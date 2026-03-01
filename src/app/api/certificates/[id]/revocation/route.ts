@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -22,10 +22,7 @@ import { log } from "@/lib/logger";
 const MAX_CRL_SIZE = 5 * 1024 * 1024; // 5MB
 const FETCH_TIMEOUT = 10_000; // 10s
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ip = getClientIP(_request);
   const rl = await checkRateLimit(`revocation:${ip}`, { windowMs: 60_000, max: 20 }, _request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
@@ -79,14 +76,11 @@ export async function GET(
       { ocsp: ocspResult, crl: crlResult },
       {
         headers: { ...rl.headers, "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
-      }
+      },
     );
   } catch (err) {
-    log('error', 'revocation.api.failed', { error: String(err), route: '/api/certificates/[id]/revocation' });
-    return NextResponse.json(
-      { error: "Failed to check revocation status" },
-      { status: 500 }
-    );
+    log("error", "revocation.api.failed", { error: String(err), route: "/api/certificates/[id]/revocation" });
+    return NextResponse.json({ error: "Failed to check revocation status" }, { status: 500 });
   }
 }
 
@@ -94,7 +88,7 @@ async function checkOcsp(
   ocspUrl: string | null,
   _leafPem: string,
   serialNumberHex: string,
-  issuerPem: string | null
+  issuerPem: string | null,
 ): Promise<OcspResult | null> {
   if (!ocspUrl) return null;
 
@@ -154,10 +148,7 @@ async function checkOcsp(
   }
 }
 
-async function checkCrl(
-  crlUrl: string | null,
-  serialNumberHex: string
-): Promise<CrlResult | null> {
+async function checkCrl(crlUrl: string | null, serialNumberHex: string): Promise<CrlResult | null> {
   if (!crlUrl) return null;
 
   try {
@@ -205,9 +196,7 @@ async function checkCrl(
 
     // Detect PEM-encoded CRL and convert
     const textStart = new TextDecoder().decode(rawBytes.slice(0, 30));
-    const derBytes = textStart.includes("-----BEGIN")
-      ? pemToDer(new TextDecoder().decode(rawBytes))
-      : rawBytes;
+    const derBytes = textStart.includes("-----BEGIN") ? pemToDer(new TextDecoder().decode(rawBytes)) : rawBytes;
 
     const result = parseCrl(derBytes, serialNumberHex);
 

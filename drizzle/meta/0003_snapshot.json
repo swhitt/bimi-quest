@@ -55,12 +55,8 @@
           "name": "certificate_chain_links_leaf_cert_id_certificates_id_fk",
           "tableFrom": "certificate_chain_links",
           "tableTo": "certificates",
-          "columnsFrom": [
-            "leaf_cert_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["leaf_cert_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -68,12 +64,8 @@
           "name": "certificate_chain_links_chain_cert_id_chain_certs_id_fk",
           "tableFrom": "certificate_chain_links",
           "tableTo": "chain_certs",
-          "columnsFrom": [
-            "chain_cert_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chain_cert_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -590,9 +582,7 @@
         "certificates_fingerprint_sha256_unique": {
           "name": "certificates_fingerprint_sha256_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "fingerprint_sha256"
-          ]
+          "columns": ["fingerprint_sha256"]
         }
       },
       "policies": {},
@@ -653,9 +643,7 @@
         "chain_certs_fingerprint_sha256_unique": {
           "name": "chain_certs_fingerprint_sha256_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "fingerprint_sha256"
-          ]
+          "columns": ["fingerprint_sha256"]
         }
       },
       "policies": {},
@@ -836,9 +824,7 @@
         "domain_bimi_state_domain_unique": {
           "name": "domain_bimi_state_domain_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "domain"
-          ]
+          "columns": ["domain"]
         }
       },
       "policies": {},
@@ -895,9 +881,7 @@
         "ingestion_cursors_log_name_unique": {
           "name": "ingestion_cursors_log_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "log_name"
-          ]
+          "columns": ["log_name"]
         }
       },
       "policies": {},

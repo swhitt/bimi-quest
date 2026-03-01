@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { desc, asc, count } from "drizzle-orm";
@@ -64,22 +64,22 @@ export async function GET(request: NextRequest) {
 
     const total = totalRow?.count || 0;
 
-    return NextResponse.json({
-      data: rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    }, {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
-    });
-  } catch (error) {
-    log('error', 'certificates.api.failed', { error: String(error), route: '/api/certificates' });
     return NextResponse.json(
-      { error: "Failed to fetch certificates" },
-      { status: 500 }
+      {
+        data: rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+      {
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      },
     );
+  } catch (error) {
+    log("error", "certificates.api.failed", { error: String(error), route: "/api/certificates" });
+    return NextResponse.json({ error: "Failed to fetch certificates" }, { status: 500 });
   }
 }

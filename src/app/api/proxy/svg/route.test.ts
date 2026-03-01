@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // Mock safeFetch before importing the route
@@ -89,7 +89,7 @@ describe("GET /api/proxy/svg", () => {
           "content-length": String(2_000_000),
           "content-type": "image/svg+xml",
         },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg");
@@ -105,7 +105,7 @@ describe("GET /api/proxy/svg", () => {
       new Response("not an svg", {
         status: 200,
         headers: { "content-type": "text/html" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg");
@@ -121,7 +121,7 @@ describe("GET /api/proxy/svg", () => {
       new Response(streamFromString(svgLikeBody), {
         status: 200,
         headers: { "content-type": "image/svg+xml" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg");
@@ -137,7 +137,7 @@ describe("GET /api/proxy/svg", () => {
       new Response(streamFromString(svgContent), {
         status: 200,
         headers: { "content-type": "image/svg+xml" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg", {
@@ -162,7 +162,7 @@ describe("GET /api/proxy/svg", () => {
       new Response(streamFromString(svgContent), {
         status: 200,
         headers: { "content-type": "application/xml" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg");
@@ -176,7 +176,7 @@ describe("GET /api/proxy/svg", () => {
       new Response(streamFromString(svgContent), {
         status: 200,
         headers: { "content-type": "image/svg+xml; charset=utf-8" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg");
@@ -213,7 +213,7 @@ describe("GET /api/proxy/svg", () => {
       new Response(stream, {
         status: 200,
         headers: { "content-type": "image/svg+xml" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/huge.svg");
@@ -251,7 +251,7 @@ describe("GET /api/proxy/svg", () => {
       new Response(streamFromString(svgContent), {
         status: 200,
         headers: { "content-type": "image/svg+xml" },
-      })
+      }),
     );
 
     const req = makeRequest("/api/proxy/svg?url=https://example.com/rl.svg");

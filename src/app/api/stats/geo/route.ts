@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, eq, and, gte, lte, count, desc } from "drizzle-orm";
@@ -24,10 +24,8 @@ export async function GET(request: NextRequest) {
     const toDate = parseDate(to);
     if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
     if (toDate) conditions.push(lte(certificates.notBefore, toDate));
-    if (validity === "valid")
-      conditions.push(gte(certificates.notAfter, new Date()));
-    if (validity === "expired")
-      conditions.push(lte(certificates.notAfter, new Date()));
+    if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
+    if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -35,26 +33,22 @@ export async function GET(request: NextRequest) {
       .select({
         country: certificates.subjectCountry,
         total: count(),
-        vmcCount: count(
-          sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`
-        ),
-        cmcCount: count(
-          sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`
-        ),
+        vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
+        cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
       })
       .from(certificates)
       .where(where)
       .groupBy(certificates.subjectCountry)
       .orderBy(desc(count()));
 
-    return NextResponse.json({ geoData }, {
-      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
-    });
-  } catch (error) {
-    log('error', 'geo-stats.api.failed', { error: String(error), route: '/api/stats/geo' });
     return NextResponse.json(
-      { error: "Failed to fetch geo data" },
-      { status: 500 }
+      { geoData },
+      {
+        headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+      },
     );
+  } catch (error) {
+    log("error", "geo-stats.api.failed", { error: String(error), route: "/api/stats/geo" });
+    return NextResponse.json({ error: "Failed to fetch geo data" }, { status: 500 });
   }
 }

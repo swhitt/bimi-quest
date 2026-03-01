@@ -3,12 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { BimiCheckItem } from "@/lib/bimi/types";
 import { useState } from "react";
 
@@ -64,17 +59,10 @@ function CheckItemCard({ item }: { item: BimiCheckItem }) {
         )}
         {hasDetail && item.detail && (
           <>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-xs text-primary hover:underline mt-1"
-            >
+            <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary hover:underline mt-1">
               {expanded ? "Hide details" : "Show details"}
             </button>
-            {expanded && (
-              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
-                {item.detail}
-              </p>
-            )}
+            {expanded && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{item.detail}</p>}
           </>
         )}
       </div>
@@ -86,12 +74,8 @@ export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
   const specChecks = checks.filter((c) => c.category === "spec");
   const compatChecks = checks.filter((c) => c.category === "compatibility");
 
-  const specFailCount = specChecks.filter(
-    (c) => c.status === "fail" || c.status === "warn"
-  ).length;
-  const compatFailCount = compatChecks.filter(
-    (c) => c.status === "fail" || c.status === "warn"
-  ).length;
+  const specFailCount = specChecks.filter((c) => c.status === "fail" || c.status === "warn").length;
+  const compatFailCount = compatChecks.filter((c) => c.status === "fail" || c.status === "warn").length;
 
   return (
     <Card>
@@ -120,9 +104,7 @@ export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
               {specChecks.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">No spec checks available</p>
               ) : (
-                specChecks.map((item) => (
-                  <CheckItemCard key={item.id} item={item} />
-                ))
+                specChecks.map((item) => <CheckItemCard key={item.id} item={item} />)
               )}
             </div>
           </TabsContent>
@@ -131,9 +113,7 @@ export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
               {compatChecks.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">No compatibility checks available</p>
               ) : (
-                compatChecks.map((item) => (
-                  <CheckItemCard key={item.id} item={item} />
-                ))
+                compatChecks.map((item) => <CheckItemCard key={item.id} item={item} />)
               )}
             </div>
           </TabsContent>

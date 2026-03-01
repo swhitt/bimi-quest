@@ -1,4 +1,4 @@
-import type { BimiCheckItem, BimiGrade, BimiGradeResult } from "./types";
+import type { BimiCheckItem, BimiGradeResult } from "./types";
 
 /**
  * Compute a letter grade from structured BIMI check results.
@@ -10,10 +10,7 @@ import type { BimiCheckItem, BimiGrade, BimiGradeResult } from "./types";
  *   B  - all spec checks pass, some compatibility warnings
  *   A  - everything clean
  */
-export function computeGrade(
-  checks: BimiCheckItem[],
-  declined: boolean = false
-): BimiGradeResult {
+export function computeGrade(checks: BimiCheckItem[], declined: boolean = false): BimiGradeResult {
   if (declined) {
     return { grade: "F", summary: "Domain has explicitly declined BIMI" };
   }
@@ -23,14 +20,10 @@ export function computeGrade(
 
   const specFails = specChecks.filter((c) => c.status === "fail");
   const specWarns = specChecks.filter((c) => c.status === "warn");
-  const compatWarns = compatChecks.filter(
-    (c) => c.status === "warn" || c.status === "fail"
-  );
+  const compatWarns = compatChecks.filter((c) => c.status === "warn" || c.status === "fail");
 
   // No BIMI record at all
-  const noBimi = specChecks.find(
-    (c) => c.id === "bimi-dns" && c.status === "fail"
-  );
+  const noBimi = specChecks.find((c) => c.id === "bimi-dns" && c.status === "fail");
   if (noBimi) {
     return { grade: "F", summary: "No BIMI record found" };
   }

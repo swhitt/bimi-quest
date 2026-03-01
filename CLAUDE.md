@@ -3,6 +3,7 @@
 BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VMC/CMC certificates, enriches data, and presents it through a dashboard.
 
 ## Stack
+
 - Next.js 16 (App Router, Server Components, TypeScript)
 - PostgreSQL via Neon (@neondatabase/serverless)
 - Drizzle ORM (schema in `src/lib/db/schema.ts`)
@@ -11,6 +12,7 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 - bun as package manager
 
 ## Key Paths
+
 - `src/lib/db/` - Database schema and connection (lazy singleton)
 - `src/lib/ct/` - CT log client (gorgon.ts), cert parser (parser.ts), shared ingestion loop (ingest-batch.ts), crt.sh client
 - `src/lib/bimi/` - DNS, DMARC, SVG validation, full validation orchestrator
@@ -20,6 +22,7 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 - `src/components/` - Dashboard widgets, tables, UI components
 
 ## Commands
+
 - `bun run dev` - Development server
 - `bun run build` - Production build
 - `bun run ingest:backfill` - Scan Gorgon CT log from last cursor
@@ -29,11 +32,13 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 - `bun run db:studio` - Open Drizzle Studio
 
 ## Environment Variables
+
 - `DATABASE_URL` - Neon PostgreSQL connection string (required)
 - `DISCORD_WEBHOOK_URL` - Discord webhook for notifications (optional)
 - `NEXT_PUBLIC_BASE_URL` - Base URL for links in notifications
 
 ## Important Notes
+
 - DB connection is lazy (via Proxy) to avoid build-time errors when DATABASE_URL is unset
 - The ingestion worker runs via tsx which resolves @/ aliases from tsconfig paths
 - Both cron and worker use `processIngestBatch` from `src/lib/ct/ingest-batch.ts` (single source of truth)

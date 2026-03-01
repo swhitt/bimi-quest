@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
-} from "lucide-react";
+import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 
 export interface Pagination {
   page: number;
@@ -62,30 +57,19 @@ export function PaginationBar({
               if (e.key === "Enter") {
                 const val = Math.max(
                   1,
-                  Math.min(
-                    pagination.totalPages,
-                    parseInt((e.target as HTMLInputElement).value) || 1
-                  )
+                  Math.min(pagination.totalPages, parseInt((e.target as HTMLInputElement).value) || 1),
                 );
                 onPageChange(val);
               }
             }}
             onBlur={(e) => {
-              const val = Math.max(
-                1,
-                Math.min(
-                  pagination.totalPages,
-                  parseInt(e.target.value) || 1
-                )
-              );
+              const val = Math.max(1, Math.min(pagination.totalPages, parseInt(e.target.value) || 1));
               if (val !== pagination.page) {
                 onPageChange(val);
               }
             }}
           />
-          <span className="text-muted-foreground">
-            / {pagination.totalPages}
-          </span>
+          <span className="text-muted-foreground">/ {pagination.totalPages}</span>
         </span>
         <Button
           variant="outline"

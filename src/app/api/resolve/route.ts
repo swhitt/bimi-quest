@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { certificates } from "@/lib/db/schema";
@@ -25,9 +25,7 @@ export async function GET(request: NextRequest) {
         fingerprintSha256: certificates.fingerprintSha256,
       })
       .from(certificates)
-      .where(
-        sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE lower(s) = ${domain.toLowerCase()})`
-      )
+      .where(sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE lower(s) = ${domain.toLowerCase()})`)
       .orderBy(desc(certificates.notBefore), asc(certificates.isPrecert))
       .limit(1);
 
@@ -43,10 +41,7 @@ export async function GET(request: NextRequest) {
       found: false,
     });
   } catch (err) {
-    log('error', 'resolve.api.failed', { error: String(err), route: '/api/resolve' });
-    return NextResponse.json(
-      { error: "Failed to resolve domain" },
-      { status: 500 }
-    );
+    log("error", "resolve.api.failed", { error: String(err), route: "/api/resolve" });
+    return NextResponse.json({ error: "Failed to resolve domain" }, { status: 500 });
   }
 }

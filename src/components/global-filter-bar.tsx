@@ -4,33 +4,12 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FilterChips, type FilterChip } from "@/components/filter-chips";
 import { X, ListFilter, ChevronDown } from "lucide-react";
-import {
-  ALL_CA_SLUGS,
-  CA_DISPLAY_NAMES,
-  CA_SLUG_TO_NAME,
-  ROOT_CA_OPTIONS,
-} from "@/lib/ca-slugs";
+import { ALL_CA_SLUGS, CA_DISPLAY_NAMES, CA_SLUG_TO_NAME, ROOT_CA_OPTIONS } from "@/lib/ca-slugs";
 import { ALL_MARK_TYPES } from "@/lib/mark-types";
 
 const CERT_TYPES = [
@@ -62,9 +41,7 @@ function FilterBarInner() {
   const searchParams = useSearchParams();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [industryOptions, setIndustryOptions] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const [industryOptions, setIndustryOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/stats/industries")
@@ -75,7 +52,7 @@ function FilterBarInner() {
             d.industries.map((i: { industry: string; count: number }) => ({
               value: i.industry,
               label: i.industry,
-            }))
+            })),
           );
         }
       })
@@ -97,8 +74,7 @@ function FilterBarInner() {
     (newCaSlug: string, updates?: Record<string, string | null>) => {
       const pagePath = getBasePath(pathname);
       const caSuffix = newCaSlug ? `/ca/${newCaSlug}` : "";
-      const base =
-        pagePath === "/" ? caSuffix || "/" : `${pagePath}${caSuffix}`;
+      const base = pagePath === "/" ? caSuffix || "/" : `${pagePath}${caSuffix}`;
 
       const params = new URLSearchParams(searchParams.toString());
       params.delete("ca");
@@ -117,14 +93,14 @@ function FilterBarInner() {
       const qs = params.toString();
       return qs ? `${base}?${qs}` : base;
     },
-    [pathname, searchParams]
+    [pathname, searchParams],
   );
 
   const updateSecondaryFilter = useCallback(
     (key: string, value: string) => {
       router.push(buildUrl(caSlug, { [key]: value }));
     },
-    [router, buildUrl, caSlug]
+    [router, buildUrl, caSlug],
   );
 
   const clearFilters = useCallback(() => {
@@ -265,15 +241,8 @@ function FilterBarInner() {
   // --- Shared filter controls (accept className override for mobile full-width) ---
 
   const caSelect = (className?: string) => (
-    <Select
-      value={caSlug || "all"}
-      onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}
-    >
-      <SelectTrigger
-        size="sm"
-        aria-label="Filter by issuing CA"
-        className={className ?? "w-[140px]"}
-      >
+    <Select value={caSlug || "all"} onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}>
+      <SelectTrigger size="sm" aria-label="Filter by issuing CA" className={className ?? "w-[140px]"}>
         <SelectValue placeholder="All Issuers" />
       </SelectTrigger>
       <SelectContent>
@@ -288,15 +257,8 @@ function FilterBarInner() {
   );
 
   const rootCaSelect = (className?: string) => (
-    <Select
-      value={rootCa}
-      onValueChange={(v) => updateSecondaryFilter("root", v)}
-    >
-      <SelectTrigger
-        size="sm"
-        aria-label="Filter by root CA"
-        className={className ?? "w-[140px]"}
-      >
+    <Select value={rootCa} onValueChange={(v) => updateSecondaryFilter("root", v)}>
+      <SelectTrigger size="sm" aria-label="Filter by root CA" className={className ?? "w-[140px]"}>
         <SelectValue placeholder="All Roots" />
       </SelectTrigger>
       <SelectContent>
@@ -311,15 +273,8 @@ function FilterBarInner() {
   );
 
   const typeSelect = (className?: string) => (
-    <Select
-      value={type}
-      onValueChange={(v) => updateSecondaryFilter("type", v)}
-    >
-      <SelectTrigger
-        size="sm"
-        aria-label="Filter by certificate type"
-        className={className ?? "w-[110px]"}
-      >
+    <Select value={type} onValueChange={(v) => updateSecondaryFilter("type", v)}>
+      <SelectTrigger size="sm" aria-label="Filter by certificate type" className={className ?? "w-[110px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -333,15 +288,8 @@ function FilterBarInner() {
   );
 
   const markSelect = (className?: string) => (
-    <Select
-      value={mark}
-      onValueChange={(v) => updateSecondaryFilter("mark", v)}
-    >
-      <SelectTrigger
-        size="sm"
-        aria-label="Filter by mark type"
-        className={className ?? "w-[160px]"}
-      >
+    <Select value={mark} onValueChange={(v) => updateSecondaryFilter("mark", v)}>
+      <SelectTrigger size="sm" aria-label="Filter by mark type" className={className ?? "w-[160px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -355,15 +303,8 @@ function FilterBarInner() {
   );
 
   const validitySelect = (className?: string) => (
-    <Select
-      value={validity}
-      onValueChange={(v) => updateSecondaryFilter("validity", v)}
-    >
-      <SelectTrigger
-        size="sm"
-        aria-label="Filter by validity status"
-        className={className ?? "w-[120px]"}
-      >
+    <Select value={validity} onValueChange={(v) => updateSecondaryFilter("validity", v)}>
+      <SelectTrigger size="sm" aria-label="Filter by validity status" className={className ?? "w-[120px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -377,15 +318,8 @@ function FilterBarInner() {
   );
 
   const precertSelect = (className?: string) => (
-    <Select
-      value={precert}
-      onValueChange={(v) => updateSecondaryFilter("precert", v)}
-    >
-      <SelectTrigger
-        size="sm"
-        aria-label="Filter by precertificate status"
-        className={className ?? "w-[140px]"}
-      >
+    <Select value={precert} onValueChange={(v) => updateSecondaryFilter("precert", v)}>
+      <SelectTrigger size="sm" aria-label="Filter by precertificate status" className={className ?? "w-[140px]"}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -400,15 +334,8 @@ function FilterBarInner() {
 
   const industrySelect = (className?: string) =>
     industryOptions.length > 0 ? (
-      <Select
-        value={industry}
-        onValueChange={(v) => updateSecondaryFilter("industry", v)}
-      >
-        <SelectTrigger
-          size="sm"
-          aria-label="Filter by industry"
-          className={className ?? "w-[170px]"}
-        >
+      <Select value={industry} onValueChange={(v) => updateSecondaryFilter("industry", v)}>
+        <SelectTrigger size="sm" aria-label="Filter by industry" className={className ?? "w-[170px]"}>
           <SelectValue placeholder="All Industries" />
         </SelectTrigger>
         <SelectContent>
@@ -424,17 +351,13 @@ function FilterBarInner() {
 
   const dateRange = (fullWidth?: boolean) => (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">
-        Issued
-      </span>
+      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">Issued</span>
       <Input
         type="date"
         value={dateFrom}
         onChange={(e) => updateSecondaryFilter("from", e.target.value)}
         aria-label="Issued from date"
-        className={
-          fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"
-        }
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
       <span className="text-xs text-muted-foreground">to</span>
       <Input
@@ -442,26 +365,20 @@ function FilterBarInner() {
         value={dateTo}
         onChange={(e) => updateSecondaryFilter("to", e.target.value)}
         aria-label="Issued to date"
-        className={
-          fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"
-        }
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
     </div>
   );
 
   const expiresRange = (fullWidth?: boolean) => (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">
-        Expires
-      </span>
+      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">Expires</span>
       <Input
         type="date"
         value={expiresFrom}
         onChange={(e) => updateSecondaryFilter("expiresFrom", e.target.value)}
         aria-label="Expires from date"
-        className={
-          fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"
-        }
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
       <span className="text-xs text-muted-foreground">to</span>
       <Input
@@ -469,9 +386,7 @@ function FilterBarInner() {
         value={expiresTo}
         onChange={(e) => updateSecondaryFilter("expiresTo", e.target.value)}
         aria-label="Expires to date"
-        className={
-          fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"
-        }
+        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
       />
     </div>
   );
@@ -481,38 +396,24 @@ function FilterBarInner() {
   const secondaryFilters = (fullWidth?: boolean) => (
     <div className="flex flex-col gap-4">
       <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
-          Certificate
-        </span>
-        <div
-          className={
-            fullWidth
-              ? "flex flex-col gap-2"
-              : "flex items-center gap-2 flex-wrap"
-          }
-        >
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Certificate</span>
+        <div className={fullWidth ? "flex flex-col gap-2" : "flex items-center gap-2 flex-wrap"}>
           {rootCaSelect(fullWidth ? "w-full" : "w-[140px]")}
           {validitySelect(fullWidth ? "w-full" : "w-[120px]")}
           {precertSelect(fullWidth ? "w-full" : "w-[140px]")}
         </div>
       </div>
       <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
-          Issued Date
-        </span>
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Issued Date</span>
         {dateRange(fullWidth)}
       </div>
       <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
-          Expiry Date
-        </span>
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Expiry Date</span>
         {expiresRange(fullWidth)}
       </div>
       {industryOptions.length > 0 && (
         <div>
-          <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
-            Category
-          </span>
+          <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Category</span>
           {industrySelect(fullWidth ? "w-full" : "w-[170px]")}
         </div>
       )}
@@ -583,12 +484,7 @@ function FilterBarInner() {
             </SheetContent>
           </Sheet>
           {hasFilters && (
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={clearFilters}
-              className="text-muted-foreground"
-            >
+            <Button variant="ghost" size="xs" onClick={clearFilters} className="text-muted-foreground">
               <X className="size-3" />
               Clear
             </Button>
@@ -606,11 +502,7 @@ function FilterBarInner() {
 
           <Popover open={moreOpen} onOpenChange={setMoreOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-8"
-              >
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
                 More Filters
                 {secondaryFilterCount > 0 && (
                   <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full text-[10px] min-w-[18px] text-center leading-none">
@@ -637,12 +529,7 @@ function FilterBarInner() {
           </Popover>
 
           {hasFilters && (
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={clearFilters}
-              className="text-muted-foreground"
-            >
+            <Button variant="ghost" size="xs" onClick={clearFilters} className="text-muted-foreground">
               <X className="size-3" />
               Clear
             </Button>

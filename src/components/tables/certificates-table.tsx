@@ -3,12 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  type ColumnDef,
-} from "@tanstack/react-table";
+import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
@@ -17,14 +12,7 @@ declare module "@tanstack/react-table" {
     className?: string;
   }
 }
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
@@ -32,27 +20,10 @@ import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { UtcTime } from "@/components/ui/utc-time";
-import {
-  HoverCard,
-  HoverCardTrigger,
-  HoverCardContent,
-} from "@/components/ui/hover-card";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import {
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Search,
-  Download,
-} from "lucide-react";
-import {
-  PaginationBar,
-  type Pagination,
-} from "@/components/pagination-bar";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, Download } from "lucide-react";
+import { PaginationBar, type Pagination } from "@/components/pagination-bar";
 
 export interface CertRow {
   id: number;
@@ -129,8 +100,8 @@ export function CertificatesTable({
 
   // Pre-sanitize SVGs once so column renderers don't re-sanitize on every render
   const sanitizedData = useMemo(
-    () => data.map(c => ({ ...c, logotypeSvg: c.logotypeSvg ? sanitizeSvg(c.logotypeSvg) : null })),
-    [data]
+    () => data.map((c) => ({ ...c, logotypeSvg: c.logotypeSvg ? sanitizeSvg(c.logotypeSvg) : null })),
+    [data],
   );
 
   const currentSort = searchParams.get("sort") || "notBefore";
@@ -154,7 +125,7 @@ export function CertificatesTable({
       const qs = params.toString();
       router.push(`${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams, basePath]
+    [router, searchParams, basePath],
   );
 
   const handleSort = useCallback(
@@ -168,7 +139,7 @@ export function CertificatesTable({
         updateParams({ sort: key, dir: "desc", page: "1" });
       }
     },
-    [currentSort, currentDir, updateParams]
+    [currentSort, currentDir, updateParams],
   );
 
   const columns: ColumnDef<CertRow>[] = [
@@ -227,11 +198,7 @@ export function CertificatesTable({
         />
       ),
       cell: ({ row }) => {
-        const org =
-          row.original.subjectOrg ||
-          row.original.subjectCn ||
-          row.original.sanList[0] ||
-          "Unknown";
+        const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
         const domain = row.original.sanList[0] || row.original.subjectCn;
         const score = row.original.notabilityScore;
         const country = row.original.subjectCountry;
@@ -250,11 +217,15 @@ export function CertificatesTable({
               {score != null && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium cursor-help ${
-                      score >= 9 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                        : score >= 7 ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                        : "bg-muted text-muted-foreground"
-                    }`}>
+                    <span
+                      className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium cursor-help ${
+                        score >= 9
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : score >= 7
+                            ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                            : "bg-muted text-muted-foreground"
+                      }`}
+                    >
                       ★ {score}
                     </span>
                   </TooltipTrigger>
@@ -267,17 +238,14 @@ export function CertificatesTable({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {country && (
-                <span className="shrink-0 text-[10px] text-muted-foreground font-mono">
-                  {country}
-                </span>
-              )}
+              {country && <span className="shrink-0 text-[10px] text-muted-foreground font-mono">{country}</span>}
             </div>
             <span className="text-xs text-muted-foreground block truncate">
               {domain}
               {extraSans.length > 0 && (
                 <span className="text-muted-foreground/60" title={sans.join(", ")}>
-                  {" "}+{extraSans.length} more
+                  {" "}
+                  +{extraSans.length} more
                 </span>
               )}
             </span>
@@ -318,13 +286,34 @@ export function CertificatesTable({
               <Badge variant="secondary" className="whitespace-nowrap">
                 {issuer}
               </Badge>
-              <abbr className="text-xs text-muted-foreground no-underline" title={certType === "VMC" ? "Verified Mark Certificate" : certType === "CMC" ? "Common Mark Certificate" : undefined}>{certType}</abbr>
+              <abbr
+                className="text-xs text-muted-foreground no-underline"
+                title={
+                  certType === "VMC"
+                    ? "Verified Mark Certificate"
+                    : certType === "CMC"
+                      ? "Common Mark Certificate"
+                      : undefined
+                }
+              >
+                {certType}
+              </abbr>
               {(() => {
                 const mtInfo = getMarkTypeInfo(row.original.markType);
                 return mtInfo ? (
                   <span title={mtInfo.title} className={mtInfo.colorClass}>
-                    <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      {mtInfo.iconPaths.map((d, i) => <path key={i} d={d} />)}
+                    <svg
+                      className="size-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {mtInfo.iconPaths.map((d, i) => (
+                        <path key={i} d={d} />
+                      ))}
                     </svg>
                   </span>
                 ) : null;
@@ -335,11 +324,7 @@ export function CertificatesTable({
                 </span>
               )}
             </div>
-            {showRoot && (
-              <span className="text-[10px] text-muted-foreground block mt-0.5">
-                Root: {root}
-              </span>
-            )}
+            {showRoot && <span className="text-[10px] text-muted-foreground block mt-0.5">Root: {root}</span>}
           </div>
         );
       },
@@ -429,8 +414,7 @@ export function CertificatesTable({
               variant="outline"
               size="sm"
               onClick={() => {
-                const csvHeader =
-                  "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
+                const csvHeader = "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
                 const csvRows = data.map((r) =>
                   [
                     `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
@@ -443,7 +427,7 @@ export function CertificatesTable({
                     r.notAfter || "",
                     r.ctLogTimestamp || "",
                     r.serialNumber || "",
-                  ].join(",")
+                  ].join(","),
                 );
                 const csv = [csvHeader, ...csvRows].join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
@@ -479,10 +463,7 @@ export function CertificatesTable({
         </div>
       )}
 
-      <PaginationBar
-        pagination={pagination}
-        onPageChange={(page) => updateParams({ page: String(page) })}
-      />
+      <PaginationBar pagination={pagination} onPageChange={(page) => updateParams({ page: String(page) })} />
 
       {/* Table */}
       <div className="rounded-md border overflow-x-auto">
@@ -491,13 +472,11 @@ export function CertificatesTable({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-muted/50 hover:bg-muted/50">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className={cn("text-xs uppercase tracking-wider", header.column.columnDef.meta?.className)}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                  <TableHead
+                    key={header.id}
+                    className={cn("text-xs uppercase tracking-wider", header.column.columnDef.meta?.className)}
+                  >
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -509,26 +488,18 @@ export function CertificatesTable({
                 <TableRow
                   key={row.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() =>
-                    router.push(`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`)
-                  }
+                  onClick={() => router.push(`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className={cn("py-3", cell.column.columnDef.meta?.className)}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-32 text-center text-muted-foreground"
-                >
+                <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
                   <div className="space-y-1">
                     <p>No certificates match your current filters.</p>
                     <p className="text-xs">
@@ -546,10 +517,7 @@ export function CertificatesTable({
         </Table>
       </div>
 
-      <PaginationBar
-        pagination={pagination}
-        onPageChange={(page) => updateParams({ page: String(page) })}
-      />
+      <PaginationBar pagination={pagination} onPageChange={(page) => updateParams({ page: String(page) })} />
     </div>
   );
 }

@@ -33,12 +33,7 @@ async function getLogo(hash: string) {
       isPrecert: certificates.isPrecert,
     })
     .from(certificates)
-    .where(
-      and(
-        sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`,
-        isNotNull(certificates.logotypeSvg),
-      )
-    )
+    .where(and(sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
     .limit(1);
   return row ?? null;
 }

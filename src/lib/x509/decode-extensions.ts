@@ -8,16 +8,16 @@ const TAG_BOOLEAN = 0x01;
 const TAG_INTEGER = 0x02;
 const TAG_BIT_STRING = 0x03;
 const TAG_OCTET_STRING = 0x04;
-const TAG_NULL = 0x05;
+const _TAG_NULL = 0x05;
 const TAG_OID = 0x06;
 const TAG_UTF8_STRING = 0x0c;
-const TAG_SEQUENCE = 0x30;
-const TAG_SET = 0x31;
+const _TAG_SEQUENCE = 0x30;
+const _TAG_SET = 0x31;
 const TAG_PRINTABLE_STRING = 0x13;
 const TAG_IA5_STRING = 0x16;
 
 // Context-specific tags (used in extensions for implicit/explicit tagging)
-const TAG_CONTEXT_0 = 0xa0;
+const _TAG_CONTEXT_0 = 0xa0;
 const TAG_CONTEXT_PRIM_0 = 0x80;
 const TAG_CONTEXT_PRIM_1 = 0x81;
 const TAG_CONTEXT_PRIM_2 = 0x82;
@@ -154,10 +154,7 @@ const KNOWN_OIDS: Record<string, string> = {
 // ── String extraction helpers ────────────────────────────────────────
 
 function extractString(node: DerNode): string | null {
-  const stringTags = [
-    TAG_UTF8_STRING, TAG_IA5_STRING, TAG_PRINTABLE_STRING,
-    TAG_CONTEXT_PRIM_2, TAG_CONTEXT_PRIM_6,
-  ];
+  const stringTags = [TAG_UTF8_STRING, TAG_IA5_STRING, TAG_PRINTABLE_STRING, TAG_CONTEXT_PRIM_2, TAG_CONTEXT_PRIM_6];
   if (stringTags.includes(node.tag)) {
     return bytesToAscii(node.bytes);
   }
@@ -198,9 +195,7 @@ function decodeSubjectKeyId(hex: string): string {
   const { node } = parseDer(bytes);
   // OCTET STRING wrapping the actual key id
   const keyIdBytes = node.tag === TAG_OCTET_STRING ? node.bytes : bytes;
-  return keyIdBytes
-    .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-    .join(":");
+  return keyIdBytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
 }
 
 function decodeAuthorityKeyId(hex: string): string {
@@ -210,9 +205,7 @@ function decodeAuthorityKeyId(hex: string): string {
   if (node.children) {
     for (const child of node.children) {
       if (child.tag === TAG_CONTEXT_PRIM_0) {
-        return child.bytes
-          .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-          .join(":");
+        return child.bytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
       }
     }
   }
@@ -228,9 +221,7 @@ function decodeBasicConstraints(hex: string): string {
   const first = node.children[0];
   if (first.tag === TAG_BOOLEAN && first.bytes[0] === 0xff) {
     const pathLen =
-      node.children.length > 1 && node.children[1].tag === TAG_INTEGER
-        ? node.children[1].bytes[0]
-        : undefined;
+      node.children.length > 1 && node.children[1].tag === TAG_INTEGER ? node.children[1].bytes[0] : undefined;
     return pathLen !== undefined ? `CA: true, Path Length: ${pathLen}` : "CA: true";
   }
   return "CA: false";
@@ -240,9 +231,7 @@ function decodeExtendedKeyUsage(hex: string): string {
   const bytes = hexToBytes(hex);
   const { node } = parseDer(bytes);
   const oids = collectOids(node);
-  return oids
-    .map((oid) => KNOWN_OIDS[oid] || oid)
-    .join(", ");
+  return oids.map((oid) => KNOWN_OIDS[oid] || oid).join(", ");
 }
 
 function decodeKeyUsage(hex: string): string {
@@ -254,9 +243,15 @@ function decodeKeyUsage(hex: string): string {
   const bits = node.bytes.slice(1);
   const flags: string[] = [];
   const usages = [
-    "Digital Signature", "Non-Repudiation", "Key Encipherment",
-    "Data Encipherment", "Key Agreement", "Certificate Signing",
-    "CRL Signing", "Encipher Only", "Decipher Only",
+    "Digital Signature",
+    "Non-Repudiation",
+    "Key Encipherment",
+    "Data Encipherment",
+    "Key Agreement",
+    "Certificate Signing",
+    "CRL Signing",
+    "Encipher Only",
+    "Decipher Only",
   ];
 
   for (let byteIdx = 0; byteIdx < bits.length; byteIdx++) {
@@ -296,7 +291,7 @@ function decodeCrlDistributionPoints(hex: string): string {
   const bytes = hexToBytes(hex);
   const { node } = parseDer(bytes);
   const urls = collectStrings(node).filter(
-    (s) => s.startsWith("http://") || s.startsWith("https://") || s.startsWith("ldap://")
+    (s) => s.startsWith("http://") || s.startsWith("https://") || s.startsWith("ldap://"),
   );
   return urls.join("\n");
 }
@@ -337,7 +332,7 @@ function decodeCertificatePolicies(hex: string): string {
         // Extract any CPS URIs from qualifiers
         if (policyInfo.children.length > 1) {
           const urls = collectStrings(policyInfo.children[1]).filter(
-            (s) => s.startsWith("http://") || s.startsWith("https://")
+            (s) => s.startsWith("http://") || s.startsWith("https://"),
           );
           parts.push(...urls);
         }

@@ -1,12 +1,6 @@
 "use client";
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+export default function Error({ error: _error, reset }: { error: Error; reset: () => void }) {
   return (
     <div role="alert" className="flex h-64 flex-col items-center justify-center gap-3">
       <p className="text-destructive text-sm">Something went wrong.</p>

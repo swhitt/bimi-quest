@@ -412,7 +412,7 @@ export interface CrlResult {
  */
 export function parseCrl(
   der: Uint8Array,
-  serialNumberHex: string
+  serialNumberHex: string,
 ): { revoked: boolean; thisUpdate?: string; nextUpdate?: string } {
   const root = readDerTlv(der, 0);
   const rootChildren = parseChildren(root.value);
@@ -507,7 +507,6 @@ export function extractCrlUrl(extensionsJson: Record<string, unknown>): string |
   if (!cdpHex) return null;
   return extractUrlsFromCdp(cdpHex);
 }
-
 
 /** Parse AIA extension to find a specific access method URL */
 function extractUrlFromAia(hex: string, targetOid: string): string | null {

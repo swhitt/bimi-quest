@@ -18,7 +18,7 @@ export async function GET() {
 
     return NextResponse.json(
       { industries: rows },
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } }
+      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } },
     );
   } catch (error) {
     log("error", "industries.api.failed", { error: String(error), route: "/api/stats/industries" });

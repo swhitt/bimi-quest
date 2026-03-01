@@ -47,12 +47,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const issuerChain = rootCa && rootCa !== issuer ? `${issuer} → ${rootCa}` : issuer;
 
-  const daysLeft = cert.notAfter
-    ? Math.floor((cert.notAfter.getTime() - Date.now()) / 86_400_000)
-    : null;
-  const validityText = cert.notBefore && cert.notAfter
-    ? `Valid: ${cert.notBefore.toISOString().slice(0, 10)} to ${cert.notAfter.toISOString().slice(0, 10)}${daysLeft !== null ? ` (${daysLeft < 0 ? "expired" : `${daysLeft} days remaining`})` : ""}`
-    : "";
+  const daysLeft = cert.notAfter ? Math.floor((cert.notAfter.getTime() - Date.now()) / 86_400_000) : null;
+  const validityText =
+    cert.notBefore && cert.notAfter
+      ? `Valid: ${cert.notBefore.toISOString().slice(0, 10)} to ${cert.notAfter.toISOString().slice(0, 10)}${daysLeft !== null ? ` (${daysLeft < 0 ? "expired" : `${daysLeft} days remaining`})` : ""}`
+      : "";
 
   const sansText = cert.sanList?.length
     ? cert.sanList.length <= 3

@@ -3,16 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { cn } from "@/lib/utils";
@@ -54,16 +45,9 @@ function BarTooltip({ active, payload, colors }: any) {
     });
   }
 
-  const pct = entry.grandTotal > 0
-    ? ((entry.total / entry.grandTotal) * 100).toFixed(1)
-    : "0.0";
+  const pct = entry.grandTotal > 0 ? ((entry.total / entry.grandTotal) * 100).toFixed(1) : "0.0";
 
-  return (
-    <ChartTooltipContent
-      label={`${entry.name} (${entry.total.toLocaleString()} total, ${pct}%)`}
-      rows={rows}
-    />
-  );
+  return <ChartTooltipContent label={`${entry.name} (${entry.total.toLocaleString()} total, ${pct}%)`} rows={rows} />;
 }
 
 export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShareChartProps) {
@@ -109,16 +93,8 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
           <div className="flex flex-col gap-2">
             <div role="img" aria-label="Horizontal bar chart showing certificate distribution by Certificate Authority">
               <ResponsiveContainer width="100%" height={barHeight}>
-                <BarChart
-                  data={chartData}
-                  layout="vertical"
-                  margin={{ top: 4, right: 4, left: 4, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    horizontal={false}
-                    strokeDasharray="3 3"
-                    className="stroke-border"
-                  />
+                <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     type="number"
                     tick={{ fontSize: 11 }}
@@ -137,16 +113,9 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                   />
                   <Tooltip
                     cursor={{ fill: "var(--accent)", opacity: 0.3 }}
-                    content={(props) => (
-                      <BarTooltip {...props} colors={colors} />
-                    )}
+                    content={(props) => <BarTooltip {...props} colors={colors} />}
                   />
-                  <Bar
-                    dataKey="vmcCount"
-                    name="VMC"
-                    stackId="share"
-                    radius={[0, 0, 0, 0]}
-                  >
+                  <Bar dataKey="vmcCount" name="VMC" stackId="share" radius={[0, 0, 0, 0]}>
                     {chartData.map((entry) => {
                       const isSelected = entry.name === selectedCA;
                       return (
@@ -158,12 +127,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                       );
                     })}
                   </Bar>
-                  <Bar
-                    dataKey="cmcCount"
-                    name="CMC"
-                    stackId="share"
-                    radius={[0, 3, 3, 0]}
-                  >
+                  <Bar dataKey="cmcCount" name="CMC" stackId="share" radius={[0, 3, 3, 0]}>
                     {chartData.map((entry) => {
                       const isSelected = entry.name === selectedCA;
                       return (
@@ -194,8 +158,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
             {/* Summary list with percentage */}
             <div className="space-y-1 px-1">
               {chartData.map((entry) => {
-                const pct =
-                  grandTotal > 0 ? (entry.total / grandTotal) * 100 : 0;
+                const pct = grandTotal > 0 ? (entry.total / grandTotal) * 100 : 0;
                 const isSelected = entry.name === selectedCA;
                 return (
                   <div
@@ -203,7 +166,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                     className={cn(
                       "flex items-center gap-2 rounded-md px-2 py-1 text-sm",
                       isSelected && "bg-muted font-medium",
-                      isFiltered && !isSelected && "opacity-50"
+                      isFiltered && !isSelected && "opacity-50",
                     )}
                   >
                     <span
@@ -211,21 +174,15 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                       style={{ background: getCAColor(colors, entry.name) }}
                     />
                     <span className="flex-1">{entry.name}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {entry.total.toLocaleString()}
-                    </span>
-                    <span className="w-14 text-right tabular-nums">
-                      {pct.toFixed(1)}%
-                    </span>
+                    <span className="tabular-nums text-muted-foreground">{entry.total.toLocaleString()}</span>
+                    <span className="w-14 text-right tabular-nums">{pct.toFixed(1)}%</span>
                   </div>
                 );
               })}
             </div>
           </div>
         ) : (
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-            No data available.
-          </div>
+          <div className="flex h-[300px] items-center justify-center text-muted-foreground">No data available.</div>
         )}
       </CardContent>
     </Card>

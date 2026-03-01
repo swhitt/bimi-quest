@@ -115,7 +115,7 @@ function getClient(): Anthropic | null {
 export async function scoreNotability(
   org: string | null,
   domains: string[],
-  country: string | null
+  country: string | null,
 ): Promise<NotabilityResult | null> {
   const anthropic = getClient();
   if (!anthropic || !org) return null;
@@ -137,9 +137,7 @@ export async function scoreNotability(
       ],
     });
 
-    const toolBlock = msg.content.find(
-      (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
-    );
+    const toolBlock = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (!toolBlock || !isNotabilityInput(toolBlock.input)) return null;
 
     return normalizeResult(toolBlock.input);
@@ -150,9 +148,7 @@ export async function scoreNotability(
 }
 
 /** Score up to 10 brands in a single Haiku call. Returns a map of id -> result. */
-export async function scoreNotabilityBatch(
-  brands: BrandInput[]
-): Promise<Map<string, NotabilityResult>> {
+export async function scoreNotabilityBatch(brands: BrandInput[]): Promise<Map<string, NotabilityResult>> {
   const results = new Map<string, NotabilityResult>();
   const anthropic = getClient();
   if (!anthropic || brands.length === 0) return results;
@@ -184,9 +180,7 @@ export async function scoreNotabilityBatch(
       ],
     });
 
-    const toolBlock = msg.content.find(
-      (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
-    );
+    const toolBlock = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (!toolBlock) return results;
 
     const input = toolBlock.input as Record<string, unknown>;
@@ -228,9 +222,7 @@ const INDUSTRY_TOOL: Anthropic.Messages.Tool = {
 };
 
 /** Classify industry only (no scoring). Cheaper and faster than full scoring. */
-export async function classifyIndustryBatch(
-  brands: BrandInput[]
-): Promise<Map<string, Industry>> {
+export async function classifyIndustryBatch(brands: BrandInput[]): Promise<Map<string, Industry>> {
   const results = new Map<string, Industry>();
   const anthropic = getClient();
   if (!anthropic || brands.length === 0) return results;
@@ -254,9 +246,7 @@ export async function classifyIndustryBatch(
       ],
     });
 
-    const toolBlock = msg.content.find(
-      (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
-    );
+    const toolBlock = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (!toolBlock) return results;
 
     const input = toolBlock.input as Record<string, unknown>;
@@ -276,7 +266,9 @@ export async function classifyIndustryBatch(
   return results;
 }
 
-function isNotabilityInput(v: unknown): v is { score: number; reason: string; description: string; industry?: string; [key: string]: unknown } {
+function isNotabilityInput(
+  v: unknown,
+): v is { score: number; reason: string; description: string; industry?: string; [key: string]: unknown } {
   if (typeof v !== "object" || v === null) return false;
   const obj = v as Record<string, unknown>;
   return typeof obj.score === "number" && typeof obj.reason === "string" && typeof obj.description === "string";
@@ -289,7 +281,12 @@ function normalizeIndustry(raw: unknown): Industry {
   return "Other";
 }
 
-function normalizeResult(input: { score: number; reason: string; description: string; industry?: string }): NotabilityResult {
+function normalizeResult(input: {
+  score: number;
+  reason: string;
+  description: string;
+  industry?: string;
+}): NotabilityResult {
   return {
     score: Math.max(1, Math.min(10, Math.round(input.score))),
     reason: (input.reason || "").slice(0, 200),

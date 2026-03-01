@@ -58,21 +58,14 @@ export function computeColorRichness(svg: string): number {
   const whiteFraction = lums.filter((l) => l > 0.9).length / colors.length;
 
   // Average saturation of chromatic colors
-  const avgSaturation =
-    chromatic.length > 0
-      ? chromatic.reduce((sum, [, s]) => sum + s, 0) / chromatic.length
-      : 0;
+  const avgSaturation = chromatic.length > 0 ? chromatic.reduce((sum, [, s]) => sum + s, 0) / chromatic.length : 0;
 
   // Hue diversity: count distinct 30-degree buckets among chromatic colors
   const hueBuckets = new Set(chromatic.map(([h]) => Math.floor(h / 30)));
   const hueDiversity = Math.min(hueBuckets.size / 6, 1); // normalize: 6+ buckets = max
 
   // Weighted score: emphasize chromatic fraction and hue diversity
-  let raw =
-    chromaticFraction * 0.3 +
-    (1 - whiteFraction) * 0.15 +
-    avgSaturation * 0.25 +
-    hueDiversity * 0.3;
+  let raw = chromaticFraction * 0.3 + (1 - whiteFraction) * 0.15 + avgSaturation * 0.25 + hueDiversity * 0.3;
 
   // Single-hue logos (one color + white/transparent) aren't "full color" —
   // halve the raw score when fewer than 2 distinct hue buckets are present.

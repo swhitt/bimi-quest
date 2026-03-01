@@ -9,23 +9,13 @@ export interface FilterChip {
   onRemove: () => void;
 }
 
-export function FilterChips({
-  chips,
-  onClearAll,
-}: {
-  chips: FilterChip[];
-  onClearAll: () => void;
-}) {
+export function FilterChips({ chips, onClearAll }: { chips: FilterChip[]; onClearAll: () => void }) {
   if (chips.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
       {chips.map((chip) => (
-        <Badge
-          key={chip.key}
-          variant="secondary"
-          className="gap-1 pr-1 text-xs font-normal"
-        >
+        <Badge key={chip.key} variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           <span className="text-muted-foreground">{chip.label}:</span>
           {chip.value}
           <button
@@ -38,12 +28,7 @@ export function FilterChips({
         </Badge>
       ))}
       {chips.length >= 2 && (
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={onClearAll}
-          className="text-muted-foreground text-xs h-6"
-        >
+        <Button variant="ghost" size="xs" onClick={onClearAll} className="text-muted-foreground text-xs h-6">
           Clear all
         </Button>
       )}

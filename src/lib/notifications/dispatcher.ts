@@ -16,9 +16,7 @@ export interface NewCertEvent {
 }
 
 /** Send notifications to all configured channels for a new certificate */
-export async function dispatchNewCertNotification(
-  event: NewCertEvent
-): Promise<void> {
+export async function dispatchNewCertNotification(event: NewCertEvent): Promise<void> {
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL

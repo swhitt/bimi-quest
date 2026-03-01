@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, count, and, desc, gte } from "drizzle-orm";
@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
   const dataset = params.get("dataset");
 
   if (dataset !== "market-share" && dataset !== "trends") {
-    return new Response(
-      JSON.stringify({ error: 'Invalid dataset. Use "market-share" or "trends".' }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: 'Invalid dataset. Use "market-share" or "trends".' }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -39,13 +39,7 @@ export async function GET(request: NextRequest) {
       const header = "CA,Total Certificates,VMC Count,CMC Count,Market Share %";
       const csvRows = rows.map((r) => {
         const share = grandTotal > 0 ? ((r.total / grandTotal) * 100).toFixed(2) : "0.00";
-        return [
-          escapeCSV(r.ca || "Unknown"),
-          r.total,
-          r.vmcCount,
-          r.cmcCount,
-          share,
-        ].join(",");
+        return [escapeCSV(r.ca || "Unknown"), r.total, r.vmcCount, r.cmcCount, share].join(",");
       });
 
       const csv = [header, ...csvRows].join("\n");
@@ -78,9 +72,7 @@ export async function GET(request: NextRequest) {
     const rows = firstMonth ? allRows.filter((r) => r.month !== firstMonth) : allRows;
 
     const header = "Month,CA,Count";
-    const csvRows = rows.map((r) =>
-      [escapeCSV(r.month), escapeCSV(r.ca || "Unknown"), r.count].join(",")
-    );
+    const csvRows = rows.map((r) => [escapeCSV(r.month), escapeCSV(r.ca || "Unknown"), r.count].join(","));
 
     const csv = [header, ...csvRows].join("\n");
     return new Response(csv, {
@@ -92,9 +84,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     log("error", "export.dashboard.failed", { error: String(error), dataset });
-    return new Response(
-      JSON.stringify({ error: "Failed to export dashboard data" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to export dashboard data" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

@@ -4,7 +4,7 @@
  */
 export function buildApiParamsFromSearchParams(
   searchParams: Record<string, string | string[] | undefined>,
-  extra?: Record<string, string>
+  extra?: Record<string, string>,
 ): string {
   const params = new URLSearchParams();
   const keys = ["ca", "root", "type", "mark", "validity", "from", "to", "country", "precert", "industry"];

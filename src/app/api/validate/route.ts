@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { validateDomain } from "@/lib/bimi/validate";
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
@@ -14,10 +14,7 @@ export async function POST(request: NextRequest) {
     let domain: string = body.domain?.trim().toLowerCase();
 
     if (!domain) {
-      return NextResponse.json(
-        { error: "Domain is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Domain is required" }, { status: 400 });
     }
 
     // Accept email addresses by extracting the domain part
@@ -27,10 +24,7 @@ export async function POST(request: NextRequest) {
 
     // Basic domain format validation
     if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
-      return NextResponse.json(
-        { error: "Invalid domain format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid domain format" }, { status: 400 });
     }
 
     const selector: string = body.selector?.trim().toLowerCase() || "default";
@@ -43,15 +37,9 @@ export async function POST(request: NextRequest) {
 
     // Strip rawPem from the response (internal use only)
     const { rawPem: _, ...certWithoutPem } = result.certificate;
-    return NextResponse.json(
-      { ...result, certificate: certWithoutPem },
-      { headers: rl.headers }
-    );
+    return NextResponse.json({ ...result, certificate: certWithoutPem }, { headers: rl.headers });
   } catch (error) {
-    log('error', 'validate.api.failed', { error: String(error), route: '/api/validate' });
-    return NextResponse.json(
-      { error: "Validation failed" },
-      { status: 500, headers: rl.headers }
-    );
+    log("error", "validate.api.failed", { error: String(error), route: "/api/validate" });
+    return NextResponse.json({ error: "Validation failed" }, { status: 500, headers: rl.headers });
   }
 }

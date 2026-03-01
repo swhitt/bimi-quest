@@ -24,11 +24,7 @@ const TYPE_LABELS: Record<SearchType, string> = {
   text: "organization or hostname",
 };
 
-export function UniversalSearch({
-  variant = "nav",
-  autoFocus = false,
-  onNavigate,
-}: UniversalSearchProps) {
+export function UniversalSearch({ variant = "nav", autoFocus = false, onNavigate }: UniversalSearchProps) {
   const [value, setValue] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -64,20 +60,21 @@ export function UniversalSearch({
 
       try {
         const param = type === "fingerprint" ? "fingerprint" : "serial";
-        const res = await fetch(
-          `/api/certificates?${param}=${encodeURIComponent(hex)}&limit=5`,
-          { signal: controller.signal }
-        );
+        const res = await fetch(`/api/certificates?${param}=${encodeURIComponent(hex)}&limit=5`, {
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const data = await res.json();
         const certs = data.data || [];
-        const mapped: Suggestion[] = certs.map((c: { subjectOrg?: string; subjectCn?: string; fingerprintSha256: string; serialNumber: string }) => ({
-          label: c.subjectOrg || c.subjectCn || c.fingerprintSha256.slice(0, 16),
-          type: "domain" as const,
-          count: 0,
-          _fingerprint: c.fingerprintSha256,
-          _serial: c.serialNumber,
-        }));
+        const mapped: Suggestion[] = certs.map(
+          (c: { subjectOrg?: string; subjectCn?: string; fingerprintSha256: string; serialNumber: string }) => ({
+            label: c.subjectOrg || c.subjectCn || c.fingerprintSha256.slice(0, 16),
+            type: "domain" as const,
+            count: 0,
+            _fingerprint: c.fingerprintSha256,
+            _serial: c.serialNumber,
+          }),
+        );
         setSuggestions(mapped);
         setOpen(mapped.length > 0);
         setActiveIndex(-1);
@@ -101,10 +98,7 @@ export function UniversalSearch({
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/autocomplete?q=${encodeURIComponent(query)}`,
-        { signal: controller.signal }
-      );
+      const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`, { signal: controller.signal });
       if (!res.ok) return;
       const data: Suggestion[] = await res.json();
       setSuggestions(data);
@@ -243,11 +237,7 @@ export function UniversalSearch({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
-        placeholder={
-          isHero
-            ? "Search domains, organizations, serial numbers, or fingerprints..."
-            : "Search..."
-        }
+        placeholder={isHero ? "Search domains, organizations, serial numbers, or fingerprints..." : "Search..."}
         className={
           isHero
             ? "h-12 text-base pl-10 bg-background border-border/60 shadow-sm focus-visible:ring-primary/30"
@@ -262,7 +252,9 @@ export function UniversalSearch({
         aria-activedescendant={activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined}
       />
       {value.trim().length > 0 && !open && !loading && (
-        <div className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isHero ? "" : "hidden"}`}>
+        <div
+          className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isHero ? "" : "hidden"}`}
+        >
           {TYPE_LABELS[searchType]} &crarr;
         </div>
       )}
@@ -305,9 +297,7 @@ export function UniversalSearch({
                     {s.type === "domain" ? "host" : "org"}
                   </span>
                   <span className="truncate flex-1">{s.label}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {s.count}
-                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{s.count}</span>
                 </>
               )}
             </button>

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
@@ -10,10 +10,7 @@ import { X509Certificate } from "@peculiar/x509";
 import { log } from "@/lib/logger";
 import { serverTiming } from "@/lib/server-timing";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ip = getClientIP(request);
   const rl = await checkRateLimit(`cert-detail:${ip}`, { windowMs: 60_000, max: 120 }, request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
@@ -26,11 +23,7 @@ export async function GET(
     if (error) return NextResponse.json({ error: error.message }, { status: error.status });
     if (!certId) return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
 
-    const [cert] = await db
-      .select()
-      .from(certificates)
-      .where(eq(certificates.id, certId))
-      .limit(1);
+    const [cert] = await db.select().from(certificates).where(eq(certificates.id, certId)).limit(1);
 
     if (!cert) {
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
@@ -51,10 +44,8 @@ export async function GET(
         and(
           eq(certificates.serialNumber, cert.serialNumber),
           eq(certificates.issuerDn, cert.issuerDn),
-          cert.isPrecert
-            ? eq(certificates.isPrecert, false)
-            : sql`${certificates.isPrecert} = true`
-        )
+          cert.isPrecert ? eq(certificates.isPrecert, false) : sql`${certificates.isPrecert} = true`,
+        ),
       )
       .limit(1);
 
@@ -86,30 +77,35 @@ export async function GET(
         serialNumber = x509.serialNumber;
         subjectOrg = extractDnField(x509.subject, "O");
         issuerOrg = extractDnField(x509.issuer, "O");
-      } catch { /* best-effort */ }
+      } catch {
+        /* best-effort */
+      }
       return { ...c, serialNumber, subjectOrg, issuerOrg };
     });
 
     // Fetch BIMI state for associated domains
     const domains = cert.sanList.length > 0 ? cert.sanList : cert.subjectCn ? [cert.subjectCn] : [];
-    let bimiStates: typeof domainBimiState.$inferSelect[] = [];
+    let bimiStates: (typeof domainBimiState.$inferSelect)[] = [];
     if (domains.length > 0) {
-      bimiStates = await db
-        .select()
-        .from(domainBimiState)
-        .where(inArray(domainBimiState.domain, domains));
+      bimiStates = await db.select().from(domainBimiState).where(inArray(domainBimiState.domain, domains));
     }
 
     // Count other certs per SAN (excluding current cert and its precert pair)
-    let sanCertCounts: Record<string, number> = {};
+    const sanCertCounts: Record<string, number> = {};
     try {
       const excludeIds = [certId, ...(pairedCert ? [pairedCert.id] : [])];
       if (domains.length > 0) {
         const result = await db.execute(sql`
           SELECT s AS san, count(DISTINCT serial_number)::int AS cnt
           FROM certificates, unnest(san_list) AS s
-          WHERE s IN (${sql.join(domains.map(d => sql`${d}`), sql`, `)})
-            AND id NOT IN (${sql.join(excludeIds.map(id => sql`${id}`), sql`, `)})
+          WHERE s IN (${sql.join(
+            domains.map((d) => sql`${d}`),
+            sql`, `,
+          )})
+            AND id NOT IN (${sql.join(
+              excludeIds.map((id) => sql`${id}`),
+              sql`, `,
+            )})
           GROUP BY s
         `);
         for (const r of result.rows) {
@@ -119,23 +115,26 @@ export async function GET(
         }
       }
     } catch (err) {
-      log('warn', 'certificate-detail.san-counts.failed', { error: String(err), certId });
+      log("warn", "certificate-detail.san-counts.failed", { error: String(err), certId });
     }
 
-    return NextResponse.json({
-      certificate: cert,
-      pairedCert: pairedCert || null,
-      chain,
-      bimiStates,
-      sanCertCounts,
-    }, {
-      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600", "Server-Timing": timing.header("db") },
-    });
-  } catch (error) {
-    log('error', 'certificate-detail.api.failed', { error: String(error), route: '/api/certificates/[id]' });
     return NextResponse.json(
-      { error: "Failed to fetch certificate" },
-      { status: 500 }
+      {
+        certificate: cert,
+        pairedCert: pairedCert || null,
+        chain,
+        bimiStates,
+        sanCertCounts,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+          "Server-Timing": timing.header("db"),
+        },
+      },
     );
+  } catch (error) {
+    log("error", "certificate-detail.api.failed", { error: String(error), route: "/api/certificates/[id]" });
+    return NextResponse.json({ error: "Failed to fetch certificate" }, { status: 500 });
   }
 }

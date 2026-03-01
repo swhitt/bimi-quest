@@ -18,11 +18,7 @@ interface GetEntriesResponse {
   entries: CTLogEntry[];
 }
 
-async function fetchWithRetry(
-  url: string,
-  retries = 3,
-  delay = 1000
-): Promise<Response> {
+async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, {
       headers: { "User-Agent": USER_AGENT },
@@ -35,7 +31,7 @@ async function fetchWithRetry(
     if (res.status === 429 || res.status >= 500) {
       const backoff = delay * Math.pow(2, attempt) * (0.5 + Math.random() * 0.5);
       console.warn(
-        `Gorgon returned ${res.status}, retrying in ${Math.round(backoff)}ms (attempt ${attempt + 1}/${retries})`
+        `Gorgon returned ${res.status}, retrying in ${Math.round(backoff)}ms (attempt ${attempt + 1}/${retries})`,
       );
       await new Promise((r) => setTimeout(r, backoff));
       continue;
@@ -54,13 +50,8 @@ export async function getSTH(): Promise<STHResponse> {
 }
 
 /** Fetch a batch of log entries. Max 1000 per request. */
-export async function getEntries(
-  start: number,
-  end: number
-): Promise<GetEntriesResponse> {
-  const res = await fetchWithRetry(
-    `${BASE_URL}/ct/v1/get-entries?start=${start}&end=${end}`
-  );
+export async function getEntries(start: number, end: number): Promise<GetEntriesResponse> {
+  const res = await fetchWithRetry(`${BASE_URL}/ct/v1/get-entries?start=${start}&end=${end}`);
   return res.json();
 }
 

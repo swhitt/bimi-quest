@@ -9,13 +9,7 @@ import { UniversalSearch } from "./universal-search";
 import { caNameToSlug } from "@/lib/ca-slugs";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-  SheetClose,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from "@/components/ui/sheet";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -26,7 +20,19 @@ const navItems = [
 ];
 
 // Secondary filter keys that travel as query params
-const SECONDARY_FILTER_KEYS = ["type", "mark", "validity", "precert", "root", "industry", "from", "to", "expiresFrom", "expiresTo", "country"];
+const SECONDARY_FILTER_KEYS = [
+  "type",
+  "mark",
+  "validity",
+  "precert",
+  "root",
+  "industry",
+  "from",
+  "to",
+  "expiresFrom",
+  "expiresTo",
+  "country",
+];
 
 /**
  * Shared hook for nav link href building and active-state detection.
@@ -41,12 +47,14 @@ function useNavHelpers() {
   const pathCaMatch = pathname.match(/\/ca\/([^/]+)/);
   const caSlug = pathCaMatch
     ? pathCaMatch[1].toLowerCase()
-    : (searchParams.get("ca") ? caNameToSlug(searchParams.get("ca")!) : undefined);
+    : searchParams.get("ca")
+      ? caNameToSlug(searchParams.get("ca")!)
+      : undefined;
 
   function buildHref(href: string) {
     // Build the path: /{page}/ca/{slug} or just /{page}
     const caSuffix = caSlug ? `/ca/${caSlug}` : "";
-    const base = href === "/" ? (caSuffix || "/") : `${href}${caSuffix}`;
+    const base = href === "/" ? caSuffix || "/" : `${href}${caSuffix}`;
 
     // Carry forward secondary filters
     const params = new URLSearchParams();
@@ -79,7 +87,7 @@ function NavLinks() {
             "px-2 py-1 transition-colors",
             isActive(item.href)
               ? "border-b-2 border-primary text-foreground font-medium rounded-none"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {item.label}
@@ -103,7 +111,7 @@ function MobileNavLinks({ onNavigate }: { onNavigate: () => void }) {
               "py-3 px-4 text-base transition-colors min-h-[44px] flex items-center",
               isActive(item.href)
                 ? "text-foreground font-medium bg-accent"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
             )}
           >
             {item.label}
@@ -131,10 +139,7 @@ export function Nav() {
             fallback={
               <nav className="flex items-center gap-1 text-sm">
                 {navItems.map((i) => (
-                  <span
-                    key={i.href}
-                    className="px-2 py-1 text-muted-foreground"
-                  >
+                  <span key={i.href} className="px-2 py-1 text-muted-foreground">
                     {i.label}
                   </span>
                 ))}
@@ -148,12 +153,7 @@ export function Nav() {
         {/* Mobile hamburger menu */}
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              aria-label="Open menu"
-            >
+            <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
@@ -171,10 +171,7 @@ export function Nav() {
                 fallback={
                   <nav className="flex flex-col">
                     {navItems.map((i) => (
-                      <span
-                        key={i.href}
-                        className="py-3 px-4 text-base text-muted-foreground"
-                      >
+                      <span key={i.href} className="py-3 px-4 text-base text-muted-foreground">
                         {i.label}
                       </span>
                     ))}

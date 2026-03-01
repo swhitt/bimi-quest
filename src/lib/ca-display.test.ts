@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  displayRootCa,
-  displayIssuerOrg,
-  displayIssuerWithRoot,
-  normalizeIssuerOrg,
-} from "./ca-display";
+import { displayRootCa, displayIssuerOrg, displayIssuerWithRoot, normalizeIssuerOrg } from "./ca-display";
 
 describe("displayRootCa", () => {
   it("maps 'DigiCert, Inc.' to 'DigiCert'", () => {
@@ -56,9 +51,7 @@ describe("displayIssuerWithRoot", () => {
   });
 
   it("returns 'Sectigo (via SSL.com)' when they differ", () => {
-    expect(displayIssuerWithRoot("Sectigo Limited", "SSL Corporation")).toBe(
-      "Sectigo (via SSL.com)"
-    );
+    expect(displayIssuerWithRoot("Sectigo Limited", "SSL Corporation")).toBe("Sectigo (via SSL.com)");
   });
 
   it("returns just issuer when rootCaOrg is null", () => {

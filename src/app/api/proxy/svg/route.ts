@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
@@ -43,11 +43,14 @@ export async function GET(request: NextRequest) {
     if (parsedUrl.protocol !== "https:") {
       return NextResponse.json(
         { error: "Only HTTPS URLs are allowed" },
-        { status: 400, headers: { ...corsHeaders(request), ...rl.headers } }
+        { status: 400, headers: { ...corsHeaders(request), ...rl.headers } },
       );
     }
   } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400, headers: { ...corsHeaders(request), ...rl.headers } });
+    return NextResponse.json(
+      { error: "Invalid URL" },
+      { status: 400, headers: { ...corsHeaders(request), ...rl.headers } },
+    );
   }
 
   // Check cache
@@ -68,8 +71,7 @@ export async function GET(request: NextRequest) {
   try {
     const res = await safeFetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; bimi-quest/1.0; +https://bimi.quest)",
+        "User-Agent": "Mozilla/5.0 (compatible; bimi-quest/1.0; +https://bimi.quest)",
         Accept: "image/svg+xml, image/*",
       },
       signal: AbortSignal.timeout(15_000),
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
     if (!res.ok) {
       return NextResponse.json(
         { error: `Upstream returned ${res.status}` },
-        { status: 502, headers: corsHeaders(request) }
+        { status: 502, headers: corsHeaders(request) },
       );
     }
 
@@ -87,36 +89,26 @@ export async function GET(request: NextRequest) {
     if (declaredLength > MAX_SVG_SIZE) {
       return NextResponse.json(
         { error: `Response too large (${declaredLength} bytes, max ${MAX_SVG_SIZE})` },
-        { status: 502, headers: corsHeaders(request) }
+        { status: 502, headers: corsHeaders(request) },
       );
     }
 
     const contentType = res.headers.get("content-type") || "image/svg+xml";
 
     // Basic SVG validation
-    if (
-      !contentType.includes("svg") &&
-      !contentType.includes("xml") &&
-      !contentType.includes("image")
-    ) {
-      return NextResponse.json(
-        { error: "Response is not an SVG" },
-        { status: 502, headers: corsHeaders(request) }
-      );
+    if (!contentType.includes("svg") && !contentType.includes("xml") && !contentType.includes("image")) {
+      return NextResponse.json({ error: "Response is not an SVG" }, { status: 502, headers: corsHeaders(request) });
     }
 
     // Read body in chunks, enforcing size limit even if content-length was missing/wrong
     const reader = res.body?.getReader();
     if (!reader) {
-      return NextResponse.json(
-        { error: "No response body" },
-        { status: 502, headers: corsHeaders(request) }
-      );
+      return NextResponse.json({ error: "No response body" }, { status: 502, headers: corsHeaders(request) });
     }
 
     const chunks: Uint8Array[] = [];
     let totalBytes = 0;
-    // eslint-disable-next-line no-constant-condition
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -125,7 +117,7 @@ export async function GET(request: NextRequest) {
         reader.cancel();
         return NextResponse.json(
           { error: `Response too large (exceeded ${MAX_SVG_SIZE} bytes)` },
-          { status: 502, headers: corsHeaders(request) }
+          { status: 502, headers: corsHeaders(request) },
         );
       }
       chunks.push(value);
@@ -137,7 +129,7 @@ export async function GET(request: NextRequest) {
     if (!content.includes("<svg") && !content.includes("<SVG")) {
       return NextResponse.json(
         { error: "Response does not appear to be SVG" },
-        { status: 502, headers: corsHeaders(request) }
+        { status: 502, headers: corsHeaders(request) },
       );
     }
 
@@ -159,10 +151,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    log('error', 'svg-proxy.api.failed', { error: String(error), route: '/api/proxy/svg' });
+    log("error", "svg-proxy.api.failed", { error: String(error), route: "/api/proxy/svg" });
     return NextResponse.json(
       { error: "Failed to fetch SVG" },
-      { status: 502, headers: { ...corsHeaders(request), ...rl.headers } }
+      { status: 502, headers: { ...corsHeaders(request), ...rl.headers } },
     );
   }
 }

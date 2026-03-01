@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
@@ -17,10 +17,8 @@ function buildGlobalConditions(params: URLSearchParams) {
   if (certType) conditions.push(eq(certificates.certType, certType));
   if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
   if (toDate) conditions.push(lte(certificates.notBefore, toDate));
-  if (validity === "valid")
-    conditions.push(gte(certificates.notAfter, new Date()));
-  if (validity === "expired")
-    conditions.push(lte(certificates.notAfter, new Date()));
+  if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
+  if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
 
   return conditions;
 }
@@ -41,18 +39,13 @@ export async function GET(request: NextRequest) {
   const timing = serverTiming();
   try {
     const globalConditions = buildGlobalConditions(searchParams);
-    const globalWhere =
-      globalConditions.length > 0 ? and(...globalConditions) : undefined;
+    const globalWhere = globalConditions.length > 0 ? and(...globalConditions) : undefined;
 
     const baseConditions = buildBaseConditions(searchParams);
-    const baseWhere =
-      baseConditions.length > 0 ? and(...baseConditions) : undefined;
+    const baseWhere = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-    const caConditions = selectedCA
-      ? [...baseConditions, eq(certificates.issuerOrg, selectedCA)]
-      : baseConditions;
-    const caWhere =
-      caConditions.length > 0 ? and(...caConditions) : undefined;
+    const caConditions = selectedCA ? [...baseConditions, eq(certificates.issuerOrg, selectedCA)] : baseConditions;
+    const caWhere = caConditions.length > 0 ? and(...caConditions) : undefined;
 
     const now = new Date();
 
@@ -66,10 +59,7 @@ export async function GET(request: NextRequest) {
     const thirtyDaysFromNow = new Date(now);
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    const trendConditions = [
-      ...baseConditions,
-      gte(certificates.notBefore, thirteenMonthsAgo),
-    ];
+    const trendConditions = [...baseConditions, gte(certificates.notBefore, thirteenMonthsAgo)];
 
     // Run all independent queries in parallel
     const [
@@ -86,28 +76,18 @@ export async function GET(request: NextRequest) {
       [activeCertsRow],
     ] = await Promise.all([
       // Total certificates (global filters only, no CA/root filter - used as denominator for market share)
-      db
-        .select({ count: count() })
-        .from(certificates)
-        .where(globalWhere),
+      db.select({ count: count() }).from(certificates).where(globalWhere),
 
       // Certificates for selected CA (or all if no CA selected)
-      db
-        .select({ count: count() })
-        .from(certificates)
-        .where(caWhere),
+      db.select({ count: count() }).from(certificates).where(caWhere),
 
       // CA breakdown grouped by issuing CA (base filters)
       db
         .select({
           ca: certificates.issuerOrg,
           total: count(),
-          vmcCount: count(
-            sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`
-          ),
-          cmcCount: count(
-            sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`
-          ),
+          vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
+          cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
         })
         .from(certificates)
         .where(baseWhere)
@@ -123,10 +103,7 @@ export async function GET(request: NextRequest) {
         })
         .from(certificates)
         .where(and(...trendConditions))
-        .groupBy(
-          sql`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-          certificates.issuerOrg
-        )
+        .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
         .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
 
       // Unique orgs (with all filters)
@@ -141,13 +118,7 @@ export async function GET(request: NextRequest) {
       db
         .select({ count: count() })
         .from(certificates)
-        .where(
-          and(
-            ...caConditions,
-            gte(certificates.notAfter, now),
-            lte(certificates.notAfter, thirtyDaysFromNow)
-          )
-        ),
+        .where(and(...caConditions, gte(certificates.notAfter, now), lte(certificates.notAfter, thirtyDaysFromNow))),
 
       // Mark type breakdown (base filters)
       db
@@ -164,23 +135,13 @@ export async function GET(request: NextRequest) {
       db
         .select({ count: count() })
         .from(certificates)
-        .where(
-          and(
-            ...globalConditions,
-            gte(certificates.notBefore, thirtyDaysAgo)
-          )
-        ),
+        .where(and(...globalConditions, gte(certificates.notBefore, thirtyDaysAgo))),
 
       // New certs in last 30 days (CA filters, for delta)
       db
         .select({ count: count() })
         .from(certificates)
-        .where(
-          and(
-            ...caConditions,
-            gte(certificates.notBefore, thirtyDaysAgo)
-          )
-        ),
+        .where(and(...caConditions, gte(certificates.notBefore, thirtyDaysAgo))),
 
       // Last ingestion run timestamp
       db
@@ -193,22 +154,14 @@ export async function GET(request: NextRequest) {
       db
         .select({ count: count() })
         .from(certificates)
-        .where(
-          and(
-            ...caConditions,
-            gte(certificates.notAfter, now)
-          )
-        ),
+        .where(and(...caConditions, gte(certificates.notAfter, now))),
     ]);
 
     const totalCerts = totalRow?.count || 0;
     const caCerts = caRow?.count || 0;
 
     const hasCAFilter = selectedCA || selectedRoot;
-    const marketShare =
-      hasCAFilter && totalCerts > 0
-        ? parseFloat(((caCerts / totalCerts) * 100).toFixed(1))
-        : null;
+    const marketShare = hasCAFilter && totalCerts > 0 ? parseFloat(((caCerts / totalCerts) * 100).toFixed(1)) : null;
 
     return NextResponse.json(
       {
@@ -231,13 +184,10 @@ export async function GET(request: NextRequest) {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
           "Server-Timing": timing.header("db"),
         },
-      }
+      },
     );
   } catch (error) {
-    log('error', 'dashboard.api.failed', { error: String(error), route: '/api/dashboard' });
-    return NextResponse.json(
-      { error: "Failed to fetch dashboard data" },
-      { status: 500 }
-    );
+    log("error", "dashboard.api.failed", { error: String(error), route: "/api/dashboard" });
+    return NextResponse.json({ error: "Failed to fetch dashboard data" }, { status: 500 });
   }
 }

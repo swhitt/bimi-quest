@@ -48,11 +48,7 @@ export function DomainAnalysis({ domain }: { domain: string }) {
   }, [domain]);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        Analyzing {domain}...
-      </div>
-    );
+    return <div className="flex h-64 items-center justify-center text-muted-foreground">Analyzing {domain}...</div>;
   }
 
   return (
@@ -65,10 +61,7 @@ export function DomainAnalysis({ domain }: { domain: string }) {
         {validation && (
           <div className="flex items-center gap-3">
             <ValidationGrade grade={validation.grade} summary={validation.gradeSummary} />
-            <Badge
-              variant={validation.overallValid ? "default" : "destructive"}
-              className="text-base px-4 py-1"
-            >
+            <Badge variant={validation.overallValid ? "default" : "destructive"} className="text-base px-4 py-1">
               {validation.overallValid ? "BIMI Valid" : "BIMI Invalid"}
             </Badge>
           </div>
@@ -89,12 +82,18 @@ export function DomainAnalysis({ domain }: { domain: string }) {
             </CardHeader>
             {validation.bimi.record && (
               <CardContent className="text-sm space-y-1">
-                <div><span className="text-muted-foreground">Raw:</span> {validation.bimi.record.raw}</div>
+                <div>
+                  <span className="text-muted-foreground">Raw:</span> {validation.bimi.record.raw}
+                </div>
                 {validation.bimi.record.logoUrl && (
-                  <div><span className="text-muted-foreground">Logo URL:</span> {validation.bimi.record.logoUrl}</div>
+                  <div>
+                    <span className="text-muted-foreground">Logo URL:</span> {validation.bimi.record.logoUrl}
+                  </div>
                 )}
                 {validation.bimi.record.authorityUrl && (
-                  <div><span className="text-muted-foreground">Authority URL:</span> {validation.bimi.record.authorityUrl}</div>
+                  <div>
+                    <span className="text-muted-foreground">Authority URL:</span> {validation.bimi.record.authorityUrl}
+                  </div>
                 )}
                 {validation.bimi.orgDomainFallback && (
                   <div className="text-xs text-muted-foreground">
@@ -117,12 +116,16 @@ export function DomainAnalysis({ domain }: { domain: string }) {
             </CardHeader>
             {validation.dmarc.record && (
               <CardContent className="text-sm space-y-1">
-                <div><span className="text-muted-foreground">Policy:</span> {validation.dmarc.record.policy}</div>
-                <div><span className="text-muted-foreground">PCT:</span> {validation.dmarc.record.pct}%</div>
-                <div><span className="text-muted-foreground">Raw:</span> {validation.dmarc.record.raw}</div>
-                {validation.dmarc.reason && (
-                  <div className="text-destructive text-xs">{validation.dmarc.reason}</div>
-                )}
+                <div>
+                  <span className="text-muted-foreground">Policy:</span> {validation.dmarc.record.policy}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">PCT:</span> {validation.dmarc.record.pct}%
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Raw:</span> {validation.dmarc.record.raw}
+                </div>
+                {validation.dmarc.reason && <div className="text-destructive text-xs">{validation.dmarc.reason}</div>}
               </CardContent>
             )}
           </Card>
@@ -151,10 +154,14 @@ export function DomainAnalysis({ domain }: { domain: string }) {
                   {validation.svg.validation && (
                     <div className="text-sm space-y-1">
                       {validation.svg.validation.errors.map((e, i) => (
-                        <div key={i} className="text-destructive">&#x2022; {e}</div>
+                        <div key={i} className="text-destructive">
+                          &#x2022; {e}
+                        </div>
                       ))}
                       {validation.svg.validation.warnings.map((w, i) => (
-                        <div key={i} className="text-yellow-600">&#x26A0; {w}</div>
+                        <div key={i} className="text-yellow-600">
+                          &#x26A0; {w}
+                        </div>
                       ))}
                       {validation.svg.validation.valid && validation.svg.validation.warnings.length === 0 && (
                         <div className="text-green-600">SVG Tiny PS validation passed</div>
@@ -167,9 +174,7 @@ export function DomainAnalysis({ domain }: { domain: string }) {
           )}
 
           {/* Structured checklist */}
-          {validation.checks.length > 0 && (
-            <ValidationChecklist checks={validation.checks} />
-          )}
+          {validation.checks.length > 0 && <ValidationChecklist checks={validation.checks} />}
 
           {/* Errors */}
           {validation.errors.length > 0 && (
@@ -180,7 +185,9 @@ export function DomainAnalysis({ domain }: { domain: string }) {
               <CardContent>
                 <ul className="space-y-1 text-sm">
                   {validation.errors.map((err, i) => (
-                    <li key={i} className="text-destructive">&#x2022; {err}</li>
+                    <li key={i} className="text-destructive">
+                      &#x2022; {err}
+                    </li>
                   ))}
                 </ul>
               </CardContent>

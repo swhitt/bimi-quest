@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, domainBimiState } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,10 +10,7 @@ import { resolveCertParam } from "@/lib/db/filters";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ip = getClientIP(_request);
   const rl = await checkRateLimit(`bimi-check:${ip}`, { windowMs: 60_000, max: 20 }, _request);
   if (!rl.allowed) return rateLimitResponse(rl.headers);
@@ -82,10 +79,7 @@ export async function GET(
 
           // If no cached state, do live DNS lookups
           if (!cachedState) {
-            const [bimiRecord, dmarcLookup] = await Promise.all([
-              lookupBIMIRecord(domain),
-              lookupDMARC(domain),
-            ]);
+            const [bimiRecord, dmarcLookup] = await Promise.all([lookupBIMIRecord(domain), lookupDMARC(domain)]);
 
             if (bimiRecord) {
               bimiRecordRaw = bimiRecord.raw;
@@ -160,7 +154,7 @@ export async function GET(
             webSvgSource: null,
           };
         }
-      })
+      }),
     );
 
     return NextResponse.json(
@@ -176,13 +170,10 @@ export async function GET(
           ...rl.headers,
           "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
-      }
+      },
     );
   } catch (error) {
-    log('error', 'bimi-check.api.failed', { error: String(error), route: '/api/certificates/[id]/bimi-check' });
-    return NextResponse.json(
-      { error: "Failed to run BIMI check" },
-      { status: 500 }
-    );
+    log("error", "bimi-check.api.failed", { error: String(error), route: "/api/certificates/[id]/bimi-check" });
+    return NextResponse.json({ error: "Failed to run BIMI check" }, { status: 500 });
   }
 }

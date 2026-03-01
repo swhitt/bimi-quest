@@ -16,10 +16,7 @@ describe("validateSvgRng", () => {
   });
 
   it("rejects SVG with disallowed element", async () => {
-    const svg = validSvg.replace(
-      "</svg>",
-      "<script>alert(1)</script></svg>"
-    );
+    const svg = validSvg.replace("</svg>", "<script>alert(1)</script></svg>");
     const result = await validateSvgRng(svg);
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);

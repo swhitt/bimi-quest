@@ -16,7 +16,7 @@ export function useGlobalFilters() {
 
   // Extract issuer CA from /{page}/ca/{slug} pattern
   const pathMatch = pathname.match(/\/ca\/([^/]+)/);
-  const ca = pathMatch ? caSlugToName(pathMatch[1]) ?? null : null;
+  const ca = pathMatch ? (caSlugToName(pathMatch[1]) ?? null) : null;
 
   const root = searchParams.get("root") || null;
   const type = searchParams.get("type") || null;

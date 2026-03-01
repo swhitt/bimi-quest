@@ -3,15 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { format, parseISO } from "date-fns";
@@ -42,10 +34,7 @@ function TrendTooltip({ active, payload, label, colors }: any) {
       value: (p.value ?? 0).toLocaleString(),
     }));
 
-  const total = payload.reduce(
-    (sum: number, p: { value: number }) => sum + (p.value ?? 0),
-    0
-  );
+  const total = payload.reduce((sum: number, p: { value: number }) => sum + (p.value ?? 0), 0);
 
   let formattedLabel = String(label);
   try {
@@ -54,12 +43,7 @@ function TrendTooltip({ active, payload, label, colors }: any) {
     // keep raw label
   }
 
-  return (
-    <ChartTooltipContent
-      label={`${formattedLabel} (${total.toLocaleString()} total)`}
-      rows={rows}
-    />
-  );
+  return <ChartTooltipContent label={`${formattedLabel} (${total.toLocaleString()} total)`} rows={rows} />;
 }
 
 export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps) {
@@ -80,16 +64,12 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
   // When "All Issuers", show stacked bars.
   const displayCAs = isFiltered
     ? [selectedCA]
-    : Object.keys(CA_COLOR_INDEX).filter((ca) =>
-        normalized.some((d) => d.ca === ca)
-      );
+    : Object.keys(CA_COLOR_INDEX).filter((ca) => normalized.some((d) => d.ca === ca));
 
   const pivoted = months.map((month) => {
     const row: Record<string, string | number> = { month };
     for (const ca of displayCAs) {
-      const point = normalized.find(
-        (d) => d.month === month && d.ca === ca
-      );
+      const point = normalized.find((d) => d.month === month && d.ca === ca);
       row[ca] = point?.count ?? 0;
     }
     return row;
@@ -106,9 +86,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          {isFiltered ? `${selectedCA} Issuance Trend` : "Issuance Trends"}
-        </CardTitle>
+        <CardTitle>{isFiltered ? `${selectedCA} Issuance Trend` : "Issuance Trends"}</CardTitle>
         <CardAction>
           <Button
             variant="ghost"
@@ -126,54 +104,45 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
       <CardContent>
         {pivoted.length > 0 ? (
           <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time">
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart
-              data={pivoted}
-              margin={{ top: 4, right: 4, left: -16, bottom: 0 }}
-            >
-              <CartesianGrid
-                vertical={false}
-                strokeDasharray="3 3"
-                className="stroke-border"
-              />
-              <XAxis
-                dataKey="month"
-                tickFormatter={tickFormatter}
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-                axisLine={false}
-                tickLine={false}
-                width={40}
-              />
-              <Tooltip
-                cursor={{ fill: "var(--accent)", opacity: 0.3 }}
-                content={(props) => (
-                  <TrendTooltip {...props} colors={colors} />
-                )}
-              />
-              {displayCAs.map((ca, i) => {
-                const color = getCAColor(colors, ca);
-                const isLast = i === displayCAs.length - 1;
-                return (
-                  <Bar
-                    key={ca}
-                    dataKey={ca}
-                    name={ca}
-                    stackId={isFiltered ? undefined : "trend"}
-                    fill={color}
-                    fillOpacity={isFiltered ? 0.85 : 0.8}
-                    radius={isFiltered || isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                  />
-                );
-              })}
-            </BarChart>
-          </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+                <XAxis
+                  dataKey="month"
+                  tickFormatter={tickFormatter}
+                  tick={{ fontSize: 11 }}
+                  className="fill-muted-foreground"
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  className="fill-muted-foreground"
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                />
+                <Tooltip
+                  cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+                  content={(props) => <TrendTooltip {...props} colors={colors} />}
+                />
+                {displayCAs.map((ca, i) => {
+                  const color = getCAColor(colors, ca);
+                  const isLast = i === displayCAs.length - 1;
+                  return (
+                    <Bar
+                      key={ca}
+                      dataKey={ca}
+                      name={ca}
+                      stackId={isFiltered ? undefined : "trend"}
+                      fill={color}
+                      fillOpacity={isFiltered ? 0.85 : 0.8}
+                      radius={isFiltered || isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  );
+                })}
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         ) : (
           <div className="flex h-[300px] items-center justify-center text-muted-foreground">

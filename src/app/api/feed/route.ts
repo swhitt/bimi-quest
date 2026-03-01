@@ -26,21 +26,23 @@ export async function GET() {
       .orderBy(desc(certificates.notBefore))
       .limit(50);
 
-    const items = recent.map((cert) => {
-      const title = `${cert.certType || "BIMI"}: ${cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}`;
-      const domain = cert.sanList[0] || cert.subjectCn || "";
-      const link = `${BASE_URL}/certificates/${cert.fingerprintSha256.slice(0, 12)}`;
-      const pubDate = cert.notBefore.toUTCString();
-      const description = `${cert.certType || "BIMI"} certificate issued by ${cert.issuerOrg || "Unknown CA"} for ${domain}${cert.subjectCountry ? ` (${cert.subjectCountry})` : ""}`;
+    const items = recent
+      .map((cert) => {
+        const title = `${cert.certType || "BIMI"}: ${cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}`;
+        const domain = cert.sanList[0] || cert.subjectCn || "";
+        const link = `${BASE_URL}/certificates/${cert.fingerprintSha256.slice(0, 12)}`;
+        const pubDate = cert.notBefore.toUTCString();
+        const description = `${cert.certType || "BIMI"} certificate issued by ${cert.issuerOrg || "Unknown CA"} for ${domain}${cert.subjectCountry ? ` (${cert.subjectCountry})` : ""}`;
 
-      return `    <item>
+        return `    <item>
       <title><![CDATA[${title}]]></title>
       <link>${link}</link>
       <guid isPermaLink="true">${link}</guid>
       <pubDate>${pubDate}</pubDate>
       <description><![CDATA[${description}]]></description>
     </item>`;
-    }).join("\n");
+      })
+      .join("\n");
 
     const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -61,7 +63,7 @@ ${items}
       },
     });
   } catch (error) {
-    log('error', 'feed.api.failed', { error: String(error), route: '/api/feed' });
+    log("error", "feed.api.failed", { error: String(error), route: "/api/feed" });
     const emptyRss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>

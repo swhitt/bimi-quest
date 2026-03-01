@@ -252,7 +252,9 @@ describe("extractOcspUrl", () => {
     const ocspOid = [0x06, 0x08, 0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x30, 0x01];
     const accessDesc = [0x30, ocspOid.length + accessLocation.length, ...ocspOid, ...accessLocation];
     const seq = [0x30, accessDesc.length, ...accessDesc];
-    return Array.from(seq).map(b => b.toString(16).padStart(2, "0")).join("");
+    return Array.from(seq)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   it("extracts OCSP URL from AIA extension", () => {
@@ -294,7 +296,9 @@ describe("extractCrlUrl", () => {
     const dp = [0x30, dpName.length, ...dpName];
     // CRLDistributionPoints SEQUENCE
     const seq = [0x30, dp.length, ...dp];
-    return Array.from(seq).map(b => b.toString(16).padStart(2, "0")).join("");
+    return Array.from(seq)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   it("extracts CRL URL from CDP extension", () => {
@@ -349,7 +353,7 @@ describe("parseCrl", () => {
       revokedEntries.push(0x30, entryContent.length, ...entryContent);
     }
 
-    let tbsContent = [...algo, ...issuer, ...thisUpdate, ...nextUpdate];
+    const tbsContent = [...algo, ...issuer, ...thisUpdate, ...nextUpdate];
     if (revokedEntries.length > 0) {
       tbsContent.push(0x30, revokedEntries.length, ...revokedEntries);
     }

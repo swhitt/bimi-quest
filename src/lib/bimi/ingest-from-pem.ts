@@ -13,10 +13,7 @@ import { errorMessage } from "@/lib/utils";
  * Used when a user validates a domain and we discover a cert not already in our DB.
  * Returns the fingerprint if inserted, null if already existed or not a BIMI cert.
  */
-export async function ingestFromPem(
-  pem: string,
-  source: string = "validation"
-): Promise<string | null> {
+export async function ingestFromPem(pem: string, source: string = "validation"): Promise<string | null> {
   try {
     const b64 = pem
       .replace(/-----BEGIN CERTIFICATE-----/g, "")
@@ -29,11 +26,7 @@ export async function ingestFromPem(
 
     const bimiData = await extractBIMIData(cert, der);
 
-    const notability = await scoreNotability(
-      bimiData.subjectOrg,
-      bimiData.sanList,
-      bimiData.subjectCountry
-    );
+    const notability = await scoreNotability(bimiData.subjectOrg, bimiData.sanList, bimiData.subjectCountry);
 
     const [inserted] = await db
       .insert(certificates)
@@ -77,8 +70,8 @@ export async function ingestFromPem(
           and(
             eq(certificates.serialNumber, bimiData.serialNumber),
             eq(certificates.isPrecert, true),
-            eq(certificates.isSuperseded, false)
-          )
+            eq(certificates.isSuperseded, false),
+          ),
         );
     }
 

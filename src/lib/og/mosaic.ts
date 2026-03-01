@@ -21,12 +21,7 @@ export async function generateMosaic(): Promise<Buffer> {
       subjectOrg: certificates.subjectOrg,
     })
     .from(certificates)
-    .where(
-      and(
-        isNotNull(certificates.logotypeSvg),
-        gte(certificates.notabilityScore, 7),
-      ),
-    )
+    .where(and(isNotNull(certificates.logotypeSvg), gte(certificates.notabilityScore, 7)))
     .orderBy(desc(certificates.notBefore))
     .limit(GRID * GRID);
 

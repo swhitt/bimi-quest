@@ -8,7 +8,12 @@ export function Footer() {
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 px-3 sm:px-4 py-3 text-sm text-muted-foreground">
         <p>
           Data sourced from public{" "}
-          <a href="https://certificate.transparency.dev/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+          <a
+            href="https://certificate.transparency.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground"
+          >
             Certificate Transparency
           </a>{" "}
           logs.
@@ -19,8 +24,12 @@ export function Footer() {
           )}
         </p>
         <nav className="flex items-center gap-4">
-          <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-          <Link href="/api/feed" className="hover:text-foreground transition-colors">RSS</Link>
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </Link>
+          <Link href="/api/feed" className="hover:text-foreground transition-colors">
+            RSS
+          </Link>
         </nav>
       </div>
     </footer>

@@ -1,13 +1,6 @@
 import { getBaseUrl } from "@/lib/server-url";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { WorldMapWrapper } from "@/components/map/world-map-wrapper";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 
@@ -18,11 +11,7 @@ interface GeoEntry {
   cmcCount: number;
 }
 
-export async function MapContent({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
+export async function MapContent({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
   const baseUrl = await getBaseUrl();
@@ -52,17 +41,13 @@ export async function MapContent({
           <CardTitle>Global BIMI Certificate Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <WorldMapWrapper
-            data={data.map((d) => ({ country: d.country || "", total: d.total }))}
-          />
+          <WorldMapWrapper data={data.map((d) => ({ country: d.country || "", total: d.total }))} />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Certificates by Country ({total.toLocaleString()} total)
-          </CardTitle>
+          <CardTitle>Certificates by Country ({total.toLocaleString()} total)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -79,9 +64,7 @@ export async function MapContent({
               <TableBody>
                 {data.map((entry) => (
                   <TableRow key={entry.country || "unknown"}>
-                    <TableCell className="font-medium">
-                      {entry.country || "Unknown"}
-                    </TableCell>
+                    <TableCell className="font-medium">{entry.country || "Unknown"}</TableCell>
                     <TableCell className="text-right">{entry.total}</TableCell>
                     <TableCell className="text-right hidden sm:table-cell">{entry.vmcCount}</TableCell>
                     <TableCell className="text-right hidden sm:table-cell">{entry.cmcCount}</TableCell>

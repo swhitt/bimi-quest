@@ -30,22 +30,13 @@ export async function GET() {
     const ingestion = { lastRun, lagMs, behindEntries };
 
     if (stale) {
-      log('warn', 'health.ingestion.stale', { lagMs, behindEntries });
-      return NextResponse.json(
-        { status: "degraded", db: "connected", ingestion },
-        { status: 503, headers },
-      );
+      log("warn", "health.ingestion.stale", { lagMs, behindEntries });
+      return NextResponse.json({ status: "degraded", db: "connected", ingestion }, { status: 503, headers });
     }
 
-    return NextResponse.json(
-      { status: "ok", db: "connected", ingestion },
-      { headers },
-    );
+    return NextResponse.json({ status: "ok", db: "connected", ingestion }, { headers });
   } catch (error) {
-    log('error', 'health.check.failed', { error: String(error) });
-    return NextResponse.json(
-      { status: "degraded", db: "unreachable", ingestion: null },
-      { status: 503, headers },
-    );
+    log("error", "health.check.failed", { error: String(error) });
+    return NextResponse.json({ status: "degraded", db: "unreachable", ingestion: null }, { status: 503, headers });
   }
 }

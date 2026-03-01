@@ -4,12 +4,7 @@ import { eq } from "drizzle-orm";
 import { ingestionCursors } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { getSTH, getEntries, throttle } from "@/lib/ct/gorgon";
-import {
-  parseCTLogEntry,
-  hasBIMIOID,
-  extractBIMIData,
-  pemToDer,
-} from "@/lib/ct/parser";
+import { parseCTLogEntry, hasBIMIOID, extractBIMIData, pemToDer } from "@/lib/ct/parser";
 import { scoreNotabilityBatch, classifyIndustryBatch, type BrandInput } from "@/lib/notability";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
@@ -33,11 +28,7 @@ async function backfill() {
   const sth = await getSTH();
   console.log(`Gorgon tree size: ${sth.tree_size.toLocaleString()}`);
 
-  const cursor = await db
-    .select()
-    .from(ingestionCursors)
-    .where(eq(ingestionCursors.logName, "gorgon"))
-    .limit(1);
+  const cursor = await db.select().from(ingestionCursors).where(eq(ingestionCursors.logName, "gorgon")).limit(1);
   const startIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
 
   console.log(`Resuming from index ${startIndex.toLocaleString()}`);
@@ -61,11 +52,7 @@ async function checkIntegrity() {
   const sth = await getSTH();
   console.log(`Gorgon tree size: ${sth.tree_size.toLocaleString()}`);
 
-  const cursor = await db
-    .select()
-    .from(ingestionCursors)
-    .where(eq(ingestionCursors.logName, "gorgon"))
-    .limit(1);
+  const cursor = await db.select().from(ingestionCursors).where(eq(ingestionCursors.logName, "gorgon")).limit(1);
   const lastIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
   console.log(`Cursor at: ${lastIndex.toLocaleString()}`);
 
@@ -129,7 +116,9 @@ async function checkIntegrity() {
       try {
         const parsed = parseCTLogEntry(entry);
         if (parsed && hasBIMIOID(parsed.cert)) bimiCount++;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
 
     const dbCount = await sql`
@@ -159,17 +148,11 @@ async function stream() {
   while (true) {
     try {
       const sth = await getSTH();
-      const cursor = await db
-        .select()
-        .from(ingestionCursors)
-        .where(eq(ingestionCursors.logName, "gorgon"))
-        .limit(1);
+      const cursor = await db.select().from(ingestionCursors).where(eq(ingestionCursors.logName, "gorgon")).limit(1);
       const startIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
 
       if (startIndex < sth.tree_size) {
-        console.log(
-          `New entries: ${startIndex.toLocaleString()} -> ${sth.tree_size.toLocaleString()}`
-        );
+        console.log(`New entries: ${startIndex.toLocaleString()} -> ${sth.tree_size.toLocaleString()}`);
         const result = await processIngestBatch({
           startIndex,
           endIndex: sth.tree_size,
@@ -294,7 +277,12 @@ async function rescore(maxCerts = 0) {
 
       const brands: BrandInput[] = chunk
         .map((row) => {
-          const r = row as { id: number; subject_org: string | null; san_list: string[]; subject_country: string | null };
+          const r = row as {
+            id: number;
+            subject_org: string | null;
+            san_list: string[];
+            subject_country: string | null;
+          };
           return {
             id: String(r.id),
             org: r.subject_org || "",
@@ -326,7 +314,6 @@ async function rescore(maxCerts = 0) {
 
       await throttle(100);
     }
-
   }
 
   console.log(`\n\nRescore complete. Scored ${scored} certificates.`);
@@ -632,8 +619,8 @@ if (mode === "stream") {
   // score-logos recalc [offset]      — re-score all, optionally resume from offset
   const arg3 = process.argv[3] || "";
   const recalc = arg3 === "recalc";
-  const limit = recalc ? 0 : (parseInt(arg3, 10) || 0);
-  const resumeOffset = recalc ? (parseInt(process.argv[4] || "0", 10) || 0) : 0;
+  const limit = recalc ? 0 : parseInt(arg3, 10) || 0;
+  const resumeOffset = recalc ? parseInt(process.argv[4] || "0", 10) || 0 : 0;
   scoreLogos(limit, recalc, resumeOffset).catch(console.error);
 } else {
   backfill().catch(console.error);

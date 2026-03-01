@@ -28,7 +28,8 @@ export const metadata: Metadata = {
     default: "BIMI Quest - Certificate Market Intelligence",
     template: "%s | BIMI Quest",
   },
-  description: "Track VMC and CMC certificate issuances across all Certificate Authorities. Real-time BIMI market intelligence from CT logs.",
+  description:
+    "Track VMC and CMC certificate issuances across all Certificate Authorities. Real-time BIMI market intelligence from CT logs.",
   openGraph: {
     title: "BIMI Quest - Certificate Market Intelligence",
     description: "Track VMC and CMC certificate issuances across all Certificate Authorities.",
@@ -64,12 +65,7 @@ export default function RootLayout({
       <body
         className={`${plexSans.variable} ${plexMono.variable} antialiased min-h-screen flex flex-col overflow-x-hidden`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>
             <Nav />
             <GlobalFilterBar />

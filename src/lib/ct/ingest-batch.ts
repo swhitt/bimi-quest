@@ -1,11 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  certificates,
-  chainCerts,
-  certificateChainLinks,
-  ingestionCursors,
-} from "@/lib/db/schema";
+import { certificates, chainCerts, certificateChainLinks, ingestionCursors } from "@/lib/db/schema";
 import { getEntries, throttle } from "@/lib/ct/gorgon";
 import {
   parseCTLogEntry,
@@ -17,7 +12,7 @@ import {
 } from "@/lib/ct/parser";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
-import { scoreNotabilityBatch, type BrandInput, type NotabilityResult } from "@/lib/notability";
+import { scoreNotabilityBatch, type BrandInput } from "@/lib/notability";
 import { computeColorRichness } from "@/lib/svg-color-richness";
 import { computeVisualHash } from "@/lib/dhash";
 import { errorMessage } from "@/lib/utils";
@@ -66,39 +61,41 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
 
   const scores = await scoreNotabilityBatch(brands);
 
-  await Promise.all(batch.map(async (cert) => {
-    const notability = scores.get(String(cert.id)) ?? null;
-    if (notability) {
-      await db
-        .update(certificates)
-        .set({
-          notabilityScore: notability.score,
-          notabilityReason: notability.reason,
-          companyDescription: notability.description,
-          industry: notability.industry,
-        })
-        .where(eq(certificates.id, cert.id));
-    }
+  await Promise.all(
+    batch.map(async (cert) => {
+      const notability = scores.get(String(cert.id)) ?? null;
+      if (notability) {
+        await db
+          .update(certificates)
+          .set({
+            notabilityScore: notability.score,
+            notabilityReason: notability.reason,
+            companyDescription: notability.description,
+            industry: notability.industry,
+          })
+          .where(eq(certificates.id, cert.id));
+      }
 
-    // Only notify for notable brands (score >= 5) to avoid Discord spam
-    const score = notability?.score ?? 0;
-    if (notify && score >= 5) {
-      dispatchNewCertNotification({
-        certId: cert.id,
-        fingerprintSha256: cert.fingerprintSha256,
-        domain: cert.domain,
-        org: cert.org || "unknown",
-        issuer: cert.issuer,
-        rootCa: cert.rootCa,
-        certType: cert.certType ?? "VMC",
-        country: cert.country,
-        notabilityScore: notability?.score,
-        notabilityReason: notability?.reason,
-        companyDescription: notability?.description,
-        hasLogo: cert.hasLogo,
-      }).catch((err) => console.warn("Notification dispatch failed:", err));
-    }
-  }));
+      // Only notify for notable brands (score >= 5) to avoid Discord spam
+      const score = notability?.score ?? 0;
+      if (notify && score >= 5) {
+        dispatchNewCertNotification({
+          certId: cert.id,
+          fingerprintSha256: cert.fingerprintSha256,
+          domain: cert.domain,
+          org: cert.org || "unknown",
+          issuer: cert.issuer,
+          rootCa: cert.rootCa,
+          certType: cert.certType ?? "VMC",
+          country: cert.country,
+          notabilityScore: notability?.score,
+          notabilityReason: notability?.reason,
+          companyDescription: notability?.description,
+          hasLogo: cert.hasLogo,
+        }).catch((err) => console.warn("Notification dispatch failed:", err));
+      }
+    }),
+  );
 }
 
 /**
@@ -106,16 +103,8 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
  * and upsert into the database. Scoring is decoupled and runs after all
  * batches complete to keep ingestion throughput high.
  */
-export async function processIngestBatch(
-  options: IngestBatchOptions
-): Promise<IngestBatchResult> {
-  const {
-    startIndex,
-    endIndex,
-    maxBatches = 0,
-    notify = false,
-    onProgress,
-  } = options;
+export async function processIngestBatch(options: IngestBatchOptions): Promise<IngestBatchResult> {
+  const { startIndex, endIndex, maxBatches = 0, notify = false, onProgress } = options;
 
   const SCORE_BATCH_SIZE = 10;
 
@@ -130,16 +119,14 @@ export async function processIngestBatch(
 
     const batchEnd = Math.min(i + BATCH_SIZE - 1, endIndex - 1);
     onProgress?.(
-      `Fetching entries ${i.toLocaleString()}-${batchEnd.toLocaleString()} of ${endIndex.toLocaleString()}...`
+      `Fetching entries ${i.toLocaleString()}-${batchEnd.toLocaleString()} of ${endIndex.toLocaleString()}...`,
     );
 
     let response;
     try {
       response = await getEntries(i, batchEnd);
     } catch (err) {
-      onProgress?.(
-        `Failed to fetch batch at ${i}: ${errorMessage(err)}`
-      );
+      onProgress?.(`Failed to fetch batch at ${i}: ${errorMessage(err)}`);
       if (maxBatches > 0) break;
       await throttle(2000);
       continue;
@@ -163,7 +150,7 @@ export async function processIngestBatch(
 
         const bimiData = await extractBIMIData(parsed.cert, parsed.certDer);
         onProgress?.(
-          `BIMI cert at index ${entryIndex}: ${bimiData.subjectCn || bimiData.subjectOrg || "unknown"} (${bimiData.issuerOrg || "unknown CA"})`
+          `BIMI cert at index ${entryIndex}: ${bimiData.subjectCn || bimiData.subjectOrg || "unknown"} (${bimiData.issuerOrg || "unknown CA"})`,
         );
 
         // Derive root CA org from chain
@@ -227,25 +214,17 @@ export async function processIngestBatch(
                 and(
                   eq(certificates.serialNumber, bimiData.serialNumber),
                   eq(certificates.isPrecert, true),
-                  eq(certificates.isSuperseded, false)
-                )
+                  eq(certificates.isSuperseded, false),
+                ),
               );
           } else {
             const [finalExists] = await db
               .select({ id: certificates.id })
               .from(certificates)
-              .where(
-                and(
-                  eq(certificates.serialNumber, bimiData.serialNumber),
-                  eq(certificates.isPrecert, false)
-                )
-              )
+              .where(and(eq(certificates.serialNumber, bimiData.serialNumber), eq(certificates.isPrecert, false)))
               .limit(1);
             if (finalExists) {
-              await db
-                .update(certificates)
-                .set({ isSuperseded: true })
-                .where(eq(certificates.id, inserted.id));
+              await db.update(certificates).set({ isSuperseded: true }).where(eq(certificates.id, inserted.id));
             }
           }
 
@@ -255,7 +234,7 @@ export async function processIngestBatch(
               info: parseChainCert(pem),
               fingerprint: await computePemFingerprint(pem),
               pem,
-            }))
+            })),
           );
 
           for (let k = 0; k < chainData.length; k++) {
@@ -308,9 +287,7 @@ export async function processIngestBatch(
         lastSuccessIndex = entryIndex;
       } catch (err) {
         const msg = errorMessage(err);
-        onProgress?.(
-          `Error processing entry ${entryIndex}: ${msg.slice(0, 200)}`
-        );
+        onProgress?.(`Error processing entry ${entryIndex}: ${msg.slice(0, 200)}`);
         continue;
       }
     }

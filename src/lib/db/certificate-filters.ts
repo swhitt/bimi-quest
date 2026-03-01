@@ -47,9 +47,7 @@ export function buildCertificateConditions(params: URLSearchParams) {
   if (serialParam) {
     const normalized = normalizeHex(serialParam).replace(/^0+/, "");
     if (normalized.length >= 1) {
-      conditions.push(
-        sql`LOWER(LTRIM(${certificates.serialNumber}, '0')) = LOWER(LTRIM(${normalized}, '0'))`
-      );
+      conditions.push(sql`LOWER(LTRIM(${certificates.serialNumber}, '0')) = LOWER(LTRIM(${normalized}, '0'))`);
     }
   }
 
@@ -69,8 +67,8 @@ export function buildCertificateConditions(params: URLSearchParams) {
       or(
         ilike(certificates.subjectCn, `%${search}%`),
         ilike(certificates.subjectOrg, `%${search}%`),
-        sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE s ILIKE ${`%${search}%`})`
-      )!
+        sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE s ILIKE ${`%${search}%`})`,
+      )!,
     );
   }
 

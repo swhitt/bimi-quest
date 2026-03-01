@@ -6,10 +6,7 @@ import { isPrivateIP, isPrivateHostname } from "./hostname";
  * IPs against private/internal ranges. Prevents DNS rebinding attacks where an
  * attacker registers a public domain that resolves to a private IP.
  */
-export async function safeFetch(
-  url: string | URL,
-  init?: RequestInit
-): Promise<Response> {
+export async function safeFetch(url: string | URL, init?: RequestInit): Promise<Response> {
   const parsed = new URL(url);
 
   // Reject non-HTTPS (except in tests)
@@ -19,9 +16,7 @@ export async function safeFetch(
 
   // Quick hostname string check first
   if (isPrivateHostname(parsed.hostname)) {
-    throw new Error(
-      `Refusing to fetch from private/internal host: ${parsed.hostname}`
-    );
+    throw new Error(`Refusing to fetch from private/internal host: ${parsed.hostname}`);
   }
 
   // Resolve DNS and validate all IPs
@@ -43,10 +38,7 @@ async function validateResolvedIPs(hostname: string): Promise<void> {
     return;
   }
 
-  const results = await Promise.allSettled([
-    dns.resolve4(hostname),
-    dns.resolve6(hostname),
-  ]);
+  const results = await Promise.allSettled([dns.resolve4(hostname), dns.resolve6(hostname)]);
 
   const ips: string[] = [];
   for (const result of results) {
@@ -62,9 +54,7 @@ async function validateResolvedIPs(hostname: string): Promise<void> {
 
   for (const ip of ips) {
     if (isPrivateIP(ip)) {
-      throw new Error(
-        `DNS rebinding blocked: ${hostname} resolved to private IP ${ip}`
-      );
+      throw new Error(`DNS rebinding blocked: ${hostname} resolved to private IP ${ip}`);
     }
   }
 }

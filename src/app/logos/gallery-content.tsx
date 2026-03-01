@@ -4,23 +4,13 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ListFilter } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { domainSlug } from "@/lib/domain-slug";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { stripWhiteSvgBg, tileBgForSvg, isLightBg } from "@/lib/svg-bg";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationBar } from "@/components/pagination-bar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { useLazyRender } from "@/lib/use-lazy-render";
 
@@ -61,10 +51,10 @@ interface PresetConfig {
 }
 
 const PRESETS: Record<PresetKey, PresetConfig> = {
-  showcase:       { sort: "quality", minScore: 5, minLogoQuality: 6 },
-  "full-color":   { sort: "quality", minScore: 1, minColorRichness: 7 },
-  "new-arrivals": { sort: "recent",  minScore: 1 },
-  "hidden-gems":  { sort: "quality", minScore: 1, maxScore: 4, minLogoQuality: 6 },
+  showcase: { sort: "quality", minScore: 5, minLogoQuality: 6 },
+  "full-color": { sort: "quality", minScore: 1, minColorRichness: 7 },
+  "new-arrivals": { sort: "recent", minScore: 1 },
+  "hidden-gems": { sort: "quality", minScore: 1, maxScore: 4, minLogoQuality: 6 },
 };
 
 const PRESET_LABELS: Record<PresetKey, string> = {
@@ -93,28 +83,28 @@ interface FilterOption {
 }
 
 const NOTABILITY_OPTIONS: FilterOption[] = [
-  { value: "any",   label: "Any" },
-  { value: "7+",    label: "Famous (7+)",      min: 7 },
-  { value: "5+",    label: "Well-known (5+)",   min: 5 },
-  { value: "3-6",   label: "Mid-tier (3-6)",    min: 3, max: 6 },
-  { value: "1-4",   label: "Obscure (1-4)",     min: 1, max: 4 },
-  { value: "1-2",   label: "Unknown (1-2)",     min: 1, max: 2 },
+  { value: "any", label: "Any" },
+  { value: "7+", label: "Famous (7+)", min: 7 },
+  { value: "5+", label: "Well-known (5+)", min: 5 },
+  { value: "3-6", label: "Mid-tier (3-6)", min: 3, max: 6 },
+  { value: "1-4", label: "Obscure (1-4)", min: 1, max: 4 },
+  { value: "1-2", label: "Unknown (1-2)", min: 1, max: 2 },
 ];
 
 const LOGO_QUALITY_OPTIONS: FilterOption[] = [
-  { value: "any",   label: "Any" },
-  { value: "8+",    label: "Excellent (8+)",    min: 8 },
-  { value: "6+",    label: "Good (6+)",         min: 6 },
-  { value: "4+",    label: "Fair (4+)",         min: 4 },
-  { value: "1-3",   label: "Poor (1-3)",        min: 1, max: 3 },
+  { value: "any", label: "Any" },
+  { value: "8+", label: "Excellent (8+)", min: 8 },
+  { value: "6+", label: "Good (6+)", min: 6 },
+  { value: "4+", label: "Fair (4+)", min: 4 },
+  { value: "1-3", label: "Poor (1-3)", min: 1, max: 3 },
 ];
 
 const COLOR_RICHNESS_OPTIONS: FilterOption[] = [
-  { value: "any",   label: "Any" },
-  { value: "8+",    label: "Vibrant (8+)",      min: 8 },
-  { value: "6+",    label: "Colorful (6+)",     min: 6 },
-  { value: "4+",    label: "Some color (4+)",   min: 4 },
-  { value: "1-3",   label: "Monochrome (1-3)",  min: 1, max: 3 },
+  { value: "any", label: "Any" },
+  { value: "8+", label: "Vibrant (8+)", min: 8 },
+  { value: "6+", label: "Colorful (6+)", min: 6 },
+  { value: "4+", label: "Some color (4+)", min: 4 },
+  { value: "1-3", label: "Monochrome (1-3)", min: 1, max: 3 },
 ];
 
 interface CustomFilters {
@@ -132,10 +122,7 @@ function hasCustomFilters(f: CustomFilters): boolean {
 }
 
 /** Build API query params from either a preset or custom filters. */
-function buildGalleryParams(
-  preset: PresetKey | null,
-  filters: CustomFilters,
-): URLSearchParams {
+function buildGalleryParams(preset: PresetKey | null, filters: CustomFilters): URLSearchParams {
   const p = new URLSearchParams();
 
   if (preset) {
@@ -189,16 +176,19 @@ function LogoTile({ logo }: { logo: Logo }) {
     return sanitizeSvg(strippedSvg);
   }, [isVisible, strippedSvg]);
 
-  const handleCopyLink = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!linkHref) return;
-    const url = `${window.location.origin}${linkHref}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [linkHref]);
+  const handleCopyLink = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!linkHref) return;
+      const url = `${window.location.origin}${linkHref}`;
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+    },
+    [linkHref],
+  );
 
   const tile = (
     <div
@@ -210,8 +200,12 @@ function LogoTile({ logo }: { logo: Logo }) {
         "--ring": ringColor,
         boxShadow: "0 0 0 0px var(--ring)",
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 0 3px var(--ring)`; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `0 0 0 0px var(--ring)`; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `0 0 0 3px var(--ring)`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = `0 0 0 0px var(--ring)`;
+      }}
     >
       {isVisible ? (
         sanitizedHtml ? (
@@ -225,9 +219,12 @@ function LogoTile({ logo }: { logo: Logo }) {
           </div>
         )
       ) : (
-        <div className="h-full w-full animate-pulse rounded-sm" style={{
-          backgroundColor: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
-        }} />
+        <div
+          className="h-full w-full animate-pulse rounded-sm"
+          style={{
+            backgroundColor: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+          }}
+        />
       )}
       {linkHref && (
         <button
@@ -236,9 +233,30 @@ function LogoTile({ logo }: { logo: Logo }) {
           title="Copy share link"
         >
           {copied ? (
-            <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            <svg
+              className="size-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
           ) : (
-            <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+            <svg
+              className="size-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
           )}
         </button>
       )}
@@ -252,18 +270,27 @@ function LogoTile({ logo }: { logo: Logo }) {
           <div className="flex items-center gap-1">
             <span className="font-semibold text-white">{(logo.org || logo.domain || "?").slice(0, 28)}</span>
             {logo.certType && (
-              <span className={`px-1 py-px rounded text-[9px] font-medium ${
-                logo.certType === "VMC" ? "bg-blue-500/40 text-blue-200" : "bg-purple-500/40 text-purple-200"
-              }`}>{logo.certType}</span>
+              <span
+                className={`px-1 py-px rounded text-[9px] font-medium ${
+                  logo.certType === "VMC" ? "bg-blue-500/40 text-blue-200" : "bg-purple-500/40 text-purple-200"
+                }`}
+              >
+                {logo.certType}
+              </span>
             )}
             {logo.score != null && (
-              <span className="text-gray-400 tabular-nums" title="Notability score">★ {logo.score}/10</span>
+              <span className="text-gray-400 tabular-nums" title="Notability score">
+                ★ {logo.score}/10
+              </span>
             )}
           </div>
           <div className="flex items-center gap-0.5 text-gray-400 max-w-64 sm:max-w-80">
             <span className="truncate">{[logo.domain, logo.issuer].filter(Boolean).join(" · ")}</span>
             {logo.ctLogTimestamp && (
-              <span className="shrink-0 text-gray-500"> · {new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA")}</span>
+              <span className="shrink-0 text-gray-500">
+                {" "}
+                · {new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA")}
+              </span>
             )}
           </div>
         </div>
@@ -356,15 +383,13 @@ export function GalleryContent() {
           const qs = urlParams.toString();
           window.history.replaceState(null, "", `${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
         })
-        .catch((err) =>
-          setError(err instanceof Error ? err.message : "Failed to load gallery")
-        )
+        .catch((err) => setError(err instanceof Error ? err.message : "Failed to load gallery"))
         .finally(() => {
           setLoading(false);
           setLoadingMore(false);
         });
     },
-    [activePreset, customFilters, dedupSvg, filterQuery]
+    [activePreset, customFilters, dedupSvg, filterQuery],
   );
 
   // Refetch when preset/filters/dedup change
@@ -388,7 +413,7 @@ export function GalleryContent() {
           fetchPage(page + 1, true);
         }
       },
-      { rootMargin: "1200px" }
+      { rootMargin: "1200px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -442,9 +467,7 @@ export function GalleryContent() {
                     {PRESET_LABELS[key]}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {PRESET_DESCRIPTIONS[key]}
-                </TooltipContent>
+                <TooltipContent side="bottom">{PRESET_DESCRIPTIONS[key]}</TooltipContent>
               </Tooltip>
             ))}
           </div>
@@ -453,14 +476,14 @@ export function GalleryContent() {
           <button
             onClick={() => setFiltersOpen((v) => !v)}
             className={`relative rounded-md p-1.5 transition-colors ${
-              filtersOpen ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              filtersOpen
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             title="Advanced filters"
           >
             <ListFilter className="size-4" />
-            {isCustom && (
-              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" />
-            )}
+            {isCustom && <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" />}
           </button>
 
           {/* Right-aligned checkboxes */}
@@ -472,9 +495,9 @@ export function GalleryContent() {
                     type="checkbox"
                     checked={dedupSvg}
                     onChange={(e) => setDedupSvg(e.target.checked)}
-                className="size-4 rounded border-muted-foreground/30"
-              />
-              Unique logos
+                    className="size-4 rounded border-muted-foreground/30"
+                  />
+                  Unique logos
                 </label>
               </TooltipTrigger>
               <TooltipContent side="bottom">Hide duplicate logos that appear on multiple certificates</TooltipContent>
@@ -497,7 +520,9 @@ export function GalleryContent() {
             <div className="flex w-full items-center gap-1.5 sm:w-auto">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">Brand notability:</span>
+                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">
+                    Brand notability:
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="top">How well-known the company is (1-10)</TooltipContent>
               </Tooltip>
@@ -507,7 +532,9 @@ export function GalleryContent() {
                 </SelectTrigger>
                 <SelectContent>
                   {NOTABILITY_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -515,7 +542,9 @@ export function GalleryContent() {
             <div className="flex w-full items-center gap-1.5 sm:w-auto">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">Logo quality:</span>
+                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">
+                    Logo quality:
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="top">Design quality and detail of the SVG logo (1-10)</TooltipContent>
               </Tooltip>
@@ -525,7 +554,9 @@ export function GalleryContent() {
                 </SelectTrigger>
                 <SelectContent>
                   {LOGO_QUALITY_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -533,7 +564,9 @@ export function GalleryContent() {
             <div className="flex w-full items-center gap-1.5 sm:w-auto">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">Color richness:</span>
+                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">
+                    Color richness:
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="top">How colorful vs monochrome the logo is (1-10)</TooltipContent>
               </Tooltip>
@@ -543,7 +576,9 @@ export function GalleryContent() {
                 </SelectTrigger>
                 <SelectContent>
                   {COLOR_RICHNESS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -553,23 +588,15 @@ export function GalleryContent() {
       </div>
 
       {!loading && logos.length === 0 && (
-        <div className="flex h-64 items-center justify-center text-muted-foreground">
-          No logos found.
-        </div>
+        <div className="flex h-64 items-center justify-center text-muted-foreground">No logos found.</div>
       )}
 
       <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 bg-neutral-800">
         {loading
-          ? Array.from({ length: 60 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square w-full" />
-            ))
-          : logos.map((logo, i) => (
-              <LogoTile key={`${logo.svgHash}-${logo.fingerprint || i}`} logo={logo} />
-            ))}
+          ? Array.from({ length: 60 }).map((_, i) => <Skeleton key={i} className="aspect-square w-full" />)
+          : logos.map((logo, i) => <LogoTile key={`${logo.svgHash}-${logo.fingerprint || i}`} logo={logo} />)}
         {loadingMore &&
-          Array.from({ length: 30 }).map((_, i) => (
-            <Skeleton key={`more-${i}`} className="aspect-square w-full" />
-          ))}
+          Array.from({ length: 30 }).map((_, i) => <Skeleton key={`more-${i}`} className="aspect-square w-full" />)}
       </div>
 
       {/* Infinite scroll sentinel */}

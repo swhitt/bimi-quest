@@ -20,22 +20,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       certType: certificates.certType,
     })
     .from(certificates)
-    .where(
-      sql`${decoded} = ANY(${certificates.sanList})`,
-    )
+    .where(sql`${decoded} = ANY(${certificates.sanList})`)
     .orderBy(desc(certificates.notBefore))
     .limit(50);
 
   const certCount = rows.length;
   const orgs = [...new Set(rows.map((r) => r.subjectOrg).filter(Boolean))];
   const types = [...new Set(rows.map((r) => r.certType).filter(Boolean))];
-  const typeCounts = types
-    .map((t) => `${rows.filter((r) => r.certType === t).length} ${t}`)
-    .join(", ");
+  const typeCounts = types.map((t) => `${rows.filter((r) => r.certType === t).length} ${t}`).join(", ");
 
   const descParts = [
     `${certCount === 50 ? "50+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""} with ${decoded} as SAN`,
-    orgs.length ? `Organizations: ${orgs.slice(0, 3).join(", ")}${orgs.length > 3 ? ` +${orgs.length - 3} more` : ""}` : "",
+    orgs.length
+      ? `Organizations: ${orgs.slice(0, 3).join(", ")}${orgs.length > 3 ? ` +${orgs.length - 3} more` : ""}`
+      : "",
     typeCounts ? `Types: ${typeCounts}` : "",
     "Browse on bimi.quest",
   ].filter(Boolean);

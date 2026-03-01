@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
@@ -6,21 +6,13 @@ import sharp from "sharp";
 
 const PNG_SIZE = 256;
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ hash: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ hash: string }> }) {
   const { hash } = await params;
 
   const [cert] = await db
     .select({ logotypeSvg: certificates.logotypeSvg })
     .from(certificates)
-    .where(
-      and(
-        eq(certificates.logotypeSvgHash, hash),
-        isNotNull(certificates.logotypeSvg),
-      )
-    )
+    .where(and(eq(certificates.logotypeSvgHash, hash), isNotNull(certificates.logotypeSvg)))
     .limit(1);
 
   if (!cert?.logotypeSvg) {
@@ -40,10 +32,7 @@ export async function GET(
     });
   }
 
-  const png = await sharp(Buffer.from(cert.logotypeSvg))
-    .resize(PNG_SIZE, PNG_SIZE)
-    .png()
-    .toBuffer();
+  const png = await sharp(Buffer.from(cert.logotypeSvg)).resize(PNG_SIZE, PNG_SIZE).png().toBuffer();
 
   return new NextResponse(new Uint8Array(png), {
     headers: {

@@ -17,10 +17,7 @@ export interface BIMIRecord {
 
 /** Look up the BIMI TXT record for a domain under the given selector,
  *  falling back to the org domain if no record is found. */
-export async function lookupBIMIRecord(
-  domain: string,
-  selector: string = "default"
-): Promise<BIMIRecord | null> {
+export async function lookupBIMIRecord(domain: string, selector: string = "default"): Promise<BIMIRecord | null> {
   // Try the exact domain first
   const record = await lookupBIMIRecordAt(domain, selector);
   if (record) return record;
@@ -37,10 +34,7 @@ export async function lookupBIMIRecord(
   return orgRecord;
 }
 
-async function lookupBIMIRecordAt(
-  domain: string,
-  selector: string
-): Promise<BIMIRecord | null> {
+async function lookupBIMIRecordAt(domain: string, selector: string): Promise<BIMIRecord | null> {
   try {
     const records = await dns.resolveTxt(`${selector}._bimi.${domain}`);
     // TXT records can be split across multiple strings, concatenate them
@@ -57,29 +51,21 @@ async function lookupBIMIRecordAt(
 }
 
 /** Parse a BIMI TXT record string into structured data */
-export function parseBIMIRecord(
-  txt: string,
-  selector: string = "default"
-): BIMIRecord {
+export function parseBIMIRecord(txt: string, selector: string = "default"): BIMIRecord {
   const { tags, presentTags } = parseTxtTagList(txt);
 
   // Declination: both l= and a= explicitly present but empty
-  const declined =
-    presentTags.has("l") &&
-    presentTags.has("a") &&
-    tags["l"] === "" &&
-    tags["a"] === "";
+  const declined = presentTags.has("l") && presentTags.has("a") && tags["l"] === "" && tags["a"] === "";
 
   const avpRaw = tags["avp"]?.toLowerCase();
-  const avp: "brand" | "personal" | null =
-    avpRaw === "brand" || avpRaw === "personal" ? avpRaw : null;
+  const avp: "brand" | "personal" | null = avpRaw === "brand" || avpRaw === "personal" ? avpRaw : null;
 
   return {
     raw: txt,
     version: tags["v"] || "BIMI1",
     logoUrl: tags["l"] || null,
     authorityUrl: tags["a"] || null,
-    lps: presentTags.has("lps") ? (tags["lps"] || null) : null,
+    lps: presentTags.has("lps") ? tags["lps"] || null : null,
     avp,
     declined,
     selector,

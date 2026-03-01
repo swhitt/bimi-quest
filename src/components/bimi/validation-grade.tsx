@@ -8,13 +8,7 @@ const GRADE_STYLES: Record<BimiGrade, string> = {
   F: "bg-destructive text-destructive-foreground",
 };
 
-export function ValidationGrade({
-  grade,
-  summary,
-}: {
-  grade: BimiGrade;
-  summary: string;
-}) {
+export function ValidationGrade({ grade, summary }: { grade: BimiGrade; summary: string }) {
   return (
     <div className="flex items-center gap-3">
       <div

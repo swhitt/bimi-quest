@@ -27,7 +27,11 @@ export async function resolveCertParam(param: string): Promise<ResolvedCert> {
   const cols = { id: certificates.id, fingerprint: certificates.fingerprintSha256 };
 
   if (/^\d+$/.test(param)) {
-    const [row] = await db.select(cols).from(certificates).where(eq(certificates.id, parseInt(param))).limit(1);
+    const [row] = await db
+      .select(cols)
+      .from(certificates)
+      .where(eq(certificates.id, parseInt(param)))
+      .limit(1);
     return row
       ? { id: row.id, fingerprint: row.fingerprint, error: null }
       : { id: null, fingerprint: null, error: null };
@@ -41,10 +45,18 @@ export async function resolveCertParam(param: string): Promise<ResolvedCert> {
         ? { id: row.id, fingerprint: row.fingerprint, error: null }
         : { id: null, fingerprint: null, error: null };
     }
-    const matches = await db.select(cols).from(certificates).where(like(certificates.fingerprintSha256, `${prefix}%`)).limit(2);
+    const matches = await db
+      .select(cols)
+      .from(certificates)
+      .where(like(certificates.fingerprintSha256, `${prefix}%`))
+      .limit(2);
     if (matches.length === 1) return { id: matches[0].id, fingerprint: matches[0].fingerprint, error: null };
     if (matches.length > 1)
-      return { id: null, fingerprint: null, error: { message: "Ambiguous hash prefix, please provide more characters", status: 400 } };
+      return {
+        id: null,
+        fingerprint: null,
+        error: { message: "Ambiguous hash prefix, please provide more characters", status: 400 },
+      };
     return { id: null, fingerprint: null, error: null };
   }
 
