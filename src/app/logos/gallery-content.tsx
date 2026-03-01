@@ -146,8 +146,11 @@ function LogoTile({ logo }: { logo: Logo }) {
               <span className="text-gray-400 tabular-nums" title="Logo visual quality score">◆ {logo.logoQuality}/10</span>
             )}
           </div>
-          <div className="text-gray-400 truncate max-w-52">
-            {[logo.domain, logo.issuer, logo.ctLogTimestamp ? new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA") : null].filter(Boolean).join(" · ")}
+          <div className="flex items-center gap-0.5 text-gray-400 max-w-80">
+            <span className="truncate">{[logo.domain, logo.issuer].filter(Boolean).join(" · ")}</span>
+            {logo.ctLogTimestamp && (
+              <span className="shrink-0 text-gray-500"> · {new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA")}</span>
+            )}
           </div>
         </div>
       </div>
@@ -165,18 +168,19 @@ function LogoTile({ logo }: { logo: Logo }) {
 }
 
 const SORT_OPTIONS = [
-  { value: "score", label: "Top Scored" },
-  { value: "quality", label: "Best Logos" },
-  { value: "recent", label: "Most Recent" },
+  { value: "score", label: "Brand notability" },
+  { value: "quality", label: "Logo quality" },
+  { value: "color", label: "Full color" },
+  { value: "recent", label: "Most recent" },
 ];
 
 const SCORE_RANGE_OPTIONS = [
-  { value: "1-10", label: "All (1-10)", min: 1, max: 10 },
-  { value: "7-10", label: "Top (7-10)", min: 7, max: 10 },
-  { value: "5-10", label: "High (5+)", min: 5, max: 10 },
-  { value: "3-6", label: "Mid (3-6)", min: 3, max: 6 },
-  { value: "1-3", label: "Low (1-3)", min: 1, max: 3 },
-  { value: "1-2", label: "Bottom (1-2)", min: 1, max: 2 },
+  { value: "1-10", label: "Any notability", min: 1, max: 10 },
+  { value: "7-10", label: "Famous brands (7-10)", min: 7, max: 10 },
+  { value: "5-10", label: "Well-known (5+)", min: 5, max: 10 },
+  { value: "3-6", label: "Mid-tier (3-6)", min: 3, max: 6 },
+  { value: "1-3", label: "Obscure (1-3)", min: 1, max: 3 },
+  { value: "1-2", label: "Unknown (1-2)", min: 1, max: 2 },
 ];
 
 export function GalleryContent() {
@@ -194,6 +198,7 @@ export function GalleryContent() {
     return "5-10";
   })();
   const [scoreRange, setScoreRange] = useState(initRange);
+  const [dedupSvg, setDedupSvg] = useState(false);
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
   const [total, setTotal] = useState(0);
@@ -217,9 +222,12 @@ export function GalleryContent() {
       const localParams = new URLSearchParams(filterQuery);
       localParams.set("page", String(p));
       localParams.set("limit", String(ITEMS_PER_PAGE));
-      localParams.set("sort", sort);
+      // "color" sort maps to quality sort + color richness filter
+      localParams.set("sort", sort === "color" ? "quality" : sort);
+      if (sort === "color") localParams.set("minColorRichness", "6");
       localParams.set("minScore", String(range.min));
       if (range.max < 10) localParams.set("maxScore", String(range.max));
+      if (dedupSvg) localParams.set("dedupSvg", "true");
       fetch(`/api/logos?${localParams}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load");
@@ -255,7 +263,7 @@ export function GalleryContent() {
           setLoadingMore(false);
         });
     },
-    [sort, scoreRange, filterQuery]
+    [sort, scoreRange, dedupSvg, filterQuery]
   );
 
   // Refetch when sort/minScore/filters change
@@ -327,15 +335,26 @@ export function GalleryContent() {
           </SelectContent>
         </Select>
 
-        <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={infiniteScroll}
-            onChange={(e) => setInfiniteScroll(e.target.checked)}
-            className="rounded border-muted-foreground/30"
-          />
-          Infinite scroll
-        </label>
+        <div className="ml-auto flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={dedupSvg}
+              onChange={(e) => setDedupSvg(e.target.checked)}
+              className="rounded border-muted-foreground/30"
+            />
+            Unique logos
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={infiniteScroll}
+              onChange={(e) => setInfiniteScroll(e.target.checked)}
+              className="rounded border-muted-foreground/30"
+            />
+            Infinite scroll
+          </label>
+        </div>
       </div>
 
       {!loading && logos.length === 0 && (

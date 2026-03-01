@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
   const minScore = Math.max(0, Math.min(10, parseInt(params.get("minScore") ?? "", 10) || 3));
   const maxScoreRaw = params.get("maxScore");
   const maxScore = maxScoreRaw ? Math.max(0, Math.min(10, parseInt(maxScoreRaw, 10))) : null;
+  const minColorRichnessRaw = params.get("minColorRichness");
+  const minColorRichness = minColorRichnessRaw ? Math.max(1, Math.min(10, parseInt(minColorRichnessRaw, 10))) : null;
+  const dedupSvg = params.get("dedupSvg") === "true";
 
   const timing = serverTiming();
   try {
@@ -36,12 +39,16 @@ export async function GET(request: NextRequest) {
       isNotNull(certificates.subjectOrg),
       gte(certificates.notabilityScore, minScore),
       ...(maxScore !== null ? [lte(certificates.notabilityScore, maxScore)] : []),
+      ...(minColorRichness !== null ? [gte(certificates.logoColorRichness, minColorRichness)] : []),
       globalFilters
     );
 
-    // Group by normalized org name (lowercase, trimmed) to deduplicate.
-    // Pick the logo and details from the highest-scored certificate per org.
-    const normOrg = sql`lower(trim(${certificates.subjectOrg}))`;
+    // Group by org name or SVG hash depending on dedup mode.
+    // Default groups by org (different orgs sharing the same SVG appear as separate rows).
+    // dedupSvg groups by SVG hash (only one row per unique visual logo).
+    const groupExpr = dedupSvg
+      ? certificates.logotypeSvgHash
+      : sql`lower(trim(${certificates.subjectOrg}))`;
 
     const orderClause = sort === "recent"
       ? sql`max(${certificates.notBefore}) desc`
@@ -74,13 +81,13 @@ export async function GET(request: NextRequest) {
         })
         .from(certificates)
         .where(baseWhere)
-        .groupBy(normOrg)
+        .groupBy(groupExpr)
         .orderBy(orderClause)
         .limit(limit)
         .offset(offset),
       db
         .select({
-          total: sql<number>`count(distinct ${normOrg})::int`,
+          total: sql<number>`count(distinct ${groupExpr})::int`,
         })
         .from(certificates)
         .where(baseWhere),

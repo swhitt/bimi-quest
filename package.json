@@ -14,6 +14,7 @@
     "ingest:reparse": "tsx src/workers/ingest.ts reparse",
     "ingest:rescore": "tsx src/workers/ingest.ts rescore",
     "ingest:backfill-industry": "tsx src/workers/ingest.ts backfill-industry",
+    "ingest:backfill-color-richness": "tsx src/workers/ingest.ts backfill-color-richness",
     "ingest:score-logos": "tsx src/workers/ingest.ts score-logos",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

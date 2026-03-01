@@ -13,6 +13,7 @@ import {
 import { scoreNotabilityBatch, classifyIndustryBatch, type BrandInput } from "@/lib/notability";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
+import { computeColorRichness } from "@/lib/svg-color-richness";
 import { X509Certificate } from "@peculiar/x509";
 
 const connectionString = process.env.DATABASE_URL;
@@ -489,6 +490,45 @@ async function scoreLogos(maxLogos = 0, recalc = false, startOffset = 0) {
   if (recalc) console.log(`Final offset: ${offset}`);
 }
 
+/**
+ * Backfill color richness scores for existing SVGs.
+ * Groups by svg_hash so each unique SVG is scored once, then applied to all certs with that hash.
+ */
+async function backfillColorRichness() {
+  console.log("Backfilling color richness scores...\n");
+
+  const BATCH = 100;
+  let scored = 0;
+
+  while (true) {
+    const rows = await sql`
+      SELECT logotype_svg_hash as hash,
+        (array_agg(logotype_svg))[1] as svg
+      FROM certificates
+      WHERE logotype_svg IS NOT NULL
+        AND logo_color_richness IS NULL
+      GROUP BY logotype_svg_hash
+      LIMIT ${BATCH}
+    `;
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const { hash, svg } = row as { hash: string; svg: string };
+      const score = computeColorRichness(svg);
+      await sql`
+        UPDATE certificates SET logo_color_richness = ${score}
+        WHERE logotype_svg_hash = ${hash}
+      `;
+      scored++;
+      if (scored % 100 === 0) {
+        process.stdout.write(`\r  Scored ${scored} unique SVGs...`);
+      }
+    }
+  }
+
+  console.log(`\nBackfill complete. Scored ${scored} unique SVGs.`);
+}
+
 // Entry point
 const mode = process.argv[2] || "backfill";
 console.log(`BIMI Quest Ingestion Worker - Mode: ${mode}`);
@@ -504,6 +544,8 @@ if (mode === "stream") {
   rescore(limit).catch(console.error);
 } else if (mode === "backfill-industry") {
   backfillIndustry().catch(console.error);
+} else if (mode === "backfill-color-richness") {
+  backfillColorRichness().catch(console.error);
 } else if (mode === "score-logos") {
   // score-logos [limit]              — backfill unscored logos
   // score-logos recalc [offset]      — re-score all, optionally resume from offset

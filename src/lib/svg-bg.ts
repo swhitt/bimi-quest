@@ -1,5 +1,5 @@
 /** Parse a hex color (3 or 6 chars, no #) into [r, g, b] 0-255 */
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
   const h = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
   return [
     parseInt(h.slice(0, 2), 16),
@@ -9,27 +9,38 @@ function hexToRgb(hex: string): [number, number, number] {
 }
 
 /** Perceived luminance (0 = black, 1 = white) */
-function luminance(r: number, g: number, b: number): number {
+export function luminance(r: number, g: number, b: number): number {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
-// Common SVG named colors mapped to approximate luminance
-const NAMED_COLOR_LUM: Record<string, number> = {
-  black: 0, navy: 0.06, darkblue: 0.07, darkgreen: 0.12, maroon: 0.09,
-  purple: 0.12, indigo: 0.08, midnightblue: 0.06, darkslategray: 0.18,
-  darkred: 0.09, dimgray: 0.41, gray: 0.5, grey: 0.5, darkgray: 0.66,
-  silver: 0.75, lightgray: 0.83, gainsboro: 0.86, whitesmoke: 0.96,
-  white: 1, snow: 0.99, ivory: 0.99, ghostwhite: 0.99, mintcream: 0.99,
-  azure: 0.98, aliceblue: 0.97, beige: 0.96, linen: 0.97, seashell: 0.98,
-  red: 0.30, green: 0.29, blue: 0.11, yellow: 0.89, orange: 0.55,
-  cyan: 0.70, magenta: 0.28, lime: 0.72, pink: 0.75, gold: 0.70,
-  tomato: 0.39, coral: 0.50, salmon: 0.57, crimson: 0.21, firebrick: 0.19,
-  brown: 0.16, chocolate: 0.28, sienna: 0.24, tan: 0.69, wheat: 0.85,
-  teal: 0.23, steelblue: 0.29, royalblue: 0.21, dodgerblue: 0.36,
-  cornflowerblue: 0.45, skyblue: 0.68, deepskyblue: 0.48,
+/** Common SVG named colors mapped to RGB values */
+export const NAMED_COLOR_RGB: Record<string, [number, number, number]> = {
+  black: [0, 0, 0], navy: [0, 0, 128], darkblue: [0, 0, 139], darkgreen: [0, 100, 0],
+  maroon: [128, 0, 0], purple: [128, 0, 128], indigo: [75, 0, 130], midnightblue: [25, 25, 112],
+  darkslategray: [47, 79, 79], darkred: [139, 0, 0], dimgray: [105, 105, 105],
+  gray: [128, 128, 128], grey: [128, 128, 128], darkgray: [169, 169, 169],
+  silver: [192, 192, 192], lightgray: [211, 211, 211], gainsboro: [220, 220, 220],
+  whitesmoke: [245, 245, 245], white: [255, 255, 255], snow: [255, 250, 250],
+  ivory: [255, 255, 240], ghostwhite: [248, 248, 255], mintcream: [245, 255, 250],
+  azure: [240, 255, 255], aliceblue: [240, 248, 255], beige: [245, 245, 220],
+  linen: [250, 240, 230], seashell: [255, 245, 238],
+  red: [255, 0, 0], green: [0, 128, 0], blue: [0, 0, 255], yellow: [255, 255, 0],
+  orange: [255, 165, 0], cyan: [0, 255, 255], magenta: [255, 0, 255], lime: [0, 255, 0],
+  pink: [255, 192, 203], gold: [255, 215, 0], tomato: [255, 99, 71], coral: [255, 127, 80],
+  salmon: [250, 128, 114], crimson: [220, 20, 60], firebrick: [178, 34, 34],
+  brown: [165, 42, 42], chocolate: [210, 105, 30], sienna: [160, 82, 45],
+  tan: [210, 180, 140], wheat: [245, 222, 179],
+  teal: [0, 128, 128], steelblue: [70, 130, 180], royalblue: [65, 105, 225],
+  dodgerblue: [30, 144, 255], cornflowerblue: [100, 149, 237], skyblue: [135, 206, 235],
+  deepskyblue: [0, 191, 255],
 };
 
-const SKIP_COLORS = new Set(["none", "transparent", "inherit", "currentcolor", "url"]);
+// Derived luminance map from RGB source of truth
+const NAMED_COLOR_LUM: Record<string, number> = Object.fromEntries(
+  Object.entries(NAMED_COLOR_RGB).map(([name, [r, g, b]]) => [name, luminance(r, g, b)])
+);
+
+export const SKIP_COLORS = new Set(["none", "transparent", "inherit", "currentcolor", "url"]);
 
 const WHITE_FILLS = new Set(["#fff", "#ffffff", "white", "rgb(255,255,255)", "rgb(255, 255, 255)"]);
 

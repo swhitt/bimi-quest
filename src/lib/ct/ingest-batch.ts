@@ -18,6 +18,7 @@ import {
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { scoreNotabilityBatch, type BrandInput, type NotabilityResult } from "@/lib/notability";
+import { computeColorRichness } from "@/lib/svg-color-richness";
 
 const BATCH_SIZE = 256;
 
@@ -196,6 +197,7 @@ export async function processIngestBatch(
             certType: bimiData.certType,
             logotypeSvgHash: bimiData.logotypeSvgHash,
             logotypeSvg: bimiData.logotypeSvg,
+            logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
             rawPem: bimiData.rawPem,
             isPrecert: parsed.entryType === "precert",
             ctLogTimestamp: new Date(parsed.timestamp),

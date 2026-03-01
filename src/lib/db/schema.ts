@@ -45,6 +45,8 @@ export const certificates = pgTable(
     notabilityReason: text("notability_reason"),
     companyDescription: text("company_description"),
     industry: text("industry"),
+    // 1-10 color richness score computed from SVG color extraction (pure regex, no LLM)
+    logoColorRichness: integer("logo_color_richness"),
     // 1-10 visual quality score from multimodal LLM (Gemini Flash-Lite)
     logoQualityScore: integer("logo_quality_score"),
     logoQualityReason: text("logo_quality_reason"),
