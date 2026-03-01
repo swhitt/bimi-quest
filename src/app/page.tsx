@@ -9,7 +9,7 @@ export default async function DashboardPage(props: {
   const searchParams = await props.searchParams;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <HeroSearch />
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent searchParams={searchParams} />
@@ -20,7 +20,7 @@ export default async function DashboardPage(props: {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-[120px] rounded-xl" />

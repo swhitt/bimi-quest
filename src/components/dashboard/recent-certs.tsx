@@ -90,19 +90,19 @@ export function RecentCerts() {
 
   return (
     <section>
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-2">
         <h2 className="text-sm font-medium text-muted-foreground">Recent Issuances</h2>
         <div className="flex-1 border-t" />
       </div>
       {loading && certs.length === 0 ? (
         <p className="text-muted-foreground py-4 text-center" aria-live="polite">Loading...</p>
       ) : sanitizedCerts.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {sanitizedCerts.map((cert) => (
               <Link
                 key={cert.id}
                 href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 transition-colors hover:bg-secondary/50"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border px-3 py-2 transition-colors hover:bg-secondary/50"
               >
                 <div className="flex items-center gap-3">
                   {cert.logotypeSvg ? (
@@ -137,7 +137,7 @@ export function RecentCerts() {
                   ) : (
                     <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
                   )}
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <div className="font-medium flex items-center gap-2">
                       {cert.subjectOrg ||
                         cert.subjectCn ||

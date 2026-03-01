@@ -106,7 +106,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
       </CardHeader>
       <CardContent>
         {chartData.length > 0 ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
             <div role="img" aria-label="Horizontal bar chart showing certificate distribution by Certificate Authority">
               <ResponsiveContainer width="100%" height={barHeight}>
                 <BarChart

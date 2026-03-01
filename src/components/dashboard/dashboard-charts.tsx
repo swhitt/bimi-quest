@@ -21,7 +21,7 @@ interface DashboardChartsProps {
 
 export function DashboardCharts({ caBreakdown, monthlyTrend, selectedCA, apiQuery }: DashboardChartsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2 items-start">
       <MarketShareChart data={caBreakdown} selectedCA={selectedCA} apiQuery={apiQuery} />
       <TrendChart data={monthlyTrend} selectedCA={selectedCA} apiQuery={apiQuery} />
     </div>

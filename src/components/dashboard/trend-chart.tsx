@@ -126,7 +126,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
       <CardContent>
         {pivoted.length > 0 ? (
           <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time">
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart
               data={pivoted}
               margin={{ top: 4, right: 4, left: -16, bottom: 0 }}
