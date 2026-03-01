@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Default groups by org (different orgs sharing the same SVG appear as separate rows).
     // dedupSvg groups by SVG hash (only one row per unique visual logo).
     const groupExpr = dedupSvg
-      ? certificates.logotypeSvgHash
+      ? sql`COALESCE(${certificates.logotypeVisualHash}, ${certificates.logotypeSvgHash})`
       : sql`lower(trim(${certificates.subjectOrg}))`;
 
     const orderClause = sort === "recent"

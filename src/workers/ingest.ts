@@ -14,6 +14,7 @@ import { scoreNotabilityBatch, classifyIndustryBatch, type BrandInput } from "@/
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
 import { computeColorRichness } from "@/lib/svg-color-richness";
+import { computeVisualHash } from "@/lib/dhash";
 import { X509Certificate } from "@peculiar/x509";
 import { toArrayBuffer } from "@/lib/pem";
 import { errorMessage } from "@/lib/utils";
@@ -543,6 +544,61 @@ async function backfillColorRichness(recalc = false) {
   console.log(`\n${mode} complete. Scored ${scored} unique SVGs.`);
 }
 
+/**
+ * Backfill perceptual visual hashes for existing SVGs.
+ * Groups by logotype_svg_hash so each unique SVG is hashed once, then applied to all certs with that hash.
+ */
+async function backfillVisualHash(recalc = false) {
+  const mode = recalc ? "Re-hashing all" : "Backfilling unhashed";
+  console.log(`${mode} visual hashes...\n`);
+
+  const BATCH = 100;
+  let hashed = 0;
+  let lastHash = "";
+
+  while (true) {
+    const rows = recalc
+      ? await sql`
+          SELECT logotype_svg_hash as hash,
+            (array_agg(logotype_svg))[1] as svg
+          FROM certificates
+          WHERE logotype_svg IS NOT NULL
+            AND logotype_svg_hash > ${lastHash}
+          GROUP BY logotype_svg_hash
+          ORDER BY logotype_svg_hash
+          LIMIT ${BATCH}
+        `
+      : await sql`
+          SELECT logotype_svg_hash as hash,
+            (array_agg(logotype_svg))[1] as svg
+          FROM certificates
+          WHERE logotype_svg IS NOT NULL
+            AND logotype_visual_hash IS NULL
+          GROUP BY logotype_svg_hash
+          LIMIT ${BATCH}
+        `;
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const { hash, svg } = row as { hash: string; svg: string };
+      const visualHash = await computeVisualHash(svg);
+      if (visualHash) {
+        await sql`
+          UPDATE certificates SET logotype_visual_hash = ${visualHash}
+          WHERE logotype_svg_hash = ${hash}
+        `;
+      }
+      lastHash = hash;
+      hashed++;
+      if (hashed % 100 === 0) {
+        process.stdout.write(`\r  Hashed ${hashed} unique SVGs...`);
+      }
+    }
+  }
+
+  console.log(`\n${mode} complete. Hashed ${hashed} unique SVGs.`);
+}
+
 // Entry point
 const mode = process.argv[2] || "backfill";
 console.log(`BIMI Quest Ingestion Worker - Mode: ${mode}`);
@@ -561,6 +617,9 @@ if (mode === "stream") {
 } else if (mode === "backfill-color-richness") {
   const recalc = process.argv[3] === "recalc";
   backfillColorRichness(recalc).catch(console.error);
+} else if (mode === "backfill-visual-hash") {
+  const recalc = process.argv[3] === "recalc";
+  backfillVisualHash(recalc).catch(console.error);
 } else if (mode === "score-logos") {
   // score-logos [limit]              — backfill unscored logos
   // score-logos recalc [offset]      — re-score all, optionally resume from offset

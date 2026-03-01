@@ -19,6 +19,7 @@ import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { scoreNotabilityBatch, type BrandInput, type NotabilityResult } from "@/lib/notability";
 import { computeColorRichness } from "@/lib/svg-color-richness";
+import { computeVisualHash } from "@/lib/dhash";
 import { errorMessage } from "@/lib/utils";
 
 const BATCH_SIZE = 256;
@@ -199,6 +200,7 @@ export async function processIngestBatch(
             logotypeSvgHash: bimiData.logotypeSvgHash,
             logotypeSvg: bimiData.logotypeSvg,
             logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
+            logotypeVisualHash: bimiData.logotypeSvg ? await computeVisualHash(bimiData.logotypeSvg) : null,
             rawPem: bimiData.rawPem,
             isPrecert: parsed.entryType === "precert",
             ctLogTimestamp: new Date(parsed.timestamp),

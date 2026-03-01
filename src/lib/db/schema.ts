@@ -50,6 +50,8 @@ export const certificates = pgTable(
     // 1-10 visual quality score from multimodal LLM (Gemini Flash-Lite)
     logoQualityScore: integer("logo_quality_score"),
     logoQualityReason: text("logo_quality_reason"),
+    // Perceptual dHash of the rendered SVG, invariant to XML formatting/padding/zoom
+    logotypeVisualHash: text("logotype_visual_hash"),
     // True when a precert has been superseded by its matching final certificate
     isSuperseded: boolean("is_superseded").default(false),
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
@@ -73,6 +75,7 @@ export const certificates = pgTable(
     index("idx_certificates_san_list_gin").using("gin", table.sanList),
     index("idx_certificates_subject_org").on(table.subjectOrg),
     index("idx_certificates_svg_hash").on(table.logotypeSvgHash),
+    index("idx_certificates_visual_hash").on(table.logotypeVisualHash),
     // Partial index: most queries filter out superseded certs
     index("idx_certs_active_notbefore").on(table.notBefore).where(sql`${table.isSuperseded} = false`),
   ]
