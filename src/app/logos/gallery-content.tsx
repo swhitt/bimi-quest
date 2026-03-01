@@ -3,7 +3,12 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { SlidersHorizontal } from "lucide-react";
+import { ListFilter } from "lucide-react";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { domainSlug } from "@/lib/domain-slug";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { stripWhiteSvgBg, tileBgForSvg, isLightBg } from "@/lib/svg-bg";
@@ -67,6 +72,13 @@ const PRESET_LABELS: Record<PresetKey, string> = {
   "full-color": "Full Color",
   "new-arrivals": "New Arrivals",
   "hidden-gems": "Hidden Gems",
+};
+
+const PRESET_DESCRIPTIONS: Record<PresetKey, string> = {
+  showcase: "High-quality logos from well-known brands",
+  "full-color": "Vibrant, colorful logos across all brands",
+  "new-arrivals": "Most recently issued certificates",
+  "hidden-gems": "Great logos from lesser-known brands",
 };
 
 const PRESET_KEYS = Object.keys(PRESETS) as PresetKey[];
@@ -417,17 +429,23 @@ export function GalleryContent() {
           {/* Preset tabs */}
           <div className="flex items-center gap-1">
             {PRESET_KEYS.map((key) => (
-              <button
-                key={key}
-                onClick={() => handlePresetClick(key)}
-                className={`rounded-full px-3 py-2 text-xs font-medium transition-colors ${
-                  activePreset === key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                }`}
-              >
-                {PRESET_LABELS[key]}
-              </button>
+              <Tooltip key={key}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handlePresetClick(key)}
+                    className={`rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                      activePreset === key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }`}
+                  >
+                    {PRESET_LABELS[key]}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {PRESET_DESCRIPTIONS[key]}
+                </TooltipContent>
+              </Tooltip>
             ))}
           </div>
 
@@ -439,7 +457,7 @@ export function GalleryContent() {
             }`}
             title="Advanced filters"
           >
-            <SlidersHorizontal className="size-4" />
+            <ListFilter className="size-4" />
             {isCustom && (
               <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" />
             )}
@@ -447,15 +465,20 @@ export function GalleryContent() {
 
           {/* Right-aligned checkboxes */}
           <div className="ml-auto flex items-center gap-3">
-            <label className="flex items-center gap-1.5 py-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={dedupSvg}
-                onChange={(e) => setDedupSvg(e.target.checked)}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label className="flex items-center gap-1.5 py-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={dedupSvg}
+                    onChange={(e) => setDedupSvg(e.target.checked)}
                 className="size-4 rounded border-muted-foreground/30"
               />
               Unique logos
-            </label>
+                </label>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Hide duplicate logos that appear on multiple certificates</TooltipContent>
+            </Tooltip>
             <label className="flex items-center gap-1.5 py-1.5 text-xs text-muted-foreground cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -472,7 +495,12 @@ export function GalleryContent() {
         {filtersOpen && (
           <div className="flex flex-wrap items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
             <div className="flex w-full items-center gap-1.5 sm:w-auto">
-              <span className="text-xs text-muted-foreground shrink-0">Brand notability:</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">Brand notability:</span>
+                </TooltipTrigger>
+                <TooltipContent side="top">How well-known the company is (1-10)</TooltipContent>
+              </Tooltip>
               <Select value={customFilters.notability} onValueChange={(v) => handleFilterChange("notability", v)}>
                 <SelectTrigger size="sm" className="w-full sm:w-[140px]" aria-label="Brand notability filter">
                   <SelectValue />
@@ -485,7 +513,12 @@ export function GalleryContent() {
               </Select>
             </div>
             <div className="flex w-full items-center gap-1.5 sm:w-auto">
-              <span className="text-xs text-muted-foreground shrink-0">Logo quality:</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">Logo quality:</span>
+                </TooltipTrigger>
+                <TooltipContent side="top">Design quality and detail of the SVG logo (1-10)</TooltipContent>
+              </Tooltip>
               <Select value={customFilters.logoQuality} onValueChange={(v) => handleFilterChange("logoQuality", v)}>
                 <SelectTrigger size="sm" className="w-full sm:w-[140px]" aria-label="Logo quality filter">
                   <SelectValue />
@@ -498,7 +531,12 @@ export function GalleryContent() {
               </Select>
             </div>
             <div className="flex w-full items-center gap-1.5 sm:w-auto">
-              <span className="text-xs text-muted-foreground shrink-0">Color richness:</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs text-muted-foreground shrink-0 cursor-default border-b border-dotted border-muted-foreground/40">Color richness:</span>
+                </TooltipTrigger>
+                <TooltipContent side="top">How colorful vs monochrome the logo is (1-10)</TooltipContent>
+              </Tooltip>
               <Select value={customFilters.colorRichness} onValueChange={(v) => handleFilterChange("colorRichness", v)}>
                 <SelectTrigger size="sm" className="w-full sm:w-[140px]" aria-label="Color richness filter">
                   <SelectValue />
