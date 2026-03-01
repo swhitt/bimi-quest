@@ -152,7 +152,7 @@ export function CertificatesTable({
         const svg = row.original.logotypeSvg;
         if (!svg) {
           return (
-            <div className="size-10 rounded-md border bg-muted flex items-center justify-center">
+            <div className="size-10 xl:size-8 rounded-md border bg-muted flex items-center justify-center">
               <span className="text-xs text-muted-foreground">N/A</span>
             </div>
           );
@@ -163,7 +163,7 @@ export function CertificatesTable({
           <HoverCard openDelay={300} closeDelay={100}>
             <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
               <div
-                className="size-10 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
+                className="size-10 xl:size-8 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
             </HoverCardTrigger>
@@ -243,10 +243,20 @@ export function CertificatesTable({
             <span className="text-xs text-muted-foreground block truncate">
               {domain}
               {extraSans.length > 0 && (
-                <span className="text-muted-foreground/60" title={sans.join(", ")}>
-                  {" "}
-                  +{extraSans.length} more
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <span className="text-muted-foreground/60 cursor-help"> +{extraSans.length} more</span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-80">
+                    <ul className="space-y-0.5">
+                      {extraSans.map((san) => (
+                        <li key={san} className="font-mono text-xs">
+                          {san}
+                        </li>
+                      ))}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </span>
             {(row.original.companyDescription || row.original.industry) && (
@@ -474,7 +484,7 @@ export function CertificatesTable({
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={cn("text-xs uppercase tracking-wider", header.column.columnDef.meta?.className)}
+                    className={cn("text-xs uppercase tracking-wider xl:h-8", header.column.columnDef.meta?.className)}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
@@ -491,7 +501,7 @@ export function CertificatesTable({
                   onClick={() => router.push(`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cn("py-3", cell.column.columnDef.meta?.className)}>
+                    <TableCell key={cell.id} className={cn("py-3 xl:py-1.5", cell.column.columnDef.meta?.className)}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
