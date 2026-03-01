@@ -65,32 +65,34 @@ export async function MapContent({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Country</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">VMC</TableHead>
-                <TableHead className="text-right">CMC</TableHead>
-                <TableHead className="text-right">Share</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((entry) => (
-                <TableRow key={entry.country || "unknown"}>
-                  <TableCell className="font-medium">
-                    {entry.country || "Unknown"}
-                  </TableCell>
-                  <TableCell className="text-right">{entry.total}</TableCell>
-                  <TableCell className="text-right">{entry.vmcCount}</TableCell>
-                  <TableCell className="text-right">{entry.cmcCount}</TableCell>
-                  <TableCell className="text-right">
-                    {total > 0 ? ((entry.total / total) * 100).toFixed(1) : 0}%
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Country</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">VMC</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">CMC</TableHead>
+                  <TableHead className="text-right">Share</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data.map((entry) => (
+                  <TableRow key={entry.country || "unknown"}>
+                    <TableCell className="font-medium">
+                      {entry.country || "Unknown"}
+                    </TableCell>
+                    <TableCell className="text-right">{entry.total}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">{entry.vmcCount}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">{entry.cmcCount}</TableCell>
+                    <TableCell className="text-right">
+                      {total > 0 ? ((entry.total / total) * 100).toFixed(1) : 0}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </>

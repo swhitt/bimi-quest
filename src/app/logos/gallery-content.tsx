@@ -230,6 +230,10 @@ function LogoTile({ logo }: { logo: Logo }) {
           )}
         </button>
       )}
+      {/* Persistent mobile org label (touch devices lack hover) */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1 sm:hidden">
+        <span className="text-[9px] text-white/90 line-clamp-1">{logo.org || logo.domain || "?"}</span>
+      </div>
       {/* Tooltip */}
       <div className="pointer-events-none absolute left-1/2 bottom-full z-40 mb-2 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <div className="rounded bg-black/90 px-2 py-1.5 backdrop-blur-sm text-[10px] leading-tight whitespace-nowrap">
@@ -244,7 +248,7 @@ function LogoTile({ logo }: { logo: Logo }) {
               <span className="text-gray-400 tabular-nums" title="Notability score">★ {logo.score}/10</span>
             )}
           </div>
-          <div className="flex items-center gap-0.5 text-gray-400 max-w-80">
+          <div className="flex items-center gap-0.5 text-gray-400 max-w-64 sm:max-w-80">
             <span className="truncate">{[logo.domain, logo.issuer].filter(Boolean).join(" · ")}</span>
             {logo.ctLogTimestamp && (
               <span className="shrink-0 text-gray-500"> · {new Date(logo.ctLogTimestamp).toLocaleDateString("en-CA")}</span>
@@ -416,7 +420,7 @@ export function GalleryContent() {
               <button
                 key={key}
                 onClick={() => handlePresetClick(key)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-full px-3 py-2 text-xs font-medium transition-colors ${
                   activePreset === key
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
@@ -443,21 +447,21 @@ export function GalleryContent() {
 
           {/* Right-aligned checkboxes */}
           <div className="ml-auto flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 py-1.5 text-xs text-muted-foreground cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={dedupSvg}
                 onChange={(e) => setDedupSvg(e.target.checked)}
-                className="rounded border-muted-foreground/30"
+                className="size-4 rounded border-muted-foreground/30"
               />
               Unique logos
             </label>
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 py-1.5 text-xs text-muted-foreground cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={infiniteScroll}
                 onChange={(e) => setInfiniteScroll(e.target.checked)}
-                className="rounded border-muted-foreground/30"
+                className="size-4 rounded border-muted-foreground/30"
               />
               Infinite scroll
             </label>
@@ -467,10 +471,10 @@ export function GalleryContent() {
         {/* Collapsible filter row */}
         {filtersOpen && (
           <div className="flex flex-wrap items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Brand notability:</span>
+            <div className="flex w-full items-center gap-1.5 sm:w-auto">
+              <span className="text-xs text-muted-foreground shrink-0">Brand notability:</span>
               <Select value={customFilters.notability} onValueChange={(v) => handleFilterChange("notability", v)}>
-                <SelectTrigger size="sm" className="w-[140px]" aria-label="Brand notability filter">
+                <SelectTrigger size="sm" className="w-full sm:w-[140px]" aria-label="Brand notability filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -480,10 +484,10 @@ export function GalleryContent() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Logo quality:</span>
+            <div className="flex w-full items-center gap-1.5 sm:w-auto">
+              <span className="text-xs text-muted-foreground shrink-0">Logo quality:</span>
               <Select value={customFilters.logoQuality} onValueChange={(v) => handleFilterChange("logoQuality", v)}>
-                <SelectTrigger size="sm" className="w-[140px]" aria-label="Logo quality filter">
+                <SelectTrigger size="sm" className="w-full sm:w-[140px]" aria-label="Logo quality filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -493,10 +497,10 @@ export function GalleryContent() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Color richness:</span>
+            <div className="flex w-full items-center gap-1.5 sm:w-auto">
+              <span className="text-xs text-muted-foreground shrink-0">Color richness:</span>
               <Select value={customFilters.colorRichness} onValueChange={(v) => handleFilterChange("colorRichness", v)}>
-                <SelectTrigger size="sm" className="w-[140px]" aria-label="Color richness filter">
+                <SelectTrigger size="sm" className="w-full sm:w-[140px]" aria-label="Color richness filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -516,7 +520,7 @@ export function GalleryContent() {
         </div>
       )}
 
-      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15 bg-neutral-800">
+      <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 bg-neutral-800">
         {loading
           ? Array.from({ length: 60 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square w-full" />

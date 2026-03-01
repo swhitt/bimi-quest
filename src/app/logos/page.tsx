@@ -35,7 +35,7 @@ export default async function GalleryPage() {
       </div>
       <Suspense
         fallback={
-          <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15">
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
             {Array.from({ length: 60 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square w-full" />
             ))}

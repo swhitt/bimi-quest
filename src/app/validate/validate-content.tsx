@@ -141,7 +141,7 @@ export function ValidateContent() {
 
       <Card>
         <CardContent className="pt-6 space-y-3">
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <HostnameAutocomplete
               value={domain}
               onChange={setDomain}
@@ -150,7 +150,7 @@ export function ValidateContent() {
                 handleValidate(val);
               }}
               placeholder="example.com"
-              className="max-w-md flex-1"
+              className="sm:max-w-md flex-1"
             />
             <Button onClick={() => handleValidate()} disabled={loading}>
               {loading ? "Validating..." : "Validate"}
@@ -184,7 +184,7 @@ export function ValidateContent() {
         <div className="space-y-4">
           {/* Tier 1: The Verdict */}
           <Card>
-            <CardHeader className="flex flex-row items-center gap-4">
+            <CardHeader className="flex flex-row flex-wrap items-center gap-4">
               <ValidationGrade grade={result.grade} summary={result.gradeSummary} />
               <div className="ml-auto flex items-center gap-2">
                 <Badge

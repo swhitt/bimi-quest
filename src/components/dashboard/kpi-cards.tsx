@@ -48,7 +48,7 @@ export function KPICards({
   expiringCount,
 }: KPICardsProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 border rounded-lg divide-x divide-y md:divide-y-0 bg-card">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 border rounded-lg sm:divide-x divide-y md:divide-y-0 bg-card">
       <div className="px-4 py-3">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active (Valid)</div>
         <div className="text-2xl font-bold tabular-nums mt-1">{activeCerts.toLocaleString()}</div>
@@ -80,7 +80,7 @@ export function KPICards({
         <div className="text-xs text-muted-foreground mt-0.5">Organizations using {selectedCA}</div>
       </div>
 
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 sm:col-span-2 md:col-span-1">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Expiring Soon</div>
         <div className="flex items-center gap-2 mt-1">
           <span className={`text-2xl font-bold tabular-nums ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>

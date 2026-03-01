@@ -251,7 +251,7 @@ export function UniversalSearch({
         className={
           isHero
             ? "h-12 text-base pl-10 bg-background border-border/60 shadow-sm focus-visible:ring-primary/30"
-            : "h-8 w-44 text-xs bg-muted/50 border-transparent focus:border-border focus:w-64 transition-all duration-200 pl-7"
+            : "h-8 w-36 md:w-44 text-xs bg-muted/50 border-transparent focus:border-border focus:w-52 md:focus:w-64 transition-all duration-200 pl-7"
         }
         autoFocus={autoFocus}
         autoComplete="off"

@@ -97,7 +97,7 @@ export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
     <Card>
       <CardContent className="pt-6">
         <Tabs defaultValue="spec">
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 overflow-x-auto whitespace-nowrap">
             <TabsTrigger value="spec">
               Spec Compliance
               {specFailCount > 0 && (

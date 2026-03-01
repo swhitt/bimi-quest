@@ -172,7 +172,7 @@ export function RecentCerts() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   <Badge variant="outline">
                     <abbr className="no-underline" title={cert.certType === "VMC" ? "Verified Mark Certificate" : cert.certType === "CMC" ? "Common Mark Certificate" : undefined}>
                       {cert.certType || "BIMI"}

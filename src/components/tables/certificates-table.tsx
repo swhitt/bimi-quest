@@ -100,7 +100,7 @@ function SortHeader({
   const ariaSortValue = isActive ? (currentDir === "asc" ? "ascending" : "descending") : undefined;
   return (
     <button
-      className="flex items-center gap-1 hover:text-foreground transition-colors -ml-2 px-2 py-1 rounded"
+      className="flex items-center gap-1 hover:text-foreground transition-colors -ml-2 px-2 py-1.5 rounded"
       onClick={() => onSort(sortKey)}
       aria-sort={ariaSortValue}
     >
@@ -174,6 +174,7 @@ export function CertificatesTable({
   const columns: ColumnDef<CertRow>[] = [
     {
       id: "logo",
+      meta: { className: "hidden sm:table-cell" },
       header: "",
       size: 48,
       cell: ({ row }) => {
@@ -296,6 +297,7 @@ export function CertificatesTable({
     },
     {
       accessorKey: "issuerOrg",
+      meta: { className: "hidden sm:table-cell" },
       header: () => (
         <SortHeader
           label="CA / Type"
@@ -408,8 +410,8 @@ export function CertificatesTable({
     <div className="space-y-4">
       {/* Search bar */}
       {showSearch && (
-        <div className="flex items-center gap-3">
-          <div className="relative max-w-sm flex-1">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative sm:max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
             <HostnameAutocomplete
               value={searchInput}

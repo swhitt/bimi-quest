@@ -5,11 +5,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TrendChart = dynamic(
   () => import("@/components/dashboard/trend-chart").then((m) => ({ default: m.TrendChart })),
-  { loading: () => <Skeleton className="h-[300px]" /> }
+  { loading: () => <Skeleton className="h-[260px]" /> }
 );
 const MarketShareChart = dynamic(
   () => import("@/components/dashboard/market-share-chart").then((m) => ({ default: m.MarketShareChart })),
-  { loading: () => <Skeleton className="h-[300px]" /> }
+  { loading: () => <Skeleton className="h-[260px]" /> }
 );
 
 interface DashboardChartsProps {

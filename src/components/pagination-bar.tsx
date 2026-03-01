@@ -25,7 +25,7 @@ export function PaginationBar({
   noun?: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
       <p className="text-sm text-muted-foreground">
         {pagination.total.toLocaleString()} {noun}
       </p>
@@ -33,6 +33,7 @@ export function PaginationBar({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-w-9 min-h-9 sm:min-w-auto sm:min-h-auto"
           disabled={pagination.page <= 1}
           onClick={() => onPageChange(1)}
           aria-label="First page"
@@ -42,6 +43,7 @@ export function PaginationBar({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-w-9 min-h-9 sm:min-w-auto sm:min-h-auto"
           disabled={pagination.page <= 1}
           onClick={() => onPageChange(pagination.page - 1)}
           aria-label="Previous page"
@@ -88,6 +90,7 @@ export function PaginationBar({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-w-9 min-h-9 sm:min-w-auto sm:min-h-auto"
           disabled={pagination.page >= pagination.totalPages}
           onClick={() => onPageChange(pagination.page + 1)}
           aria-label="Next page"
@@ -97,6 +100,7 @@ export function PaginationBar({
         <Button
           variant="outline"
           size="icon-sm"
+          className="min-w-9 min-h-9 sm:min-w-auto sm:min-h-auto"
           disabled={pagination.page >= pagination.totalPages}
           onClick={() => onPageChange(pagination.totalPages)}
           aria-label="Last page"

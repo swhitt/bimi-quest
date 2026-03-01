@@ -3,10 +3,19 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
 import { UniversalSearch } from "./universal-search";
 import { caNameToSlug } from "@/lib/ca-slugs";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -19,7 +28,12 @@ const navItems = [
 // Secondary filter keys that travel as query params
 const SECONDARY_FILTER_KEYS = ["type", "mark", "validity", "precert", "root", "industry", "from", "to", "expiresFrom", "expiresTo", "country"];
 
-function NavLinks() {
+/**
+ * Shared hook for nav link href building and active-state detection.
+ * Both desktop NavLinks and MobileNavLinks use this to preserve
+ * CA context and secondary filters across navigation.
+ */
+function useNavHelpers() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -44,11 +58,16 @@ function NavLinks() {
     return qs ? `${base}?${qs}` : base;
   }
 
-  // Determine which nav item is active based on actual pathname
   function isActive(href: string) {
     if (href === "/") return pathname === "/" || pathname === `/ca/${caSlug}`;
     return pathname.startsWith(href);
   }
+
+  return { buildHref, isActive };
+}
+
+function NavLinks() {
+  const { buildHref, isActive } = useNavHelpers();
 
   return (
     <nav aria-label="Main" className="flex items-center gap-1 text-sm">
@@ -70,33 +89,121 @@ function NavLinks() {
   );
 }
 
+function MobileNavLinks({ onNavigate }: { onNavigate: () => void }) {
+  const { buildHref, isActive } = useNavHelpers();
+
+  return (
+    <nav aria-label="Mobile navigation" className="flex flex-col">
+      {navItems.map((item) => (
+        <SheetClose key={item.href} asChild>
+          <Link
+            href={buildHref(item.href)}
+            onClick={onNavigate}
+            className={cn(
+              "py-3 px-4 text-base transition-colors min-h-[44px] flex items-center",
+              isActive(item.href)
+                ? "text-foreground font-medium bg-accent"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+          >
+            {item.label}
+          </Link>
+        </SheetClose>
+      ))}
+    </nav>
+  );
+}
+
 export function Nav() {
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   return (
     <header className="border-b bg-background sticky top-0 z-50">
       <div className="container mx-auto flex h-12 items-center px-4">
-        <Link href="/" className="mr-6 flex items-center gap-2">
+        <Link href="/" className="mr-3 md:mr-6 flex items-center gap-2">
           <img src="/logo.svg" alt="" className="size-6" />
           <span className="text-base font-semibold">BIMI Quest</span>
         </Link>
-        <Suspense
-          fallback={
-            <nav className="flex items-center gap-1 text-sm">
-              {navItems.map((i) => (
-                <span
-                  key={i.href}
-                  className="px-2 py-1 text-muted-foreground"
-                >
-                  {i.label}
-                </span>
-              ))}
-            </nav>
-          }
-        >
-          <NavLinks />
-        </Suspense>
+
+        {/* Desktop nav links - hidden on mobile */}
+        <div className="hidden md:flex">
+          <Suspense
+            fallback={
+              <nav className="flex items-center gap-1 text-sm">
+                {navItems.map((i) => (
+                  <span
+                    key={i.href}
+                    className="px-2 py-1 text-muted-foreground"
+                  >
+                    {i.label}
+                  </span>
+                ))}
+              </nav>
+            }
+          >
+            <NavLinks />
+          </Suspense>
+        </div>
+
+        {/* Mobile hamburger menu */}
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="size-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-72 p-0">
+            <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+            <div className="flex flex-col h-full">
+              {/* Logo header */}
+              <div className="flex items-center gap-2 p-4 border-b">
+                <img src="/logo.svg" alt="" className="size-6" />
+                <span className="text-base font-semibold">BIMI Quest</span>
+              </div>
+
+              {/* Nav links */}
+              <Suspense
+                fallback={
+                  <nav className="flex flex-col">
+                    {navItems.map((i) => (
+                      <span
+                        key={i.href}
+                        className="py-3 px-4 text-base text-muted-foreground"
+                      >
+                        {i.label}
+                      </span>
+                    ))}
+                  </nav>
+                }
+              >
+                <MobileNavLinks onNavigate={() => setSheetOpen(false)} />
+              </Suspense>
+
+              {/* Search */}
+              <div className="px-4 py-3 border-t">
+                <UniversalSearch variant="hero" />
+              </div>
+
+              {/* Theme toggle at the bottom */}
+              <div className="mt-auto p-4 border-t">
+                <Suspense>
+                  <ThemeToggle />
+                </Suspense>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         <div className="ml-auto flex items-center gap-3">
-          <UniversalSearch variant="nav" />
+          {/* Search hidden on mobile - available in hamburger sheet instead */}
+          <div className="hidden md:block">
+            <UniversalSearch variant="nav" />
+          </div>
           <Suspense>
             <ThemeToggle />
           </Suspense>

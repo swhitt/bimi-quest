@@ -55,6 +55,7 @@ export function WorldMap({ data, className }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [topology, setTopology] = useState<Topology | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   useEffect(() => {
     if (topoCache) { setTopology(topoCache); return; }
@@ -112,7 +113,26 @@ export function WorldMap({ data, className }: WorldMapProps) {
   }
 
   function handleMouseMove(e: React.MouseEvent, alpha2: string | undefined) {
+    if (!alpha2 || selectedCountry) return;
+    const val = dataMap.get(alpha2) || 0;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setTooltip({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top - 10,
+      text: `${alpha2}: ${val.toLocaleString()} certificate${val !== 1 ? "s" : ""}`,
+    });
+  }
+
+  function handleCountryClick(e: React.MouseEvent, alpha2: string | undefined) {
     if (!alpha2) return;
+    e.stopPropagation();
+    if (selectedCountry === alpha2) {
+      setSelectedCountry(null);
+      setTooltip(null);
+      return;
+    }
+    setSelectedCountry(alpha2);
     const val = dataMap.get(alpha2) || 0;
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -133,7 +153,8 @@ export function WorldMap({ data, className }: WorldMapProps) {
         ref={svgRef}
         viewBox="0 0 960 500"
         className="w-full h-auto"
-        onMouseLeave={() => setTooltip(null)}
+        onMouseLeave={() => { if (!selectedCountry) setTooltip(null); }}
+        onClick={() => { setSelectedCountry(null); setTooltip(null); }}
       >
         {countriesGeo.features.map((feat, i) => {
           const numId = feat.id?.toString() || "";
@@ -149,7 +170,8 @@ export function WorldMap({ data, className }: WorldMapProps) {
               strokeWidth={0.5}
               className="transition-colors hover:brightness-110 cursor-default"
               onMouseMove={(e) => handleMouseMove(e, alpha2)}
-              onMouseLeave={() => setTooltip(null)}
+              onMouseLeave={() => { if (!selectedCountry) setTooltip(null); }}
+              onClick={(e) => handleCountryClick(e, alpha2)}
             />
           );
         })}
