@@ -85,7 +85,6 @@ const ALLOWED_ATTRS = [
   "display",
   "visibility",
   "color",
-  "baseProfile",
 ];
 
 /** Add viewBox from width/height if missing, so SVGs scale properly */
@@ -97,9 +96,23 @@ function ensureViewBox(svg: string): string {
   return svg.replace(/<svg\b/, `<svg viewBox="0 0 ${wMatch[1]} ${hMatch[1]}"`);
 }
 
+/** Strip attributes/content that browsers silently remove from parsed SVG DOM,
+ *  so server-rendered HTML matches what the browser produces during hydration. */
+function stripBrowserDropped(svg: string): string {
+  return svg
+    // baseProfile is deprecated in SVG 2; browsers drop it from the DOM
+    .replace(/\s+baseProfile\s*=\s*"[^"]*"/gi, "")
+    .replace(/\s+baseProfile\s*=\s*'[^']*'/gi, "")
+    // HTML/XML comments are stripped by DOMPurify and some browser parsers
+    .replace(/<!--[\s\S]*?-->/g, "");
+}
+
 /** Sanitize SVG markup, stripping scripts and event handlers */
 export function sanitizeSvg(raw: string): string {
-  const normalized = ensureViewBox(raw);
+  // Strip XML declaration and leading whitespace so server and client produce
+  // identical output (DOMPurify strips it client-side, causing hydration mismatch)
+  const stripped = raw.replace(/^\s*<\?xml[^?]*\?>\s*/i, "");
+  const normalized = ensureViewBox(stripBrowserDropped(stripped));
   // DOMPurify needs a browser DOM; during SSR pass through as-is
   if (typeof window === "undefined") return normalized;
   return DOMPurify.sanitize(normalized, {

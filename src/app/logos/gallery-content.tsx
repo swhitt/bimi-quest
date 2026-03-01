@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { SlidersHorizontal } from "lucide-react";
+import { getDomainWithoutSuffix } from "tldts";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { stripWhiteSvgBg, tileBgForSvg, isLightBg } from "@/lib/svg-bg";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,11 +43,121 @@ interface GalleryResponse {
 
 const ITEMS_PER_PAGE = 100;
 
-function domainSlug(domain: string): string {
-  const parts = domain.toLowerCase().replace(/[^a-z0-9.\-]/g, "").split(".");
-  if (parts.length >= 2) return parts[parts.length - 2];
-  return parts[0] || "logo";
+/* ── Preset definitions ─────────────────────────────────────────────── */
+
+type PresetKey = "showcase" | "full-color" | "new-arrivals" | "hidden-gems";
+
+interface PresetConfig {
+  sort: string;
+  minScore?: number;
+  maxScore?: number;
+  minLogoQuality?: number;
+  minColorRichness?: number;
 }
+
+const PRESETS: Record<PresetKey, PresetConfig> = {
+  showcase:       { sort: "quality", minScore: 5, minLogoQuality: 6 },
+  "full-color":   { sort: "quality", minScore: 1, minColorRichness: 7 },
+  "new-arrivals": { sort: "recent",  minScore: 1 },
+  "hidden-gems":  { sort: "quality", minScore: 1, maxScore: 4, minLogoQuality: 6 },
+};
+
+const PRESET_LABELS: Record<PresetKey, string> = {
+  showcase: "Showcase",
+  "full-color": "Full Color",
+  "new-arrivals": "New Arrivals",
+  "hidden-gems": "Hidden Gems",
+};
+
+const PRESET_KEYS = Object.keys(PRESETS) as PresetKey[];
+
+/* ── Filter option definitions ──────────────────────────────────────── */
+
+interface FilterOption {
+  value: string;
+  label: string;
+  min?: number;
+  max?: number;
+}
+
+const NOTABILITY_OPTIONS: FilterOption[] = [
+  { value: "any",   label: "Any" },
+  { value: "7+",    label: "Famous (7+)",      min: 7 },
+  { value: "5+",    label: "Well-known (5+)",   min: 5 },
+  { value: "3-6",   label: "Mid-tier (3-6)",    min: 3, max: 6 },
+  { value: "1-4",   label: "Obscure (1-4)",     min: 1, max: 4 },
+  { value: "1-2",   label: "Unknown (1-2)",     min: 1, max: 2 },
+];
+
+const LOGO_QUALITY_OPTIONS: FilterOption[] = [
+  { value: "any",   label: "Any" },
+  { value: "8+",    label: "Excellent (8+)",    min: 8 },
+  { value: "6+",    label: "Good (6+)",         min: 6 },
+  { value: "4+",    label: "Fair (4+)",         min: 4 },
+  { value: "1-3",   label: "Poor (1-3)",        min: 1, max: 3 },
+];
+
+const COLOR_RICHNESS_OPTIONS: FilterOption[] = [
+  { value: "any",   label: "Any" },
+  { value: "8+",    label: "Vibrant (8+)",      min: 8 },
+  { value: "6+",    label: "Colorful (6+)",     min: 6 },
+  { value: "4+",    label: "Some color (4+)",   min: 4 },
+  { value: "1-3",   label: "Monochrome (1-3)",  min: 1, max: 3 },
+];
+
+interface CustomFilters {
+  notability: string;
+  logoQuality: string;
+  colorRichness: string;
+}
+
+const DEFAULT_FILTERS: CustomFilters = { notability: "any", logoQuality: "any", colorRichness: "any" };
+
+/* ── Helpers ────────────────────────────────────────────────────────── */
+
+function domainSlug(domain: string): string {
+  const clean = domain.replace(/^\*\./, "").replace(/^www\./, "").toLowerCase();
+  const name = getDomainWithoutSuffix(clean);
+  return name || clean.split(".")[0] || "logo";
+}
+
+function hasCustomFilters(f: CustomFilters): boolean {
+  return f.notability !== "any" || f.logoQuality !== "any" || f.colorRichness !== "any";
+}
+
+/** Build API query params from either a preset or custom filters. */
+function buildGalleryParams(
+  preset: PresetKey | null,
+  filters: CustomFilters,
+): URLSearchParams {
+  const p = new URLSearchParams();
+
+  if (preset) {
+    const cfg = PRESETS[preset];
+    p.set("sort", cfg.sort);
+    if (cfg.minScore != null) p.set("minScore", String(cfg.minScore));
+    if (cfg.maxScore != null) p.set("maxScore", String(cfg.maxScore));
+    if (cfg.minLogoQuality != null) p.set("minLogoQuality", String(cfg.minLogoQuality));
+    if (cfg.minColorRichness != null) p.set("minColorRichness", String(cfg.minColorRichness));
+  } else {
+    // Custom mode: default sort is quality
+    p.set("sort", "quality");
+
+    const nota = NOTABILITY_OPTIONS.find((o) => o.value === filters.notability);
+    if (nota?.min != null) p.set("minScore", String(nota.min));
+    if (nota?.max != null) p.set("maxScore", String(nota.max));
+
+    const lq = LOGO_QUALITY_OPTIONS.find((o) => o.value === filters.logoQuality);
+    if (lq?.min != null) p.set("minLogoQuality", String(lq.min));
+
+    const cr = COLOR_RICHNESS_OPTIONS.find((o) => o.value === filters.colorRichness);
+    if (cr?.min != null) p.set("minColorRichness", String(cr.min));
+  }
+
+  return p;
+}
+
+/* ── LogoTile (unchanged except tooltip) ────────────────────────────── */
 
 function LogoTile({ logo }: { logo: Logo }) {
   const linkHref = logo.fingerprint
@@ -54,8 +166,6 @@ function LogoTile({ logo }: { logo: Logo }) {
   const [copied, setCopied] = useState(false);
   const [lazyRef, isVisible] = useLazyRender<HTMLDivElement>("300px");
 
-  // Compute background color eagerly so the placeholder matches the final tile color.
-  // These are cheap regex scans compared to DOMPurify sanitization + DOM insertion.
   const { bgColor, lightBg, ringColor, strippedSvg } = useMemo(() => {
     const stripped = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
     const bg = stripped ? tileBgForSvg(stripped) : undefined;
@@ -68,7 +178,6 @@ function LogoTile({ logo }: { logo: Logo }) {
     };
   }, [logo.svg]);
 
-  // Defer the expensive DOMPurify sanitization until the tile is in view
   const sanitizedHtml = useMemo(() => {
     if (!isVisible || !strippedSvg) return null;
     return sanitizeSvg(strippedSvg);
@@ -110,12 +219,10 @@ function LogoTile({ logo }: { logo: Logo }) {
           </div>
         )
       ) : (
-        /* Placeholder: colored box matching final bg, with a subtle shimmer */
         <div className="h-full w-full animate-pulse rounded-sm" style={{
           backgroundColor: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
         }} />
       )}
-      {/* Copy link button */}
       {linkHref && (
         <button
           onClick={handleCopyLink}
@@ -129,7 +236,7 @@ function LogoTile({ logo }: { logo: Logo }) {
           )}
         </button>
       )}
-      {/* Tooltip — positioned above tile to avoid z-fight with scaled tile */}
+      {/* Tooltip */}
       <div className="pointer-events-none absolute left-1/2 bottom-full z-40 mb-2 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <div className="rounded bg-black/90 px-2 py-1.5 backdrop-blur-sm text-[10px] leading-tight whitespace-nowrap">
           <div className="flex items-center gap-1">
@@ -140,10 +247,7 @@ function LogoTile({ logo }: { logo: Logo }) {
               }`}>{logo.certType}</span>
             )}
             {logo.score != null && (
-              <span className="text-gray-400 tabular-nums" title="Notability score: brand recognition and email volume">★ {logo.score}/10</span>
-            )}
-            {logo.logoQuality != null && (
-              <span className="text-gray-400 tabular-nums" title="Logo visual quality score">◆ {logo.logoQuality}/10</span>
+              <span className="text-gray-400 tabular-nums" title="Notability score">★ {logo.score}/10</span>
             )}
           </div>
           <div className="flex items-center gap-0.5 text-gray-400 max-w-80">
@@ -167,21 +271,7 @@ function LogoTile({ logo }: { logo: Logo }) {
   return tile;
 }
 
-const SORT_OPTIONS = [
-  { value: "score", label: "Brand notability" },
-  { value: "quality", label: "Logo quality" },
-  { value: "color", label: "Full color" },
-  { value: "recent", label: "Most recent" },
-];
-
-const SCORE_RANGE_OPTIONS = [
-  { value: "1-10", label: "Any notability", min: 1, max: 10 },
-  { value: "7-10", label: "Famous brands (7-10)", min: 7, max: 10 },
-  { value: "5-10", label: "Well-known (5+)", min: 5, max: 10 },
-  { value: "3-6", label: "Mid-tier (3-6)", min: 3, max: 6 },
-  { value: "1-3", label: "Obscure (1-3)", min: 1, max: 3 },
-  { value: "1-2", label: "Unknown (1-2)", min: 1, max: 2 },
-];
+/* ── GalleryContent ─────────────────────────────────────────────────── */
 
 export function GalleryContent() {
   const searchParams = useSearchParams();
@@ -189,15 +279,18 @@ export function GalleryContent() {
   const filterQuery = buildApiParams();
   const initialPage = parseInt(searchParams.get("page") ?? "1") || 1;
 
-  const [sort, setSort] = useState(searchParams.get("sort") ?? "recent");
-  const initRange = (() => {
-    const min = searchParams.get("minScore");
-    const max = searchParams.get("maxScore");
-    if (min && max) return `${min}-${max}`;
-    if (min) return `${min}-10`;
-    return "5-10";
+  // Resolve initial preset from URL ?view= param
+  const initPreset = (() => {
+    const v = searchParams.get("view");
+    if (v && v in PRESETS) return v as PresetKey;
+    // No view param and no legacy sort/score params → default to showcase
+    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "showcase" as PresetKey;
+    return null;
   })();
-  const [scoreRange, setScoreRange] = useState(initRange);
+
+  const [activePreset, setActivePreset] = useState<PresetKey | null>(initPreset);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [customFilters, setCustomFilters] = useState<CustomFilters>(DEFAULT_FILTERS);
   const [dedupSvg, setDedupSvg] = useState(false);
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
@@ -218,16 +311,14 @@ export function GalleryContent() {
       setError(null);
       if (!append) window.scrollTo({ top: 0, behavior: "smooth" });
 
-      const range = SCORE_RANGE_OPTIONS.find((o) => o.value === scoreRange) ?? SCORE_RANGE_OPTIONS[2];
+      const galleryParams = buildGalleryParams(activePreset, customFilters);
       const localParams = new URLSearchParams(filterQuery);
+      // Merge gallery-specific params
+      for (const [k, v] of galleryParams) localParams.set(k, v);
       localParams.set("page", String(p));
       localParams.set("limit", String(ITEMS_PER_PAGE));
-      // "color" sort maps to quality sort + color richness filter
-      localParams.set("sort", sort === "color" ? "quality" : sort);
-      if (sort === "color") localParams.set("minColorRichness", "6");
-      localParams.set("minScore", String(range.min));
-      if (range.max < 10) localParams.set("maxScore", String(range.max));
       if (dedupSvg) localParams.set("dedupSvg", "true");
+
       fetch(`/api/logos?${localParams}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load");
@@ -246,13 +337,12 @@ export function GalleryContent() {
           setTotal(result.total);
           setPage(p);
 
-          // Update URL without triggering Next.js navigation (avoids middleware re-render)
-          const params = new URLSearchParams();
-          if (sort !== "recent") params.set("sort", sort);
-          if (scoreRange !== "5-10") params.set("score", scoreRange);
+          // Update URL: ?view=<preset> for presets, nothing for custom
+          const urlParams = new URLSearchParams();
+          if (activePreset) urlParams.set("view", activePreset);
           const basePath = window.location.pathname.replace(/\/page\/\d+$/, "");
           const pageSuffix = p > 1 ? `/page/${p}` : "";
-          const qs = params.toString();
+          const qs = urlParams.toString();
           window.history.replaceState(null, "", `${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
         })
         .catch((err) =>
@@ -263,10 +353,10 @@ export function GalleryContent() {
           setLoadingMore(false);
         });
     },
-    [sort, scoreRange, dedupSvg, filterQuery]
+    [activePreset, customFilters, dedupSvg, filterQuery]
   );
 
-  // Refetch when sort/minScore/filters change
+  // Refetch when preset/filters/dedup change
   useEffect(() => {
     setLogos([]);
     fetchPage(1);
@@ -293,6 +383,16 @@ export function GalleryContent() {
     return () => observer.disconnect();
   }, [infiniteScroll, loading, loadingMore, page, total, fetchPage]);
 
+  const handlePresetClick = useCallback((key: PresetKey) => {
+    setActivePreset(key);
+    setCustomFilters(DEFAULT_FILTERS);
+  }, []);
+
+  const handleFilterChange = useCallback((field: keyof CustomFilters, value: string) => {
+    setActivePreset(null);
+    setCustomFilters((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
   if (error) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
@@ -308,53 +408,111 @@ export function GalleryContent() {
   }
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+  const isCustom = hasCustomFilters(customFilters);
 
   return (
     <div className="space-y-4">
       {/* Gallery controls */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger size="sm" className="w-[130px]" aria-label="Sort order">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Preset tabs */}
+          <div className="flex items-center gap-1">
+            {PRESET_KEYS.map((key) => (
+              <button
+                key={key}
+                onClick={() => handlePresetClick(key)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  activePreset === key
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                }`}
+              >
+                {PRESET_LABELS[key]}
+              </button>
             ))}
-          </SelectContent>
-        </Select>
+          </div>
 
-        <Select value={scoreRange} onValueChange={setScoreRange}>
-          <SelectTrigger size="sm" className="w-[130px]" aria-label="Score range">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SCORE_RANGE_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {/* Gear icon for advanced filters */}
+          <button
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={`relative rounded-md p-1.5 transition-colors ${
+              filtersOpen ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+            title="Advanced filters"
+          >
+            <SlidersHorizontal className="size-4" />
+            {isCustom && (
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" />
+            )}
+          </button>
 
-        <div className="ml-auto flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={dedupSvg}
-              onChange={(e) => setDedupSvg(e.target.checked)}
-              className="rounded border-muted-foreground/30"
-            />
-            Unique logos
-          </label>
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={infiniteScroll}
-              onChange={(e) => setInfiniteScroll(e.target.checked)}
-              className="rounded border-muted-foreground/30"
-            />
-            Infinite scroll
-          </label>
+          {/* Right-aligned checkboxes */}
+          <div className="ml-auto flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={dedupSvg}
+                onChange={(e) => setDedupSvg(e.target.checked)}
+                className="rounded border-muted-foreground/30"
+              />
+              Unique logos
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={infiniteScroll}
+                onChange={(e) => setInfiniteScroll(e.target.checked)}
+                className="rounded border-muted-foreground/30"
+              />
+              Infinite scroll
+            </label>
+          </div>
         </div>
+
+        {/* Collapsible filter row */}
+        {filtersOpen && (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Brand notability:</span>
+              <Select value={customFilters.notability} onValueChange={(v) => handleFilterChange("notability", v)}>
+                <SelectTrigger size="sm" className="w-[140px]" aria-label="Brand notability filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NOTABILITY_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Logo quality:</span>
+              <Select value={customFilters.logoQuality} onValueChange={(v) => handleFilterChange("logoQuality", v)}>
+                <SelectTrigger size="sm" className="w-[140px]" aria-label="Logo quality filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOGO_QUALITY_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Color richness:</span>
+              <Select value={customFilters.colorRichness} onValueChange={(v) => handleFilterChange("colorRichness", v)}>
+                <SelectTrigger size="sm" className="w-[140px]" aria-label="Color richness filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_RICHNESS_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
       </div>
 
       {!loading && logos.length === 0 && (

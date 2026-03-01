@@ -68,11 +68,15 @@ export function computeColorRichness(svg: string): number {
   const hueDiversity = Math.min(hueBuckets.size / 6, 1); // normalize: 6+ buckets = max
 
   // Weighted score: emphasize chromatic fraction and hue diversity
-  const raw =
+  let raw =
     chromaticFraction * 0.3 +
     (1 - whiteFraction) * 0.15 +
     avgSaturation * 0.25 +
     hueDiversity * 0.3;
+
+  // Single-hue logos (one color + white/transparent) aren't "full color" —
+  // halve the raw score when fewer than 2 distinct hue buckets are present.
+  if (hueBuckets.size < 2) raw *= 0.5;
 
   // Map 0-1 to 1-10
   return Math.max(1, Math.min(10, Math.round(raw * 9 + 1)));

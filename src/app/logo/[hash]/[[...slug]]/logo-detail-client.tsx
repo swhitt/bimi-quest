@@ -185,6 +185,14 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
               )}
             </div>
           )}
+
+          {/* Primary action */}
+          <Button asChild variant="outline" size="sm" className="mt-2">
+            <Link href={`/certificates/${logo.fingerprintSha256.slice(0, 12)}`}>
+              <Award className="mr-1.5 size-3.5" />
+              View certificate details
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -237,18 +245,12 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
 
         {/* Action links */}
         <div className="flex flex-wrap gap-3 p-4 bg-muted/30">
-          <Link
-            href={`/certificates/${logo.fingerprintSha256.slice(0, 12)}`}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-          >
-            <Award className="size-3.5" />
-            View certificate
-          </Link>
           {logo.org && logo.org !== "Unknown" && (
             <Link
               href={`/orgs/${encodeURIComponent(logo.org)}`}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
+              <Award className="size-3.5" />
               All certs for {logo.org}
             </Link>
           )}

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { sql, and, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
+import { getDomainWithoutSuffix } from "tldts";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { LogoDetailClient } from "./logo-detail-client";
 
@@ -11,9 +12,9 @@ interface Props {
 }
 
 function domainSlug(domain: string): string {
-  // Extract the main part of the domain (e.g. "aws" from "aws.com")
-  const parts = domain.replace(/^www\./, "").split(".");
-  return (parts.length >= 2 ? parts[parts.length - 2] : parts[0])?.toLowerCase() || "logo";
+  const clean = domain.replace(/^\*\./, "").replace(/^www\./, "").toLowerCase();
+  const name = getDomainWithoutSuffix(clean);
+  return name || clean.split(".")[0] || "logo";
 }
 
 async function getLogo(hash: string) {

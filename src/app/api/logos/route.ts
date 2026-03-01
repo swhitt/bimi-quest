@@ -23,11 +23,13 @@ export async function GET(request: NextRequest) {
   const offset = (page - 1) * limit;
   const sortRaw = params.get("sort");
   const sort = sortRaw === "recent" ? "recent" : sortRaw === "quality" ? "quality" : "score";
-  const minScore = Math.max(0, Math.min(10, parseInt(params.get("minScore") ?? "", 10) || 3));
+  const minScore = Math.max(0, Math.min(10, parseInt(params.get("minScore") ?? "", 10) || 1));
   const maxScoreRaw = params.get("maxScore");
   const maxScore = maxScoreRaw ? Math.max(0, Math.min(10, parseInt(maxScoreRaw, 10))) : null;
   const minColorRichnessRaw = params.get("minColorRichness");
   const minColorRichness = minColorRichnessRaw ? Math.max(1, Math.min(10, parseInt(minColorRichnessRaw, 10))) : null;
+  const minLogoQualityRaw = params.get("minLogoQuality");
+  const minLogoQuality = minLogoQualityRaw ? Math.max(1, Math.min(10, parseInt(minLogoQualityRaw, 10))) : null;
   const dedupSvg = params.get("dedupSvg") === "true";
 
   const timing = serverTiming();
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
       gte(certificates.notabilityScore, minScore),
       ...(maxScore !== null ? [lte(certificates.notabilityScore, maxScore)] : []),
       ...(minColorRichness !== null ? [gte(certificates.logoColorRichness, minColorRichness)] : []),
+      ...(minLogoQuality !== null ? [gte(certificates.logoQualityScore, minLogoQuality)] : []),
       globalFilters
     );
 

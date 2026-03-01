@@ -494,22 +494,35 @@ async function scoreLogos(maxLogos = 0, recalc = false, startOffset = 0) {
  * Backfill color richness scores for existing SVGs.
  * Groups by svg_hash so each unique SVG is scored once, then applied to all certs with that hash.
  */
-async function backfillColorRichness() {
-  console.log("Backfilling color richness scores...\n");
+async function backfillColorRichness(recalc = false) {
+  const mode = recalc ? "Re-scoring all" : "Backfilling unscored";
+  console.log(`${mode} color richness scores...\n`);
 
   const BATCH = 100;
   let scored = 0;
+  let lastHash = "";
 
   while (true) {
-    const rows = await sql`
-      SELECT logotype_svg_hash as hash,
-        (array_agg(logotype_svg))[1] as svg
-      FROM certificates
-      WHERE logotype_svg IS NOT NULL
-        AND logo_color_richness IS NULL
-      GROUP BY logotype_svg_hash
-      LIMIT ${BATCH}
-    `;
+    const rows = recalc
+      ? await sql`
+          SELECT logotype_svg_hash as hash,
+            (array_agg(logotype_svg))[1] as svg
+          FROM certificates
+          WHERE logotype_svg IS NOT NULL
+            AND logotype_svg_hash > ${lastHash}
+          GROUP BY logotype_svg_hash
+          ORDER BY logotype_svg_hash
+          LIMIT ${BATCH}
+        `
+      : await sql`
+          SELECT logotype_svg_hash as hash,
+            (array_agg(logotype_svg))[1] as svg
+          FROM certificates
+          WHERE logotype_svg IS NOT NULL
+            AND logo_color_richness IS NULL
+          GROUP BY logotype_svg_hash
+          LIMIT ${BATCH}
+        `;
     if (rows.length === 0) break;
 
     for (const row of rows) {
@@ -519,6 +532,7 @@ async function backfillColorRichness() {
         UPDATE certificates SET logo_color_richness = ${score}
         WHERE logotype_svg_hash = ${hash}
       `;
+      lastHash = hash;
       scored++;
       if (scored % 100 === 0) {
         process.stdout.write(`\r  Scored ${scored} unique SVGs...`);
@@ -526,7 +540,7 @@ async function backfillColorRichness() {
     }
   }
 
-  console.log(`\nBackfill complete. Scored ${scored} unique SVGs.`);
+  console.log(`\n${mode} complete. Scored ${scored} unique SVGs.`);
 }
 
 // Entry point
@@ -545,7 +559,8 @@ if (mode === "stream") {
 } else if (mode === "backfill-industry") {
   backfillIndustry().catch(console.error);
 } else if (mode === "backfill-color-richness") {
-  backfillColorRichness().catch(console.error);
+  const recalc = process.argv[3] === "recalc";
+  backfillColorRichness(recalc).catch(console.error);
 } else if (mode === "score-logos") {
   // score-logos [limit]              — backfill unscored logos
   // score-logos recalc [offset]      — re-score all, optionally resume from offset
