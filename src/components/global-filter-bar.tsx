@@ -24,7 +24,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { FilterChips, type FilterChip } from "@/components/filter-chips";
-import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { X, ListFilter, ChevronDown } from "lucide-react";
 import {
   ALL_CA_SLUGS,
   CA_DISPLAY_NAMES,
@@ -531,7 +531,7 @@ function FilterBarInner() {
                 aria-expanded={sheetOpen}
                 aria-controls="filter-sheet"
               >
-                <SlidersHorizontal className="size-4" />
+                <ListFilter className="size-4" />
                 Filters
                 {filterCount > 0 && (
                   <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
@@ -597,7 +597,7 @@ function FilterBarInner() {
 
         {/* ===== Desktop: Primary selects + More Filters popover ===== */}
         <div className="hidden md:flex items-center gap-2">
-          <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
+          <ListFilter className="size-4 text-muted-foreground shrink-0" />
           {caSelect()}
           {typeSelect()}
           {markSelect()}
