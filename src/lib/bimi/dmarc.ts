@@ -1,5 +1,6 @@
 import { promises as dns } from "dns";
 import { getDomain } from "tldts";
+import { parseTxtTagList } from "./txt-tags";
 
 export interface DMARCRecord {
   raw: string;
@@ -62,16 +63,7 @@ async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
 
 /** Parse a DMARC TXT record string */
 export function parseDMARCRecord(txt: string): DMARCRecord {
-  const tags: Record<string, string> = {};
-  const parts = txt.split(";").map((s) => s.trim());
-
-  for (const part of parts) {
-    const eqIdx = part.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = part.substring(0, eqIdx).trim().toLowerCase();
-    const value = part.substring(eqIdx + 1).trim();
-    tags[key] = value;
-  }
+  const { tags } = parseTxtTagList(txt);
 
   const policy = tags["p"] as "none" | "quarantine" | "reject";
 

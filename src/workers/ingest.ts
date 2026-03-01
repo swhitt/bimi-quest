@@ -15,6 +15,8 @@ import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
 import { computeColorRichness } from "@/lib/svg-color-richness";
 import { X509Certificate } from "@peculiar/x509";
+import { toArrayBuffer } from "@/lib/pem";
+import { errorMessage } from "@/lib/utils";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -217,9 +219,7 @@ async function reparse() {
 
       try {
         const der = pemToDer(raw_pem);
-        const cert = new X509Certificate(
-          der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer
-        );
+        const cert = new X509Certificate(toArrayBuffer(der));
 
         const bimiData = await extractBIMIData(cert, der);
         const updates: Record<string, string | null> = {};
@@ -446,7 +446,7 @@ async function scoreLogos(maxLogos = 0, recalc = false, startOffset = 0) {
         const png = await svgToPng(svg);
         logos.push({ svgHash: hash, png, label: label || hash.slice(0, 12) });
       } catch (err) {
-        console.warn(`  SVG render failed for ${hash.slice(0, 12)}...: ${err instanceof Error ? err.message : String(err)}`);
+        console.warn(`  SVG render failed for ${hash.slice(0, 12)}...: ${errorMessage(err)}`);
         await sql`
           UPDATE certificates SET logo_quality_score = 1
           WHERE logotype_svg_hash = ${hash}
@@ -472,7 +472,7 @@ async function scoreLogos(maxLogos = 0, recalc = false, startOffset = 0) {
         console.log(`  ${scored}: ${logo.label} = ${score}/10 (${reason || "no reason"})`);
       }
     } catch (err) {
-      console.error(`\n  Gemini API error:`, err instanceof Error ? err.message : String(err));
+      console.error(`\n  Gemini API error:`, errorMessage(err));
       if (recalc) console.error(`  Resume: bun run ingest:score-logos recalc ${offset}`);
       await throttle(5000);
     }

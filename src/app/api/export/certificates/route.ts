@@ -4,16 +4,10 @@ import { certificates } from "@/lib/db/schema";
 import { desc, count } from "drizzle-orm";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 import { log } from "@/lib/logger";
+import { escapeCSV } from "@/lib/csv";
 
 const MAX_ROWS = 50_000;
 const BATCH_SIZE = 5_000;
-
-function escapeCSV(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
 
 const CSV_HEADER = [
   "Serial Number",

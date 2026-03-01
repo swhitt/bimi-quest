@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { errorMessage } from "@/lib/utils";
 
 export const INDUSTRIES = [
   "Technology",
@@ -143,7 +144,7 @@ export async function scoreNotability(
 
     return normalizeResult(toolBlock.input);
   } catch (err) {
-    console.warn("scoreNotability failed:", err instanceof Error ? err.message : String(err));
+    console.warn("scoreNotability failed:", errorMessage(err));
     return null;
   }
 }
@@ -197,7 +198,7 @@ export async function scoreNotabilityBatch(
       results.set(r.id, normalized);
     }
   } catch (err) {
-    console.warn("scoreNotabilityBatch failed:", err instanceof Error ? err.message : String(err));
+    console.warn("scoreNotabilityBatch failed:", errorMessage(err));
   }
 
   return results;
@@ -269,7 +270,7 @@ export async function classifyIndustryBatch(
       }
     }
   } catch (err) {
-    console.warn("classifyIndustryBatch failed:", err instanceof Error ? err.message : String(err));
+    console.warn("classifyIndustryBatch failed:", errorMessage(err));
   }
 
   return results;

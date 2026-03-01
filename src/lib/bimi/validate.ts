@@ -7,6 +7,8 @@ import { computeGrade } from "./grade";
 import type { BimiCheckItem, BimiGrade } from "./types";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { extractDnField, pemToDer, deriveCertType } from "@/lib/ct/parser";
+import { toArrayBuffer } from "@/lib/pem";
+import { BIMI_MARK_TYPE_OID } from "@/lib/bimi/oids";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 
 // CAs authorized to issue BIMI certificates per CA/Browser Forum VMC requirements.
@@ -83,14 +85,14 @@ export async function validateDomain(
   const errors: string[] = [];
   const now = new Date();
 
-  // 1. BIMI DNS record (with org domain fallback built in)
-  const bimiRecord = await lookupBIMIRecord(domain, selector);
+  // 1 & 2. BIMI + DMARC DNS lookups (independent, run in parallel)
+  const [bimiRecord, dmarcLookup] = await Promise.all([
+    lookupBIMIRecord(domain, selector),
+    lookupDMARC(domain),
+  ]);
   if (!bimiRecord) {
     errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
   }
-
-  // 2. DMARC record
-  const dmarcLookup = await lookupDMARC(domain);
   const dmarcRecord = dmarcLookup?.record ?? null;
   const isSubdomain = dmarcLookup?.isSubdomain ?? false;
   let dmarcValid = false;
@@ -766,10 +768,9 @@ function parsePemBasicInfo(
 } | null {
   try {
     const der = pemToDer(pem);
-    const cert = new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
+    const cert = new X509Certificate(toArrayBuffer(der));
 
-    const MARK_TYPE_OID = "1.3.6.1.4.1.53087.1.13";
-    const markType = extractDnField(cert.subject, MARK_TYPE_OID);
+    const markType = extractDnField(cert.subject, BIMI_MARK_TYPE_OID);
     const certType = deriveCertType(markType);
 
     // Extract issuer org from DN (try short name first, fall back to OID)
@@ -845,7 +846,7 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
     // Parse all certs
     const certs = pemBlocks.map((block) => {
       const der = pemToDer(block);
-      return new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
+      return new X509Certificate(toArrayBuffer(der));
     });
 
     if (certs.length === 1) {

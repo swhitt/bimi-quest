@@ -1,6 +1,6 @@
-import { headers } from "next/headers";
 import { CertificatesTable } from "@/components/tables/certificates-table";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
+import { getBaseUrl } from "@/lib/server-url";
 
 export async function CertificatesContent({
   searchParams,
@@ -9,10 +9,7 @@ export async function CertificatesContent({
 }) {
   const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
-  const hdrs = await headers();
-  const host = hdrs.get("host") || "localhost:3000";
-  const protocol = hdrs.get("x-forwarded-proto") || "http";
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getBaseUrl();
 
   let data: { data: []; pagination: { page: number; limit: number; total: number; totalPages: number } };
   try {

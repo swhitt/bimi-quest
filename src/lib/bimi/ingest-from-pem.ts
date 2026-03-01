@@ -5,6 +5,8 @@ import { certificates } from "@/lib/db/schema";
 import { extractBIMIData, hasBIMIOID } from "@/lib/ct/parser";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { scoreNotability } from "@/lib/notability";
+import { toArrayBuffer } from "@/lib/pem";
+import { errorMessage } from "@/lib/utils";
 
 /**
  * Ingest a BIMI certificate from raw PEM into the database.
@@ -21,9 +23,7 @@ export async function ingestFromPem(
       .replace(/-----END CERTIFICATE-----/g, "")
       .replace(/\s/g, "");
     const der = new Uint8Array(Buffer.from(b64, "base64"));
-    const cert = new X509Certificate(
-      der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer
-    );
+    const cert = new X509Certificate(toArrayBuffer(der));
 
     if (!hasBIMIOID(cert)) return null;
 
@@ -84,7 +84,7 @@ export async function ingestFromPem(
 
     return inserted?.fingerprintSha256 ?? null;
   } catch (err) {
-    console.error("ingestFromPem failed:", err instanceof Error ? err.message : String(err));
+    console.error("ingestFromPem failed:", errorMessage(err));
     return null;
   }
 }

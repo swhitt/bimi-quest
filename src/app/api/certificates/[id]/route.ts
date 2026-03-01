@@ -5,6 +5,7 @@ import { certificates, chainCerts, certificateChainLinks, domainBimiState } from
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { resolveCertParam } from "@/lib/db/filters";
 import { extractDnField, pemToDer } from "@/lib/ct/parser";
+import { toArrayBuffer } from "@/lib/pem";
 import { X509Certificate } from "@peculiar/x509";
 import { log } from "@/lib/logger";
 import { serverTiming } from "@/lib/server-timing";
@@ -81,7 +82,7 @@ export async function GET(
       let issuerOrg: string | null = null;
       try {
         const der = pemToDer(c.rawPem);
-        const x509 = new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
+        const x509 = new X509Certificate(toArrayBuffer(der));
         serialNumber = x509.serialNumber;
         subjectOrg = extractDnField(x509.subject, "O");
         issuerOrg = extractDnField(x509.issuer, "O");

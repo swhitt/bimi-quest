@@ -1,6 +1,5 @@
-import { gunzipSync } from "node:zlib";
-import { createHash } from "node:crypto";
 import type { BimiCheckItem } from "./types";
+import { decompressIfGzipped, sha256Hex } from "@/lib/pem";
 
 export interface SVGValidationResult {
   valid: boolean;
@@ -356,19 +355,11 @@ function checkAttrValue(
  * Detects gzip by checking for the magic bytes 0x1f 0x8b.
  */
 export function decompressSvgIfNeeded(buffer: Buffer | Uint8Array): string {
-  if (buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
-    const decompressed = gunzipSync(buffer);
-    return decompressed.toString("utf-8");
-  }
-  return Buffer.from(buffer).toString("utf-8");
+  return decompressIfGzipped(new Uint8Array(buffer)) ?? Buffer.from(buffer).toString("utf-8");
 }
 
-/**
- * Compute a hex-encoded SHA-256 hash of SVG content.
- */
-export function computeSvgHash(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
-}
+/** Compute a hex-encoded SHA-256 hash of SVG content. */
+export const computeSvgHash = sha256Hex;
 
 /**
  * Map SVG validation errors/warnings to structured BimiCheckItem entries.

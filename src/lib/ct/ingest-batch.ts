@@ -19,6 +19,7 @@ import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { scoreNotabilityBatch, type BrandInput, type NotabilityResult } from "@/lib/notability";
 import { computeColorRichness } from "@/lib/svg-color-richness";
+import { errorMessage } from "@/lib/utils";
 
 const BATCH_SIZE = 256;
 
@@ -64,7 +65,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
 
   const scores = await scoreNotabilityBatch(brands);
 
-  for (const cert of batch) {
+  await Promise.all(batch.map(async (cert) => {
     const notability = scores.get(String(cert.id)) ?? null;
     if (notability) {
       await db
@@ -96,7 +97,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
         hasLogo: cert.hasLogo,
       }).catch((err) => console.warn("Notification dispatch failed:", err));
     }
-  }
+  }));
 }
 
 /**
@@ -136,7 +137,7 @@ export async function processIngestBatch(
       response = await getEntries(i, batchEnd);
     } catch (err) {
       onProgress?.(
-        `Failed to fetch batch at ${i}: ${err instanceof Error ? err.message : String(err)}`
+        `Failed to fetch batch at ${i}: ${errorMessage(err)}`
       );
       if (maxBatches > 0) break;
       await throttle(2000);
@@ -304,7 +305,7 @@ export async function processIngestBatch(
         }
         lastSuccessIndex = entryIndex;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errorMessage(err);
         onProgress?.(
           `Error processing entry ${entryIndex}: ${msg.slice(0, 200)}`
         );
@@ -315,20 +316,21 @@ export async function processIngestBatch(
     // Update cursor once per Gorgon batch instead of per-entry
     const newCursor = lastSuccessIndex + 1;
     if (newCursor > i) {
+      const now = new Date();
       await db
         .insert(ingestionCursors)
         .values({
           logName: "gorgon",
           lastIndex: newCursor,
-          lastRun: new Date(),
-          updatedAt: new Date(),
+          lastRun: now,
+          updatedAt: now,
         })
         .onConflictDoUpdate({
           target: ingestionCursors.logName,
           set: {
             lastIndex: newCursor,
-            lastRun: new Date(),
-            updatedAt: new Date(),
+            lastRun: now,
+            updatedAt: now,
           },
         });
       processed = newCursor;

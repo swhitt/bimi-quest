@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { getBaseUrl } from "@/lib/server-url";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -25,10 +25,7 @@ export async function MapContent({
 }) {
   const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
-  const hdrs = await headers();
-  const host = hdrs.get("host") || "localhost:3000";
-  const protocol = hdrs.get("x-forwarded-proto") || "http";
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getBaseUrl();
 
   let data: GeoEntry[];
   try {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { sql, and, isNotNull, desc } from "drizzle-orm";
+import { sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { HostContent } from "./host-content";
@@ -21,10 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     })
     .from(certificates)
     .where(
-      and(
-        sql`${decoded} = ANY(${certificates.sanList})`,
-        isNotNull(certificates.fingerprintSha256),
-      ),
+      sql`${decoded} = ANY(${certificates.sanList})`,
     )
     .orderBy(desc(certificates.notBefore))
     .limit(50);

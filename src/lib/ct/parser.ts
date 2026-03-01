@@ -1,10 +1,11 @@
 import { X509Certificate } from "@peculiar/x509";
-import { createHash } from "crypto";
 import type { CTLogEntry } from "./gorgon";
+import { toArrayBuffer, sha256Hex, decompressIfGzipped, pemToDer } from "@/lib/pem";
+import { bytesToHex } from "@/lib/hex";
+import { BIMI_MARK_TYPE_OID } from "@/lib/bimi/oids";
 
 // BIMI-relevant OIDs
 const LOGOTYPE_OID = "1.3.6.1.5.5.7.1.12";
-const BIMI_MARK_TYPE_OID = "1.3.6.1.4.1.53087.1.13";
 
 export interface ParsedEntry {
   cert: X509Certificate;
@@ -54,11 +55,6 @@ function base64ToBuffer(b64: string): Uint8Array {
   return bytes;
 }
 
-function bufferToHex(buf: Uint8Array): string {
-  return Array.from(buf)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 function derToPem(der: Uint8Array): string {
   let b64: string;
@@ -72,8 +68,8 @@ function derToPem(der: Uint8Array): string {
 }
 
 async function sha256(data: Uint8Array): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-256", data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer);
-  return bufferToHex(new Uint8Array(hash));
+  const hash = await crypto.subtle.digest("SHA-256", toArrayBuffer(data));
+  return bytesToHex(new Uint8Array(hash));
 }
 
 /** Read a 3-byte big-endian length from a buffer */
@@ -130,7 +126,7 @@ export function parseCTLogEntry(entry: CTLogEntry): ParsedEntry | null {
       return null;
     }
 
-    const cert = new X509Certificate(certDer.buffer.slice(certDer.byteOffset, certDer.byteOffset + certDer.byteLength) as ArrayBuffer);
+    const cert = new X509Certificate(toArrayBuffer(certDer));
     const chainPems = parseChainFromExtraData(
       base64ToBuffer(entry.extra_data),
       entryType
@@ -185,7 +181,7 @@ export async function extractBIMIData(
   const extensionsJson: Record<string, ExtensionEntry> = {};
   for (const ext of cert.extensions) {
     extensionsJson[ext.type] = {
-      v: bufferToHex(new Uint8Array(ext.value)),
+      v: bytesToHex(new Uint8Array(ext.value)),
       c: ext.critical,
     };
   }
@@ -420,36 +416,9 @@ function extractLogotypeSvg(
   }
 }
 
-/** Decompress gzip data, or decode as UTF-8 if not gzipped */
-function decompressIfGzipped(data: Uint8Array): string | null {
-  try {
-    // Gzip magic bytes: 1f 8b
-    if (data.length >= 2 && data[0] === 0x1f && data[1] === 0x8b) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const zlib = require("zlib") as typeof import("zlib");
-      const result = zlib.gunzipSync(Buffer.from(data));
-      return new TextDecoder().decode(result);
-    }
-    // Not gzipped, try as plain text
-    return new TextDecoder().decode(data);
-  } catch {
-    return null;
-  }
-}
 
-/** SHA-256 hash for SVG content comparison and deduplication */
-function sha256Hex(str: string): string {
-  return createHash("sha256").update(str).digest("hex");
-}
-
-/** Strip PEM headers and base64-decode to raw DER bytes */
-export function pemToDer(pem: string): Uint8Array {
-  const b64 = pem
-    .replace(/-----BEGIN CERTIFICATE-----/g, "")
-    .replace(/-----END CERTIFICATE-----/g, "")
-    .replace(/\s/g, "");
-  return base64ToBuffer(b64);
-}
+// Re-export pemToDer (validate.ts and others import it from here)
+export { pemToDer };
 
 /** Compute SHA-256 fingerprint of a PEM-encoded certificate */
 export async function computePemFingerprint(pem: string): Promise<string> {
@@ -463,7 +432,7 @@ export function parseChainCert(
 ): { subjectDn: string; issuerDn: string; notBefore: Date; notAfter: Date } | null {
   try {
     const der = pemToDer(pem);
-    const cert = new X509Certificate(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer);
+    const cert = new X509Certificate(toArrayBuffer(der));
     return {
       subjectDn: cert.subject,
       issuerDn: cert.issuer,

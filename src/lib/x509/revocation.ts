@@ -4,6 +4,8 @@
 // No external OCSP/CRL libraries are used.
 
 import { createHash } from "crypto";
+import { pemToDer } from "@/lib/pem";
+import { bytesToHex as sharedBytesToHex, hexToBytes as sharedHexToBytes } from "@/lib/hex";
 
 // ── ASN.1 DER encoding helpers ──────────────────────────────────────
 
@@ -116,11 +118,7 @@ function decodeOidFromBytes(bytes: Uint8Array): string {
   return parts.join(".");
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+const bytesToHex = sharedBytesToHex;
 
 // ── OCSP request building ───────────────────────────────────────────
 
@@ -316,20 +314,8 @@ export function parseOcspResponse(der: Uint8Array): { status: OcspStatus; thisUp
   return { status, thisUpdate, nextUpdate };
 }
 
-// ── PEM / DER conversion ────────────────────────────────────────────
-
-export function pemToDer(pem: string): Uint8Array {
-  const b64 = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
+// Re-export for consumers that import pemToDer from this module
+export { pemToDer };
 
 // ── Extract issuer Name and SubjectPublicKeyInfo from a certificate ──
 
@@ -522,18 +508,11 @@ export function extractCrlUrl(extensionsJson: Record<string, unknown>): string |
   return extractUrlsFromCdp(cdpHex);
 }
 
-function hexToBytes(hex: string): number[] {
-  const bytes: number[] = [];
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes.push(parseInt(hex.substring(i, i + 2), 16));
-  }
-  return bytes;
-}
 
 /** Parse AIA extension to find a specific access method URL */
 function extractUrlFromAia(hex: string, targetOid: string): string | null {
   try {
-    const bytes = new Uint8Array(hexToBytes(hex));
+    const bytes = sharedHexToBytes(hex);
     const root = readDerTlv(bytes, 0);
     const children = parseChildren(root.value);
 
@@ -560,7 +539,7 @@ function extractUrlFromAia(hex: string, targetOid: string): string | null {
 /** Parse CRL Distribution Points to find the first HTTP URL */
 function extractUrlsFromCdp(hex: string): string | null {
   try {
-    const bytes = new Uint8Array(hexToBytes(hex));
+    const bytes = sharedHexToBytes(hex);
     const root = readDerTlv(bytes, 0);
     const urls = collectUrlStrings(root);
     return urls.find((u) => u.startsWith("http://") || u.startsWith("https://")) || null;

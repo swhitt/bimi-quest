@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import type { BimiCheckItem } from "./types";
+import { errorMessage } from "@/lib/utils";
 
 const schemaPath = join(process.cwd(), "src/lib/bimi/svg-tiny-ps.rng");
 const schema = readFileSync(schemaPath, "utf-8");
@@ -28,7 +29,7 @@ export async function validateSvgRng(
       errors: result.errors.map((e) => e.message),
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     return {
       valid: false,
       errors: [`RNG validation failed: ${message}`],

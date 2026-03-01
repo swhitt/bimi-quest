@@ -1,10 +1,10 @@
-import { headers } from "next/headers";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 import { formatDistanceToNow } from "date-fns";
 import { displayIssuerOrg } from "@/lib/ca-display";
+import { getBaseUrl } from "@/lib/server-url";
 
 interface DashboardData {
   selectedCA: string;
@@ -29,10 +29,7 @@ export async function DashboardContent({
 }) {
   const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
-  const hdrs = await headers();
-  const host = hdrs.get("host") || "localhost:3000";
-  const protocol = hdrs.get("x-forwarded-proto") || "http";
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getBaseUrl();
 
   let data: DashboardData;
   try {

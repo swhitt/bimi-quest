@@ -1,5 +1,6 @@
 import { promises as dns } from "dns";
 import { getOrgDomain } from "./dmarc";
+import { parseTxtTagList } from "./txt-tags";
 
 export interface BIMIRecord {
   raw: string;
@@ -60,19 +61,7 @@ export function parseBIMIRecord(
   txt: string,
   selector: string = "default"
 ): BIMIRecord {
-  const tags: Record<string, string> = {};
-  // Track which tags were explicitly present (even if empty)
-  const presentTags = new Set<string>();
-  const parts = txt.split(";").map((s) => s.trim());
-
-  for (const part of parts) {
-    const eqIdx = part.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = part.substring(0, eqIdx).trim().toLowerCase();
-    const value = part.substring(eqIdx + 1).trim();
-    tags[key] = value;
-    presentTags.add(key);
-  }
+  const { tags, presentTags } = parseTxtTagList(txt);
 
   // Declination: both l= and a= explicitly present but empty
   const declined =

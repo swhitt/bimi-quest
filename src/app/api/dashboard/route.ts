@@ -54,14 +54,16 @@ export async function GET(request: NextRequest) {
     const caWhere =
       caConditions.length > 0 ? and(...caConditions) : undefined;
 
+    const now = new Date();
+
     // Fetch 13 months so the client can drop the partial first month
-    const thirteenMonthsAgo = new Date();
+    const thirteenMonthsAgo = new Date(now);
     thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
 
-    const thirtyDaysAgo = new Date();
+    const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const thirtyDaysFromNow = new Date();
+    const thirtyDaysFromNow = new Date(now);
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
     const trendConditions = [
@@ -141,8 +143,8 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(
           and(
-            ...(caConditions.length > 0 ? caConditions : []),
-            gte(certificates.notAfter, new Date()),
+            ...caConditions,
+            gte(certificates.notAfter, now),
             lte(certificates.notAfter, thirtyDaysFromNow)
           )
         ),
@@ -164,7 +166,7 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(
           and(
-            ...(globalConditions.length > 0 ? globalConditions : []),
+            ...globalConditions,
             gte(certificates.notBefore, thirtyDaysAgo)
           )
         ),
@@ -175,7 +177,7 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(
           and(
-            ...(caConditions.length > 0 ? caConditions : []),
+            ...caConditions,
             gte(certificates.notBefore, thirtyDaysAgo)
           )
         ),
@@ -193,8 +195,8 @@ export async function GET(request: NextRequest) {
         .from(certificates)
         .where(
           and(
-            ...(caConditions.length > 0 ? caConditions : []),
-            gte(certificates.notAfter, new Date())
+            ...caConditions,
+            gte(certificates.notAfter, now)
           )
         ),
     ]);

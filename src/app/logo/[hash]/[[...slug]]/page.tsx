@@ -3,18 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { sql, and, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { getDomainWithoutSuffix } from "tldts";
 import { displayIssuerOrg } from "@/lib/ca-display";
+import { domainSlug } from "@/lib/domain-slug";
 import { LogoDetailClient } from "./logo-detail-client";
 
 interface Props {
   params: Promise<{ hash: string; slug?: string[] }>;
-}
-
-function domainSlug(domain: string): string {
-  const clean = domain.replace(/^\*\./, "").replace(/^www\./, "").toLowerCase();
-  const name = getDomainWithoutSuffix(clean);
-  return name || clean.split(".")[0] || "logo";
 }
 
 async function getLogo(hash: string) {

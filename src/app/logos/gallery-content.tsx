@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
-import { getDomainWithoutSuffix } from "tldts";
+import { domainSlug } from "@/lib/domain-slug";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { stripWhiteSvgBg, tileBgForSvg, isLightBg } from "@/lib/svg-bg";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,12 +114,6 @@ interface CustomFilters {
 const DEFAULT_FILTERS: CustomFilters = { notability: "any", logoQuality: "any", colorRichness: "any" };
 
 /* ── Helpers ────────────────────────────────────────────────────────── */
-
-function domainSlug(domain: string): string {
-  const clean = domain.replace(/^\*\./, "").replace(/^www\./, "").toLowerCase();
-  const name = getDomainWithoutSuffix(clean);
-  return name || clean.split(".")[0] || "logo";
-}
 
 function hasCustomFilters(f: CustomFilters): boolean {
   return f.notability !== "any" || f.logoQuality !== "any" || f.colorRichness !== "any";

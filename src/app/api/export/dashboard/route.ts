@@ -1,34 +1,10 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { sql, eq, count, and, gte, lte, desc } from "drizzle-orm";
-import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
+import { sql, count, and, desc, gte } from "drizzle-orm";
+import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 import { log } from "@/lib/logger";
-
-function buildBaseConditions(params: URLSearchParams) {
-  const conditions = [buildPrecertCondition(params.get("precert"))];
-  const certType = params.get("type");
-  const fromDate = parseDate(params.get("from"));
-  const toDate = parseDate(params.get("to"));
-  const validity = params.get("validity");
-  const root = params.get("root");
-
-  if (certType) conditions.push(eq(certificates.certType, certType));
-  if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
-  if (toDate) conditions.push(lte(certificates.notBefore, toDate));
-  if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
-  if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
-  if (root) conditions.push(eq(certificates.rootCaOrg, root));
-
-  return conditions;
-}
-
-function escapeCSV(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
+import { escapeCSV } from "@/lib/csv";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -42,8 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const baseConditions = buildBaseConditions(params);
-    const baseWhere = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+    const baseWhere = buildCertificateConditions(params);
     const timestamp = new Date().toISOString().slice(0, 10);
 
     if (dataset === "market-share") {
@@ -87,8 +62,6 @@ export async function GET(request: NextRequest) {
     const thirteenMonthsAgo = new Date();
     thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
 
-    const trendConditions = [...baseConditions, gte(certificates.notBefore, thirteenMonthsAgo)];
-
     const allRows = await db
       .select({
         month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
@@ -96,7 +69,7 @@ export async function GET(request: NextRequest) {
         count: count(),
       })
       .from(certificates)
-      .where(and(...trendConditions))
+      .where(and(baseWhere, gte(certificates.notBefore, thirteenMonthsAgo)))
       .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
       .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`);
 
