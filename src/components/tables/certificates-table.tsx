@@ -159,13 +159,13 @@ export function CertificatesTable({
   const columns: ColumnDef<CertRow>[] = [
     {
       id: "logo",
-      meta: { className: "hidden sm:table-cell w-[48px]" },
+      meta: { className: "hidden sm:table-cell w-[56px]" },
       header: "",
-      size: 48,
+      size: 56,
       cell: ({ row }) => {
         const hash = row.original.logotypeSvgHash;
         if (!hash || !row.original.hasLogo) {
-          return <div className="size-8 rounded-md border bg-muted" />;
+          return <div className="size-11 rounded-lg border bg-muted" />;
         }
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
         const domain = row.original.sanList[0] || row.original.subjectCn;
@@ -178,9 +178,9 @@ export function CertificatesTable({
                 src={svgUrl}
                 alt={`${org} logo`}
                 loading="lazy"
-                width={32}
-                height={32}
-                className="size-8 min-w-8 rounded-md border p-0.5 object-contain cursor-zoom-in"
+                width={44}
+                height={44}
+                className="size-11 min-w-11 rounded-lg border object-contain cursor-zoom-in"
                 style={bg ? { backgroundColor: bg } : undefined}
               />
             </HoverCardTrigger>

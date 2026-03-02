@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { CA_COLOR_INDEX } from "@/lib/chart-colors";
+import { CA_COLOR_INDEX, useChartColors, getCAColor } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { cn } from "@/lib/utils";
 import { displayIssuerOrg } from "@/lib/ca-display";
@@ -61,6 +61,7 @@ function BarTooltip({ active, payload }: { active?: boolean; payload?: readonly 
 }
 
 export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShareChartProps) {
+  const caColors = useChartColors();
   const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
   const grandTotal = data.reduce((s, d) => s + d.total, 0);
@@ -179,7 +180,10 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                       isFiltered && !isSelected && "opacity-50",
                     )}
                   >
-                    <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: VMC_COLOR }} />
+                    <span
+                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                      style={{ background: getCAColor(caColors, entry.name) }}
+                    />
                     <span className="flex-1">{entry.name}</span>
                     <span className="tabular-nums text-muted-foreground">{entry.total.toLocaleString()}</span>
                     <span className="w-14 text-right tabular-nums">{pct.toFixed(1)}%</span>

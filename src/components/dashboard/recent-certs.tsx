@@ -133,11 +133,11 @@ export function RecentCerts() {
                             alt=""
                             width={40}
                             height={40}
-                            className="h-10 w-10 min-w-10 shrink-0 rounded border p-0.5 object-contain"
+                            className="h-10 w-10 min-w-10 shrink-0 rounded-lg border object-contain"
                             style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
                           />
                         ) : (
-                          <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
+                          <div className="h-10 w-10 shrink-0 rounded-lg border bg-muted" />
                         )}
                       </td>
                       <td className="py-1.5 pr-2">

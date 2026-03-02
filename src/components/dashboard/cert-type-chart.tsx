@@ -138,31 +138,18 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
               </ResponsiveContainer>
             </div>
 
-            {/* Legend — cert types with percentages */}
-            <div className="flex items-center justify-center gap-4 text-xs">
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-6 text-sm">
               {outerData.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-1.5">
-                  <span className="inline-block h-2 w-2 shrink-0 rounded-sm" style={{ background: entry.fill }} />
+                <div key={entry.name} className="flex items-center gap-2">
+                  <span className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: entry.fill }} />
                   <span className="font-medium">{entry.name}</span>
                   <span className="tabular-nums text-muted-foreground">
-                    {entry.value.toLocaleString()} ({((entry.value / grandTotal) * 100).toFixed(1)}%)
+                    {((entry.value / grandTotal) * 100).toFixed(0)}%
                   </span>
                 </div>
               ))}
             </div>
-
-            {/* Mark type legend */}
-            {markTypes.length > 0 && (
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
-                {markTypes.map((entry) => (
-                  <div key={entry.name} className="flex items-center gap-1.5">
-                    <span className="inline-block h-2 w-2 shrink-0 rounded-sm" style={{ background: entry.fill }} />
-                    <span className="text-muted-foreground">{entry.name}</span>
-                    <span className="tabular-nums font-medium">{entry.value.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         ) : (
           <div className="flex h-[120px] items-center justify-center text-muted-foreground">
