@@ -214,22 +214,36 @@ const NUM_TO_ALPHA2: Record<string, string> = {
   "-99": "XK",
 };
 
+// Module-level singleton so the formatter is created once across renders
+const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+function getCountryName(alpha2: string): string {
+  try {
+    return countryNames.of(alpha2) ?? alpha2;
+  } catch {
+    return alpha2;
+  }
+}
+
 interface CountryData {
   country: string;
   total: number;
+  vmcCount?: number;
+  cmcCount?: number;
 }
 
 interface WorldMapProps {
   data: CountryData[];
   className?: string;
+  onCountryClick?: (alpha2: string) => void;
 }
 
 let topoCache: Topology | null = null;
 
-export function WorldMap({ data, className }: WorldMapProps) {
+export function WorldMap({ data, className, onCountryClick }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [topology, setTopology] = useState<Topology | null>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string; detail?: string } | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   useEffect(() => {
@@ -247,9 +261,9 @@ export function WorldMap({ data, className }: WorldMapProps) {
   }, []);
 
   const dataMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, CountryData>();
     for (const d of data) {
-      if (d.country) map.set(d.country, d.total);
+      if (d.country) map.set(d.country, d);
     }
     return map;
   }, [data]);
@@ -260,7 +274,24 @@ export function WorldMap({ data, className }: WorldMapProps) {
     return max;
   }, [data]);
 
-  if (!topology) {
+  // Memoize the heavy geo computations so they don't run on every mouse-move
+  const { countriesGeo, pathGen } = useMemo(() => {
+    if (!topology) return { countriesGeo: null, pathGen: null };
+    const geo = feature(topology, topology.objects.countries as GeometryCollection);
+    const proj = geoNaturalEarth1().fitSize([960, 500], geo as GeoPermissibleObjects);
+    return { countriesGeo: geo, pathGen: geoPath(proj) };
+  }, [topology]);
+
+  // Legend tick values on a log scale (1, 10, 100, max)
+  const legendTicks = useMemo(() => {
+    if (maxVal === 0) return [];
+    const ticks: number[] = [1];
+    for (let v = 10; v < maxVal; v *= 10) ticks.push(v);
+    ticks.push(maxVal);
+    return [...new Set(ticks)];
+  }, [maxVal]);
+
+  if (!topology || !countriesGeo || !pathGen) {
     return (
       <div className={`flex h-64 items-center justify-center text-muted-foreground ${className || ""}`}>
         Loading map...
@@ -268,33 +299,39 @@ export function WorldMap({ data, className }: WorldMapProps) {
     );
   }
 
-  const countriesGeo = feature(topology, topology.objects.countries as GeometryCollection);
-
-  const projection = geoNaturalEarth1().fitSize([960, 500], countriesGeo as GeoPermissibleObjects);
-  const pathGen = geoPath(projection);
-
-  // Color scale: transparent (0) -> light blue -> deep blue
+  // Color scale: muted (0) -> light blue -> deep blue (log scale for better distribution)
   function getColor(alpha2: string | undefined): string {
     if (!alpha2) return "var(--muted)";
-    const val = dataMap.get(alpha2) || 0;
-    if (val === 0) return "var(--muted)";
-    // Log scale for better distribution
-    const t = Math.log1p(val) / Math.log1p(maxVal);
-    // Interpolate from light to dark using oklch
+    const entry = dataMap.get(alpha2);
+    if (!entry || entry.total === 0) return "var(--muted)";
+    const t = Math.log1p(entry.total) / Math.log1p(maxVal);
     const lightness = 0.85 - t * 0.45;
     const chroma = 0.05 + t * 0.15;
     return `oklch(${lightness} ${chroma} 250)`;
   }
 
+  function buildTooltipContent(alpha2: string): { text: string; detail?: string } {
+    const entry = dataMap.get(alpha2);
+    const name = getCountryName(alpha2);
+    const total = entry?.total ?? 0;
+    const text = `${name}: ${total.toLocaleString()} certificate${total !== 1 ? "s" : ""}`;
+    let detail: string | undefined;
+    if (entry && entry.vmcCount !== undefined && entry.cmcCount !== undefined) {
+      detail = `${entry.vmcCount.toLocaleString()} VMC / ${entry.cmcCount.toLocaleString()} CMC`;
+    }
+    return { text, detail };
+  }
+
   function handleMouseMove(e: React.MouseEvent, alpha2: string | undefined) {
     if (!alpha2 || selectedCountry) return;
-    const val = dataMap.get(alpha2) || 0;
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
+    const { text, detail } = buildTooltipContent(alpha2);
     setTooltip({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top - 10,
-      text: `${alpha2}: ${val.toLocaleString()} certificate${val !== 1 ? "s" : ""}`,
+      text,
+      detail,
     });
   }
 
@@ -307,14 +344,16 @@ export function WorldMap({ data, className }: WorldMapProps) {
       return;
     }
     setSelectedCountry(alpha2);
-    const val = dataMap.get(alpha2) || 0;
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
+    const { text, detail } = buildTooltipContent(alpha2);
     setTooltip({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top - 10,
-      text: `${alpha2}: ${val.toLocaleString()} certificate${val !== 1 ? "s" : ""}`,
+      text,
+      detail,
     });
+    onCountryClick?.(alpha2);
   }
 
   return (
@@ -340,13 +379,14 @@ export function WorldMap({ data, className }: WorldMapProps) {
           const alpha2 = NUM_TO_ALPHA2[numId];
           const d = pathGen(feat as GeoPermissibleObjects);
           if (!d) return null;
+          const isSelected = selectedCountry === alpha2;
           return (
             <path
               key={numId || `geo-${i}`}
               d={d}
               fill={getColor(alpha2)}
-              stroke="var(--border)"
-              strokeWidth={0.5}
+              stroke={isSelected ? "var(--primary)" : "var(--border)"}
+              strokeWidth={isSelected ? 1.5 : 0.5}
               className="transition-colors hover:brightness-110 cursor-default"
               onMouseMove={(e) => handleMouseMove(e, alpha2)}
               onMouseLeave={() => {
@@ -357,12 +397,37 @@ export function WorldMap({ data, className }: WorldMapProps) {
           );
         })}
       </svg>
+
+      {/* Color legend */}
+      {maxVal > 0 && (
+        <div className="mt-2 px-2">
+          <p className="text-xs text-muted-foreground mb-1">Certificate count</p>
+          <div className="flex items-center gap-2">
+            <div
+              className="h-3 flex-1 rounded"
+              style={{
+                background:
+                  "linear-gradient(to right, oklch(0.85 0.05 250), oklch(0.7 0.1 250), oklch(0.55 0.15 250), oklch(0.4 0.2 250))",
+              }}
+            />
+          </div>
+          <div className="flex justify-between mt-0.5">
+            {legendTicks.map((tick) => (
+              <span key={tick} className="text-xs text-muted-foreground">
+                {tick.toLocaleString()}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tooltip && (
         <div
           className="pointer-events-none absolute z-10 rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md border"
           style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -100%)" }}
         >
-          {tooltip.text}
+          <div>{tooltip.text}</div>
+          {tooltip.detail && <div className="text-muted-foreground">{tooltip.detail}</div>}
         </div>
       )}
     </div>

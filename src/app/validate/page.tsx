@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   title: "BIMI Validator",
   description:
     "Validate any domain's BIMI setup including DMARC policy, DNS records, SVG logo, and VMC/CMC certificates.",
+  openGraph: {
+    title: "Free BIMI Validator — Check Any Domain",
+    description:
+      "Instantly check any domain's BIMI readiness: DNS records, DMARC policy, SVG logo compliance, and VMC/CMC certificate status.",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
 };
 
 export default async function ValidatePage() {

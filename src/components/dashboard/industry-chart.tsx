@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { useFilteredData } from "@/lib/use-filtered-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -51,19 +51,12 @@ function IndustryTooltip({
 
 export function IndustryChart() {
   const { buildApiParams } = useGlobalFilters();
-  const [data, setData] = useState<IndustryRow[]>([]);
-  const [loadedParams, setLoadedParams] = useState<string | null>(null);
-
   const filterParams = buildApiParams();
-  const loading = loadedParams !== filterParams;
-
-  useEffect(() => {
-    fetch(`/api/stats/industry-breakdown?${filterParams}`)
-      .then((res) => res.json())
-      .then((json) => setData(json.data ?? []))
-      .catch(() => setData([]))
-      .finally(() => setLoadedParams(filterParams));
-  }, [filterParams]);
+  const { data, loading } = useFilteredData<IndustryRow[]>(
+    "/api/stats/industry-breakdown",
+    (json: unknown) => (json as { data?: IndustryRow[] }).data ?? [],
+    [],
+  );
 
   if (loading && data.length === 0) {
     return (

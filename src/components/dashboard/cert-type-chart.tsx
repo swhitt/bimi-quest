@@ -33,15 +33,24 @@ interface DonutTooltipEntry {
   payload: { name: string; value: number; fill: string };
 }
 
-function DonutTooltip({ active, payload }: { active?: boolean; payload?: readonly DonutTooltipEntry[] }) {
+function DonutTooltip({
+  active,
+  payload,
+  grandTotal,
+}: {
+  active?: boolean;
+  payload?: readonly DonutTooltipEntry[];
+  grandTotal: number;
+}) {
   if (!active || !payload?.length) return null;
   const entry = payload[0]?.payload;
   if (!entry) return null;
+  const pct = grandTotal > 0 ? ((entry.value / grandTotal) * 100).toFixed(1) : "0.0";
 
   return (
     <ChartTooltipContent
-      label={entry.name}
-      rows={[{ color: entry.fill, name: entry.name, value: entry.value.toLocaleString() }]}
+      label={`${entry.name} — ${pct}%`}
+      rows={[{ color: entry.fill, name: "Count", value: entry.value.toLocaleString() }]}
     />
   );
 }
@@ -49,21 +58,20 @@ function DonutTooltip({ active, payload }: { active?: boolean; payload?: readonl
 export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }: CertTypeChartProps) {
   const vmcTotal = caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
+  const grandTotal = vmcTotal + cmcTotal;
 
   const outerData = [
     { name: "VMC", value: vmcTotal, fill: CERT_TYPE_COLORS.VMC },
     { name: "CMC", value: cmcTotal, fill: CERT_TYPE_COLORS.CMC },
   ].filter((d) => d.value > 0);
 
-  const innerData = markTypeBreakdown
+  const markTypes = markTypeBreakdown
     .filter((d) => d.count > 0)
     .map((d, i) => ({
       name: d.markType || "Unknown",
       value: d.count,
       fill: getMarkColor(d.markType || "", i),
     }));
-
-  const grandTotal = vmcTotal + cmcTotal;
 
   return (
     <Card>
@@ -83,7 +91,7 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0">
+      <CardContent className="flex-1 min-h-0 overflow-hidden">
         {grandTotal > 0 ? (
           <div className="flex flex-col gap-2 h-full">
             <div
@@ -93,15 +101,15 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
             >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Tooltip content={<DonutTooltip />} />
+                  <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />
                   {/* Outer ring: VMC vs CMC */}
                   <Pie
                     data={outerData}
                     dataKey="value"
                     cx="50%"
                     cy="50%"
-                    outerRadius={90}
-                    innerRadius={62}
+                    outerRadius="80%"
+                    innerRadius="58%"
                     paddingAngle={2}
                     strokeWidth={0}
                   >
@@ -110,18 +118,18 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
                     ))}
                   </Pie>
                   {/* Inner ring: Mark types */}
-                  {innerData.length > 0 && (
+                  {markTypes.length > 0 && (
                     <Pie
-                      data={innerData}
+                      data={markTypes}
                       dataKey="value"
                       cx="50%"
                       cy="50%"
-                      outerRadius={58}
-                      innerRadius={34}
+                      outerRadius="50%"
+                      innerRadius="30%"
                       paddingAngle={2}
                       strokeWidth={0}
                     >
-                      {innerData.map((entry) => (
+                      {markTypes.map((entry) => (
                         <Cell key={entry.name} fill={entry.fill} />
                       ))}
                     </Pie>
@@ -130,26 +138,31 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
               </ResponsiveContainer>
             </div>
 
-            {/* Legend — cert types */}
+            {/* Legend — cert types with percentages */}
             <div className="flex items-center justify-center gap-4 text-xs">
               {outerData.map((entry) => (
                 <div key={entry.name} className="flex items-center gap-1.5">
                   <span className="inline-block h-2 w-2 shrink-0 rounded-sm" style={{ background: entry.fill }} />
                   <span className="font-medium">{entry.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{entry.value.toLocaleString()}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {entry.value.toLocaleString()} ({((entry.value / grandTotal) * 100).toFixed(1)}%)
+                  </span>
                 </div>
               ))}
             </div>
-            {/* Legend — mark types */}
-            <div className="space-y-0.5 text-xs">
-              {innerData.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-1.5">
-                  <span className="inline-block h-2 w-2 shrink-0 rounded-sm" style={{ background: entry.fill }} />
-                  <span className="text-muted-foreground">{entry.name}</span>
-                  <span className="ml-auto tabular-nums font-medium">{entry.value.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
+
+            {/* Mark type legend */}
+            {markTypes.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+                {markTypes.map((entry) => (
+                  <div key={entry.name} className="flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 shrink-0 rounded-sm" style={{ background: entry.fill }} />
+                    <span className="text-muted-foreground">{entry.name}</span>
+                    <span className="tabular-nums font-medium">{entry.value.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex h-[120px] items-center justify-center text-muted-foreground">

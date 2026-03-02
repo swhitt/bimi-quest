@@ -13,6 +13,8 @@ export function ValidationGrade({ grade, summary }: { grade: BimiGrade; summary:
     <div className="flex items-center gap-3">
       <div
         className={`flex h-12 w-12 items-center justify-center rounded-lg text-2xl font-bold ${GRADE_STYLES[grade]}`}
+        role="img"
+        aria-label={`Validation grade: ${grade}`}
       >
         {grade}
       </div>

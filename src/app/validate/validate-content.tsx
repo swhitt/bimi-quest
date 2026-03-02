@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,41 +87,47 @@ export function ValidateContent() {
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Prevents duplicate auto-validation calls in React strict mode (double-invocation).
+  const didValidate = useRef(false);
 
-  // Auto-validate if domain comes from URL
+  const doValidate = useCallback(
+    async (target: string, sel?: string) => {
+      if (!target) return;
+      setLoading(true);
+      setError(null);
+      setResult(null);
+
+      try {
+        const body: Record<string, string> = { domain: target };
+        const s = sel || selector;
+        if (s && s !== "default") body.selector = s;
+
+        const res = await fetch("/api/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Validation failed");
+        setResult(data);
+        window.history.replaceState(null, "", `/validate?domain=${encodeURIComponent(target)}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Validation failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selector],
+  );
+
+  // Auto-validate when a domain is provided via URL query param (e.g. shared links).
+  // The didValidate ref prevents a duplicate run in React strict mode.
   useEffect(() => {
-    if (urlDomain) {
+    if (urlDomain && !didValidate.current) {
+      didValidate.current = true;
       doValidate(urlDomain.trim());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function doValidate(target: string, sel?: string) {
-    if (!target) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const body: Record<string, string> = { domain: target };
-      const s = sel || selector;
-      if (s && s !== "default") body.selector = s;
-
-      const res = await fetch("/api/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Validation failed");
-      setResult(data);
-      window.history.replaceState(null, "", `/validate?domain=${encodeURIComponent(target)}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Validation failed");
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [urlDomain, doValidate]);
 
   function handleValidate(overrideDomain?: string) {
     doValidate((overrideDomain || domain).trim());

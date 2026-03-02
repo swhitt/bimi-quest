@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface ActiveFilters {
   type: string | null;
@@ -102,16 +104,34 @@ export function KPICards({
         </div>
 
         <div>
-          <p className="text-xs text-muted-foreground">Expiring Soon</p>
-          <span
-            className={`text-lg font-bold tabular-nums ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-xs text-muted-foreground underline decoration-dotted cursor-help w-fit">
+                Expiring Soon
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-64">
+              Certificates expiring within the next 30 days.
+            </TooltipContent>
+          </Tooltip>
+          <Link
+            href="/certificates?validity=active&expiresFrom=today&expiresTo=+30d"
+            className={`text-lg font-bold tabular-nums hover:underline ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
           >
             {expiringCount.toLocaleString()}
-          </span>
+          </Link>
         </div>
 
         <div>
-          <p className="text-xs text-muted-foreground">VMC / CMC</p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-xs text-muted-foreground underline decoration-dotted cursor-help w-fit">VMC / CMC</p>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-72">
+              VMC = Verified Mark Certificate (requires registered trademark). CMC = Common Mark Certificate (no
+              trademark required).
+            </TooltipContent>
+          </Tooltip>
           <span className="text-lg font-bold tabular-nums">{vmcPct}% VMC</span>
           <span className="text-xs text-muted-foreground ml-1.5">
             {vmcTotal.toLocaleString()} · {cmcTotal.toLocaleString()}

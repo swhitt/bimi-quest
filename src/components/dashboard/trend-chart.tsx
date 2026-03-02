@@ -78,10 +78,14 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
   const months = hasDateFilter ? allMonths : allMonths.slice(1);
 
   // When a specific CA is selected, show only that CA.
-  // When "All Issuers", show stacked bars.
+  // When "All Issuers", show stacked bars — but filter out CAs with zero total across all
+  // months so the rounded top radius is always on the visually topmost segment.
   const displayCAs = isFiltered
     ? [selectedCA]
-    : Object.keys(CA_COLOR_INDEX).filter((ca) => normalized.some((d) => d.ca === ca));
+    : Object.keys(CA_COLOR_INDEX).filter((ca) => {
+        const total = normalized.filter((d) => d.ca === ca).reduce((sum, d) => sum + d.count, 0);
+        return total > 0;
+      });
 
   const pivoted = months.map((month) => {
     const row: Record<string, string | number> = { month };
@@ -120,50 +124,66 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
       </CardHeader>
       <CardContent className="flex-1 min-h-0">
         {pivoted.length > 0 ? (
-          <div
-            role="img"
-            aria-label="Bar chart showing BIMI certificate issuance trends over time"
-            className="h-full min-h-[260px]"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={tickFormatter}
-                  tick={{ fontSize: 11 }}
-                  className="fill-muted-foreground"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  className="fill-muted-foreground"
-                  axisLine={false}
-                  tickLine={false}
-                  width={40}
-                />
-                <Tooltip
-                  cursor={{ fill: "var(--accent)", opacity: 0.3 }}
-                  content={(props) => <TrendTooltip {...props} colors={colors} />}
-                />
-                {displayCAs.map((ca, i) => {
-                  const color = getCAColor(colors, ca);
-                  const isLast = i === displayCAs.length - 1;
-                  return (
-                    <Bar
-                      key={ca}
-                      dataKey={ca}
-                      name={ca}
-                      stackId={isFiltered ? undefined : "trend"}
-                      fill={color}
-                      fillOpacity={isFiltered ? 0.85 : 0.8}
-                      radius={isFiltered || isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+          <div className="flex flex-col gap-2 h-full">
+            <div
+              role="img"
+              aria-label="Bar chart showing BIMI certificate issuance trends over time"
+              className="flex-1 min-h-[240px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={tickFormatter}
+                    tick={{ fontSize: 11 }}
+                    className="fill-muted-foreground"
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    className="fill-muted-foreground"
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+                    content={(props) => <TrendTooltip {...props} colors={colors} />}
+                  />
+                  {displayCAs.map((ca, i) => {
+                    const color = getCAColor(colors, ca);
+                    const isLast = i === displayCAs.length - 1;
+                    return (
+                      <Bar
+                        key={ca}
+                        dataKey={ca}
+                        name={ca}
+                        stackId={isFiltered ? undefined : "trend"}
+                        fill={color}
+                        fillOpacity={isFiltered ? 0.85 : 0.8}
+                        radius={isFiltered || isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                      />
+                    );
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Legend — only shown when multiple CAs are stacked */}
+            {!isFiltered && displayCAs.length > 1 && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs text-muted-foreground">
+                {displayCAs.map((ca) => (
+                  <div key={ca} className="flex items-center gap-1.5">
+                    <span
+                      className="inline-block h-2.5 w-4 rounded-sm"
+                      style={{ background: getCAColor(colors, ca), opacity: 0.8 }}
                     />
-                  );
-                })}
-              </BarChart>
-            </ResponsiveContainer>
+                    <span>{ca}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex h-[120px] items-center justify-center text-muted-foreground">

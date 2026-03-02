@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { useFilteredData } from "@/lib/use-filtered-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -61,19 +61,12 @@ function ExpiryTooltip({
 export function ExpiryChart() {
   const colors = useChartColors();
   const { buildApiParams } = useGlobalFilters();
-  const [data, setData] = useState<ExpiryRow[]>([]);
-  const [loadedParams, setLoadedParams] = useState<string | null>(null);
-
   const filterParams = buildApiParams();
-  const loading = loadedParams !== filterParams;
-
-  useEffect(() => {
-    fetch(`/api/stats/expiry-timeline?${filterParams}`)
-      .then((res) => res.json())
-      .then((json) => setData(json.data ?? []))
-      .catch(() => setData([]))
-      .finally(() => setLoadedParams(filterParams));
-  }, [filterParams]);
+  const { data, loading } = useFilteredData<ExpiryRow[]>(
+    "/api/stats/expiry-timeline",
+    (json: unknown) => (json as { data?: ExpiryRow[] }).data ?? [],
+    [],
+  );
 
   if (loading && data.length === 0) {
     return (
@@ -135,9 +128,9 @@ export function ExpiryChart() {
       </CardHeader>
       <CardContent>
         {pivoted.length > 0 ? (
-          <div role="img" aria-label="Stacked area chart showing upcoming certificate expirations by month">
+          <div role="img" aria-label="Stacked bar chart showing upcoming certificate expirations by month">
             <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+              <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
                 <XAxis
                   dataKey="month"
@@ -158,20 +151,22 @@ export function ExpiryChart() {
                   cursor={{ fill: "var(--accent)", opacity: 0.3 }}
                   content={(props) => <ExpiryTooltip {...props} colors={colors} />}
                 />
-                {cas.map((ca) => (
-                  <Area
-                    key={ca}
-                    type="monotone"
-                    dataKey={ca}
-                    name={ca}
-                    stackId="expiry"
-                    fill={getCAColor(colors, ca)}
-                    fillOpacity={0.4}
-                    stroke={getCAColor(colors, ca)}
-                    strokeWidth={1.5}
-                  />
-                ))}
-              </AreaChart>
+                {cas.map((ca, i) => {
+                  const isLast = i === cas.length - 1;
+                  return (
+                    <Bar
+                      key={ca}
+                      dataKey={ca}
+                      name={ca}
+                      stackId="expiry"
+                      fill={getCAColor(colors, ca)}
+                      fillOpacity={0.85}
+                      // Round top corners only on the topmost (last) segment in the stack
+                      radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  );
+                })}
+              </BarChart>
             </ResponsiveContainer>
           </div>
         ) : (

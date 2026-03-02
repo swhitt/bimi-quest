@@ -168,7 +168,7 @@ export async function validateDomain(domain: string, selector: string = "default
         const pemText = await res.text();
         const certInfo = parsePemBasicInfo(pemText);
         if (certInfo) {
-          const chainResult = validateCertificateChain(pemText);
+          const chainResult = await validateCertificateChain(pemText);
 
           // Check if issuing CA is authorized for BIMI
           const normalizedIssuer = normalizeIssuerOrg(certInfo.issuerOrg);
@@ -457,12 +457,19 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
   // Certificate chain
   if (input.certResult.found) {
     if (input.certResult.chain?.chainValid) {
+      const hasWarnings = input.certResult.chain.chainErrors.length > 0;
       checks.push({
         id: "cert-chain",
         category: "spec",
         label: "Certificate Chain",
-        status: "pass",
-        summary: `Valid chain (${input.certResult.chain.chainLength} certificate${input.certResult.chain.chainLength !== 1 ? "s" : ""})`,
+        status: hasWarnings ? "warn" : "pass",
+        summary: hasWarnings
+          ? input.certResult.chain.chainErrors[0]
+          : `Valid chain (${input.certResult.chain.chainLength} certificate${input.certResult.chain.chainLength !== 1 ? "s" : ""})`,
+        detail:
+          hasWarnings && input.certResult.chain.chainErrors.length > 1
+            ? input.certResult.chain.chainErrors.slice(1).join("\n")
+            : undefined,
       });
     } else if (input.certResult.chain) {
       checks.push({
@@ -808,7 +815,7 @@ function parsePemBasicInfo(pem: string): {
  * Checks: issuer/subject chaining, signature verification, expiry, basicConstraints.
  * Does NOT validate against a root store (out of scope for a market intel tool).
  */
-function validateCertificateChain(pem: string): ChainValidationResult | null {
+async function validateCertificateChain(pem: string): Promise<ChainValidationResult | null> {
   try {
     const chainErrors: string[] = [];
 
@@ -825,7 +832,13 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
     });
 
     if (certs.length === 1) {
-      return { chainValid: true, chainErrors: [], chainLength: 1 };
+      return {
+        chainValid: true,
+        chainErrors: [
+          "Only the leaf certificate was found. Include the intermediate CA certificate for a complete chain.",
+        ],
+        chainLength: 1,
+      };
     }
 
     const now = new Date();
@@ -867,6 +880,22 @@ function validateCertificateChain(pem: string): ChainValidationResult | null {
           }
         } catch {
           chainErrors.push(`Failed to read public key from certificate at position ${i + 1}`);
+        }
+
+        // Cryptographic signature verification: confirm cert[i] was signed by cert[i+1].
+        // Treated as a warning only — some algorithms may not be supported by the runtime.
+        try {
+          const verified = await certs[i].verify({ publicKey: certs[i + 1].publicKey });
+          if (!verified) {
+            chainErrors.push(
+              `Signature verification failed at position ${i}: certificate was not signed by the next certificate in the chain`,
+            );
+          }
+        } catch {
+          // Algorithm not supported or verification error — report as warning, not a hard failure.
+          chainErrors.push(
+            `Signature verification could not be performed at position ${i} (algorithm may not be supported)`,
+          );
         }
       }
     }

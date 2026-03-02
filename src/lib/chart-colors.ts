@@ -1,7 +1,6 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 // OKLCH colors matching the chart tokens in globals.css
 const LIGHT_COLORS: Record<string, string> = {
@@ -30,13 +29,9 @@ export const CA_COLOR_INDEX: Record<string, number> = {
 
 export function useChartColors(): Record<string, string> {
   const { resolvedTheme } = useTheme();
-  const [colors, setColors] = useState<Record<string, string>>(LIGHT_COLORS);
-
-  useEffect(() => {
-    setColors(resolvedTheme === "dark" ? DARK_COLORS : LIGHT_COLORS);
-  }, [resolvedTheme]);
-
-  return colors;
+  // Derive synchronously so there's no flash between renders.
+  // Defaults to DARK_COLORS when resolvedTheme is undefined (matches the app's dark default).
+  return resolvedTheme === "light" ? LIGHT_COLORS : DARK_COLORS;
 }
 
 export function getCAColor(colors: Record<string, string>, ca: string): string {

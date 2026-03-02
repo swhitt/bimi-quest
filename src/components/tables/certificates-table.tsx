@@ -92,6 +92,16 @@ function SortHeader({
   );
 }
 
+/** Returns validity status based on notAfter date. */
+function getCertValidity(notAfter: string): "active" | "expiring-soon" | "expired" {
+  const now = new Date();
+  const expiry = new Date(notAfter);
+  const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  if (expiry < now) return "expired";
+  if (expiry < ninetyDaysFromNow) return "expiring-soon";
+  return "active";
+}
+
 function useCertTable(data: CertRow[], columns: ColumnDef<CertRow>[]) {
   // React Compiler pragma: disable auto-memoization for this hook
   // because TanStack Table manages its own internal memoization
@@ -208,7 +218,6 @@ export function CertificatesTable({
       cell: ({ row }) => {
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
         const score = row.original.notabilityScore;
-        const country = row.original.subjectCountry;
         return (
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -236,7 +245,6 @@ export function CertificatesTable({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {country && <span className="shrink-0 text-[10px] text-muted-foreground font-mono">{country}</span>}
             </div>
             {row.original.industry && (
               <span className="text-[10px] text-muted-foreground/60 block truncate">{row.original.industry}</span>
@@ -324,6 +332,36 @@ export function CertificatesTable({
       },
     },
     {
+      // Notability score: not sortable via API (subjectCountry/notabilityScore not in VALID_SORT_COLUMNS)
+      id: "notabilityScore",
+      meta: { className: "hidden sm:table-cell" },
+      header: "Score",
+      cell: ({ row }) => {
+        const score = row.original.notabilityScore;
+        if (score == null || score < 5) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const colorClass =
+          score >= 9
+            ? "text-amber-500 font-medium"
+            : score >= 7
+              ? "text-blue-500 font-medium"
+              : "text-muted-foreground font-medium";
+        return <span className={`text-xs tabular-nums ${colorClass}`}>{score}</span>;
+      },
+    },
+    {
+      // Country: not sortable via API (subjectCountry not in VALID_SORT_COLUMNS)
+      id: "subjectCountry",
+      meta: { className: "hidden lg:table-cell" },
+      header: "Country",
+      cell: ({ row }) => {
+        const country = row.original.subjectCountry;
+        if (!country) return <span className="text-muted-foreground">—</span>;
+        return <span className="text-xs font-mono text-muted-foreground">{country}</span>;
+      },
+    },
+    {
       accessorKey: "issuerOrg",
       meta: { className: "hidden lg:table-cell" },
       header: () => (
@@ -361,6 +399,7 @@ export function CertificatesTable({
       },
     },
     {
+      // Replaces the old notAfter column: combines expiry date with validity status badge
       accessorKey: "notAfter",
       meta: { className: "hidden md:table-cell" },
       header: () => (
@@ -374,8 +413,42 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         if (!row.original.notAfter) return "-";
-        const isExpired = new Date(row.original.notAfter) < new Date();
-        return <UtcTime date={row.original.notAfter} relative expired={isExpired} />;
+        const status = getCertValidity(row.original.notAfter);
+        const badgeVariant = status === "active" ? "default" : status === "expiring-soon" ? "outline" : "secondary";
+        const badgeClass =
+          status === "active"
+            ? "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20"
+            : status === "expiring-soon"
+              ? "border-amber-500/40 text-amber-700 dark:text-amber-400"
+              : "text-muted-foreground";
+        const badgeLabel = status === "active" ? "Active" : status === "expiring-soon" ? "Expiring Soon" : "Expired";
+        const isExpired = status === "expired";
+        return (
+          <div className="flex flex-col gap-0.5">
+            <UtcTime date={row.original.notAfter} relative expired={isExpired} />
+            <Badge variant={badgeVariant} className={cn("text-[10px] px-1 py-0 h-auto w-fit", badgeClass)}>
+              {badgeLabel}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      // CT Log Timestamp: hidden by default, visible at xl breakpoint
+      accessorKey: "ctLogTimestamp",
+      meta: { className: "hidden xl:table-cell" },
+      header: () => (
+        <SortHeader
+          label="CT Logged"
+          sortKey="ctLogTimestamp"
+          currentSort={currentSort}
+          currentDir={currentDir}
+          onSort={handleSort}
+        />
+      ),
+      cell: ({ row }) => {
+        if (!row.original.ctLogTimestamp) return <span className="text-muted-foreground">—</span>;
+        return <UtcTime date={row.original.ctLogTimestamp} relative />;
       },
     },
   ];
@@ -407,6 +480,7 @@ export function CertificatesTable({
             <Button
               variant="outline"
               size="sm"
+              aria-label="Export current page as CSV"
               onClick={() => {
                 const csvHeader = "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
                 const csvRows = data.map((r) =>
@@ -434,11 +508,12 @@ export function CertificatesTable({
               }}
             >
               <Download className="size-4" />
-              Page
+              Export page
             </Button>
             <Button
               variant="outline"
               size="sm"
+              aria-label="Export all matching certificates as CSV"
               onClick={() => {
                 const exportParams = new URLSearchParams(searchParams.toString());
                 exportParams.delete("page");
@@ -451,7 +526,7 @@ export function CertificatesTable({
               title="Export all certificates matching current filters (up to 50,000)"
             >
               <Download className="size-4" />
-              All
+              Export all
             </Button>
           </div>
         </div>
@@ -478,19 +553,32 @@ export function CertificatesTable({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`)}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cn("py-3 xl:py-1.5", cell.column.columnDef.meta?.className)}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
+                const certPath = `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
+                return (
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    tabIndex={0}
+                    role="link"
+                    aria-label={org}
+                    onClick={() => router.push(certPath)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(certPath);
+                      }
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className={cn("py-3 xl:py-1.5", cell.column.columnDef.meta?.className)}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">

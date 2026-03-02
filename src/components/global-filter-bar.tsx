@@ -117,6 +117,360 @@ const PRECERT_OPTIONS = [
   { value: "precert", label: "Precerts Only" },
 ];
 
+// --- Named filter components (module scope to avoid remounting on each render) ---
+
+function CASelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value || "all"} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by issuing CA" className={className ?? "w-[140px]"}>
+        <SelectValue placeholder="All Issuers" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Issuers</SelectItem>
+        {ALL_CA_SLUGS.map((slug) => (
+          <SelectItem key={slug} value={slug}>
+            {CA_DISPLAY_NAMES[slug]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function RootCASelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by root CA" className={className ?? "w-[140px]"}>
+        <SelectValue placeholder="All Roots" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Roots</SelectItem>
+        {ROOT_CA_OPTIONS.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function TypeSelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by certificate type" className={className ?? "w-[110px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {CERT_TYPES.map((t) => (
+          <SelectItem key={t.value} value={t.value}>
+            {t.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function MarkSelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by mark type" className={className ?? "w-[160px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {MARK_OPTIONS.map((m) => (
+          <SelectItem key={m.value} value={m.value}>
+            {m.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ValiditySelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by validity status" className={className ?? "w-[120px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {VALIDITY_OPTIONS.map((v) => (
+          <SelectItem key={v.value} value={v.value}>
+            {v.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function PrecertSelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by precertificate status" className={className ?? "w-[140px]"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {PRECERT_OPTIONS.map((p) => (
+          <SelectItem key={p.value} value={p.value}>
+            {p.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function IndustrySelect({
+  value,
+  onChange,
+  options,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  className?: string;
+}) {
+  if (options.length === 0) return null;
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label="Filter by industry" className={className ?? "w-[170px]"}>
+        <SelectValue placeholder="All Industries" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Industries</SelectItem>
+        {options.map((i) => (
+          <SelectItem key={i.value} value={i.value}>
+            {i.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/**
+ * Date range filter with local state so URL updates only fire on blur, not on
+ * every keystroke. Preset buttons still update immediately since they set a
+ * complete, valid value.
+ */
+function DateRangeFilter({
+  currentFrom,
+  currentTo,
+  fromKey,
+  toKey,
+  fromLabel,
+  toLabel,
+  direction,
+  onCommit,
+  onMultiUpdate,
+  fullWidth,
+}: {
+  currentFrom: string;
+  currentTo: string;
+  fromKey: string;
+  toKey: string;
+  fromLabel: string;
+  toLabel: string;
+  direction: "past" | "future";
+  onCommit: (key: string, value: string) => void;
+  onMultiUpdate: (updates: Record<string, string | null>) => void;
+  fullWidth?: boolean;
+}) {
+  // Local state buffers the typed value; URL is updated only on blur
+  const [localFrom, setLocalFrom] = useState(currentFrom);
+  const [localTo, setLocalTo] = useState(currentTo);
+
+  // Keep local state in sync when the URL-driven value changes (e.g. chip removal)
+  useEffect(() => {
+    setLocalFrom(currentFrom);
+  }, [currentFrom]);
+  useEffect(() => {
+    setLocalTo(currentTo);
+  }, [currentTo]);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <DatePresets
+        direction={direction}
+        currentFrom={currentFrom}
+        currentTo={currentTo}
+        fromKey={fromKey}
+        toKey={toKey}
+        onSelect={onMultiUpdate}
+      />
+      <div className="flex items-center gap-1.5">
+        <Input
+          type="date"
+          value={localFrom}
+          onChange={(e) => setLocalFrom(e.target.value)}
+          onBlur={(e) => onCommit(fromKey, e.target.value)}
+          aria-label={fromLabel}
+          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+        />
+        <span className="text-xs text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={localTo}
+          onChange={(e) => setLocalTo(e.target.value)}
+          onBlur={(e) => onCommit(toKey, e.target.value)}
+          aria-label={toLabel}
+          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Grouped secondary filters panel — rendered both in the desktop popover and
+ * inside the mobile bottom sheet.
+ */
+function SecondaryFilters({
+  rootCa,
+  validity,
+  precert,
+  industry,
+  industryOptions,
+  dateFrom,
+  dateTo,
+  expiresFrom,
+  expiresTo,
+  onFilterChange,
+  onMultiUpdate,
+  fullWidth,
+}: {
+  rootCa: string;
+  validity: string;
+  precert: string;
+  industry: string;
+  industryOptions: { value: string; label: string }[];
+  dateFrom: string;
+  dateTo: string;
+  expiresFrom: string;
+  expiresTo: string;
+  onFilterChange: (key: string, value: string) => void;
+  onMultiUpdate: (updates: Record<string, string | null>) => void;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Certificate</span>
+        <div className={fullWidth ? "flex flex-col gap-2" : "flex items-center gap-2 flex-wrap"}>
+          <RootCASelect
+            value={rootCa}
+            onChange={(v) => onFilterChange("root", v)}
+            className={fullWidth ? "w-full" : "w-[140px]"}
+          />
+          <ValiditySelect
+            value={validity}
+            onChange={(v) => onFilterChange("validity", v)}
+            className={fullWidth ? "w-full" : "w-[120px]"}
+          />
+          <PrecertSelect
+            value={precert}
+            onChange={(v) => onFilterChange("precert", v)}
+            className={fullWidth ? "w-full" : "w-[140px]"}
+          />
+        </div>
+      </div>
+      <div>
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Issued Date</span>
+        <DateRangeFilter
+          direction="past"
+          currentFrom={dateFrom}
+          currentTo={dateTo}
+          fromKey="from"
+          toKey="to"
+          fromLabel="Issued from date"
+          toLabel="Issued to date"
+          onCommit={onFilterChange}
+          onMultiUpdate={onMultiUpdate}
+          fullWidth={fullWidth}
+        />
+      </div>
+      <div>
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Expiry Date</span>
+        <DateRangeFilter
+          direction="future"
+          currentFrom={expiresFrom}
+          currentTo={expiresTo}
+          fromKey="expiresFrom"
+          toKey="expiresTo"
+          fromLabel="Expires from date"
+          toLabel="Expires to date"
+          onCommit={onFilterChange}
+          onMultiUpdate={onMultiUpdate}
+          fullWidth={fullWidth}
+        />
+      </div>
+      {industryOptions.length > 0 && (
+        <div>
+          <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Category</span>
+          <IndustrySelect
+            value={industry}
+            onChange={(v) => onFilterChange("industry", v)}
+            options={industryOptions}
+            className={fullWidth ? "w-full" : "w-[170px]"}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FilterBarInner() {
   const router = useRouter();
   const pathname = usePathname();
@@ -205,6 +559,7 @@ function FilterBarInner() {
   const validity = searchParams.get("validity") ?? "all";
   const precert = searchParams.get("precert") ?? "all";
   const industry = searchParams.get("industry") ?? "all";
+  const country = searchParams.get("country") ?? "";
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
   const expiresFrom = searchParams.get("expiresFrom") ?? "";
@@ -218,11 +573,13 @@ function FilterBarInner() {
     validity !== "all" ||
     precert !== "all" ||
     industry !== "all" ||
+    country ||
     dateFrom ||
     dateTo ||
     expiresFrom ||
     expiresTo;
 
+  // Date ranges count as one filter each (not one per bound)
   const filterCount =
     (ca ? 1 : 0) +
     (rootCa !== "all" ? 1 : 0) +
@@ -231,10 +588,9 @@ function FilterBarInner() {
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
     (industry !== "all" ? 1 : 0) +
-    (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0) +
-    (expiresFrom ? 1 : 0) +
-    (expiresTo ? 1 : 0);
+    (country ? 1 : 0) +
+    (dateFrom || dateTo ? 1 : 0) +
+    (expiresFrom || expiresTo ? 1 : 0);
 
   // Count only filters that live inside the "More Filters" popover
   const secondaryFilterCount =
@@ -242,10 +598,8 @@ function FilterBarInner() {
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
     (industry !== "all" ? 1 : 0) +
-    (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0) +
-    (expiresFrom ? 1 : 0) +
-    (expiresTo ? 1 : 0);
+    (dateFrom || dateTo ? 1 : 0) +
+    (expiresFrom || expiresTo ? 1 : 0);
 
   // Build chips for all active filters
   const chips: FilterChip[] = [];
@@ -298,6 +652,13 @@ function FilterBarInner() {
       value: industry,
       onRemove: () => updateSecondaryFilter("industry", "all"),
     });
+  if (country)
+    chips.push({
+      key: "country",
+      label: "Country",
+      value: country,
+      onRemove: () => updateSecondaryFilter("country", ""),
+    });
   if (dateFrom)
     chips.push({
       key: "from",
@@ -326,206 +687,6 @@ function FilterBarInner() {
       value: expiresTo,
       onRemove: () => updateSecondaryFilter("expiresTo", ""),
     });
-
-  // --- Shared filter controls (accept className override for mobile full-width) ---
-
-  const caSelect = (className?: string) => (
-    <Select value={caSlug || "all"} onValueChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}>
-      <SelectTrigger size="sm" aria-label="Filter by issuing CA" className={className ?? "w-[140px]"}>
-        <SelectValue placeholder="All Issuers" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Issuers</SelectItem>
-        {ALL_CA_SLUGS.map((slug) => (
-          <SelectItem key={slug} value={slug}>
-            {CA_DISPLAY_NAMES[slug]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const rootCaSelect = (className?: string) => (
-    <Select value={rootCa} onValueChange={(v) => updateSecondaryFilter("root", v)}>
-      <SelectTrigger size="sm" aria-label="Filter by root CA" className={className ?? "w-[140px]"}>
-        <SelectValue placeholder="All Roots" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Roots</SelectItem>
-        {ROOT_CA_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const typeSelect = (className?: string) => (
-    <Select value={type} onValueChange={(v) => updateSecondaryFilter("type", v)}>
-      <SelectTrigger size="sm" aria-label="Filter by certificate type" className={className ?? "w-[110px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {CERT_TYPES.map((t) => (
-          <SelectItem key={t.value} value={t.value}>
-            {t.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const markSelect = (className?: string) => (
-    <Select value={mark} onValueChange={(v) => updateSecondaryFilter("mark", v)}>
-      <SelectTrigger size="sm" aria-label="Filter by mark type" className={className ?? "w-[160px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {MARK_OPTIONS.map((m) => (
-          <SelectItem key={m.value} value={m.value}>
-            {m.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const validitySelect = (className?: string) => (
-    <Select value={validity} onValueChange={(v) => updateSecondaryFilter("validity", v)}>
-      <SelectTrigger size="sm" aria-label="Filter by validity status" className={className ?? "w-[120px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {VALIDITY_OPTIONS.map((v) => (
-          <SelectItem key={v.value} value={v.value}>
-            {v.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const precertSelect = (className?: string) => (
-    <Select value={precert} onValueChange={(v) => updateSecondaryFilter("precert", v)}>
-      <SelectTrigger size="sm" aria-label="Filter by precertificate status" className={className ?? "w-[140px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {PRECERT_OPTIONS.map((p) => (
-          <SelectItem key={p.value} value={p.value}>
-            {p.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const industrySelect = (className?: string) =>
-    industryOptions.length > 0 ? (
-      <Select value={industry} onValueChange={(v) => updateSecondaryFilter("industry", v)}>
-        <SelectTrigger size="sm" aria-label="Filter by industry" className={className ?? "w-[170px]"}>
-          <SelectValue placeholder="All Industries" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Industries</SelectItem>
-          {industryOptions.map((i) => (
-            <SelectItem key={i.value} value={i.value}>
-              {i.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    ) : null;
-
-  const dateRange = (fullWidth?: boolean) => (
-    <div className="flex flex-col gap-1.5">
-      <DatePresets
-        direction="past"
-        currentFrom={dateFrom}
-        currentTo={dateTo}
-        fromKey="from"
-        toKey="to"
-        onSelect={updateMultipleFilters}
-      />
-      <div className="flex items-center gap-1.5">
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => updateSecondaryFilter("from", e.target.value)}
-          aria-label="Issued from date"
-          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-        />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => updateSecondaryFilter("to", e.target.value)}
-          aria-label="Issued to date"
-          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-        />
-      </div>
-    </div>
-  );
-
-  const expiresRange = (fullWidth?: boolean) => (
-    <div className="flex flex-col gap-1.5">
-      <DatePresets
-        direction="future"
-        currentFrom={expiresFrom}
-        currentTo={expiresTo}
-        fromKey="expiresFrom"
-        toKey="expiresTo"
-        onSelect={updateMultipleFilters}
-      />
-      <div className="flex items-center gap-1.5">
-        <Input
-          type="date"
-          value={expiresFrom}
-          onChange={(e) => updateSecondaryFilter("expiresFrom", e.target.value)}
-          aria-label="Expires from date"
-          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-        />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={expiresTo}
-          onChange={(e) => updateSecondaryFilter("expiresTo", e.target.value)}
-          aria-label="Expires to date"
-          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-        />
-      </div>
-    </div>
-  );
-
-  // --- Grouped secondary filters (reused in popover and mobile sheet) ---
-
-  const secondaryFilters = (fullWidth?: boolean) => (
-    <div className="flex flex-col gap-4">
-      <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Certificate</span>
-        <div className={fullWidth ? "flex flex-col gap-2" : "flex items-center gap-2 flex-wrap"}>
-          {rootCaSelect(fullWidth ? "w-full" : "w-[140px]")}
-          {validitySelect(fullWidth ? "w-full" : "w-[120px]")}
-          {precertSelect(fullWidth ? "w-full" : "w-[140px]")}
-        </div>
-      </div>
-      <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Issued Date</span>
-        {dateRange(fullWidth)}
-      </div>
-      <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Expiry Date</span>
-        {expiresRange(fullWidth)}
-      </div>
-      {industryOptions.length > 0 && (
-        <div>
-          <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Category</span>
-          {industrySelect(fullWidth ? "w-full" : "w-[170px]")}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="border-b bg-muted/30">
@@ -558,18 +719,35 @@ function FilterBarInner() {
                     <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
                       Issuer
                     </span>
-                    {caSelect("w-full")}
+                    <CASelect
+                      value={caSlug}
+                      onChange={(v) => router.push(buildUrl(v === "all" ? "" : v))}
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
                       Type
                     </span>
                     <div className="flex flex-col gap-2">
-                      {typeSelect("w-full")}
-                      {markSelect("w-full")}
+                      <TypeSelect value={type} onChange={(v) => updateSecondaryFilter("type", v)} className="w-full" />
+                      <MarkSelect value={mark} onChange={(v) => updateSecondaryFilter("mark", v)} className="w-full" />
                     </div>
                   </div>
-                  {secondaryFilters(true)}
+                  <SecondaryFilters
+                    rootCa={rootCa}
+                    validity={validity}
+                    precert={precert}
+                    industry={industry}
+                    industryOptions={industryOptions}
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    expiresFrom={expiresFrom}
+                    expiresTo={expiresTo}
+                    onFilterChange={updateSecondaryFilter}
+                    onMultiUpdate={updateMultipleFilters}
+                    fullWidth
+                  />
                 </div>
               </div>
               {hasFilters && (
@@ -601,9 +779,9 @@ function FilterBarInner() {
         {/* ===== Desktop: Primary selects + More Filters popover ===== */}
         <div className="hidden md:flex items-center gap-2">
           <ListFilter className="size-4 text-muted-foreground shrink-0" />
-          {caSelect()}
-          {typeSelect()}
-          {markSelect()}
+          <CASelect value={caSlug} onChange={(v) => router.push(buildUrl(v === "all" ? "" : v))} />
+          <TypeSelect value={type} onChange={(v) => updateSecondaryFilter("type", v)} />
+          <MarkSelect value={mark} onChange={(v) => updateSecondaryFilter("mark", v)} />
 
           <div className="w-px h-5 bg-border shrink-0" />
 
@@ -631,7 +809,19 @@ function FilterBarInner() {
                 }
               }}
             >
-              {secondaryFilters()}
+              <SecondaryFilters
+                rootCa={rootCa}
+                validity={validity}
+                precert={precert}
+                industry={industry}
+                industryOptions={industryOptions}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                expiresFrom={expiresFrom}
+                expiresTo={expiresTo}
+                onFilterChange={updateSecondaryFilter}
+                onMultiUpdate={updateMultipleFilters}
+              />
             </PopoverContent>
           </Popover>
 

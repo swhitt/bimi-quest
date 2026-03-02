@@ -41,7 +41,14 @@ export async function MapContent({ searchParams }: { searchParams: Record<string
           <CardTitle>Global BIMI Certificate Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <WorldMapWrapper data={data.map((d) => ({ country: d.country || "", total: d.total }))} />
+          <WorldMapWrapper
+            data={data.map((d) => ({
+              country: d.country || "",
+              total: d.total,
+              vmcCount: d.vmcCount,
+              cmcCount: d.cmcCount,
+            }))}
+          />
         </CardContent>
       </Card>
 

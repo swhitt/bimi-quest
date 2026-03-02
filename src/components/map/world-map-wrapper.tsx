@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const WorldMap = dynamic(() => import("@/components/world-map").then((mod) => ({ default: mod.WorldMap })), {
@@ -8,9 +9,15 @@ const WorldMap = dynamic(() => import("@/components/world-map").then((mod) => ({
 });
 
 interface WorldMapWrapperProps {
-  data: { country: string; total: number }[];
+  data: { country: string; total: number; vmcCount?: number; cmcCount?: number }[];
 }
 
 export function WorldMapWrapper({ data }: WorldMapWrapperProps) {
-  return <WorldMap data={data} />;
+  const router = useRouter();
+
+  function handleCountryClick(alpha2: string) {
+    router.push(`/certificates?country=${alpha2}`);
+  }
+
+  return <WorldMap data={data} onCountryClick={handleCountryClick} />;
 }
