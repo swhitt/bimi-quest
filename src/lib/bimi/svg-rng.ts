@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import type { BimiCheckItem } from "./types";
 import { errorMessage } from "@/lib/utils";
+import type { BimiCheckItem } from "./types";
 
 const schemaPath = join(process.cwd(), "src/lib/bimi/svg-tiny-ps.rng");
 const schema = readFileSync(schemaPath, "utf-8");

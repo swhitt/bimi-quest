@@ -1,5 +1,5 @@
-import { gunzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
 
 /** Strip PEM headers and base64-decode to raw DER bytes.
  *  Handles any PEM type (CERTIFICATE, PRIVATE KEY, etc.) */

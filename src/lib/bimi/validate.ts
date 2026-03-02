@@ -1,21 +1,21 @@
-import { X509Certificate, BasicConstraintsExtension, SubjectAlternativeNameExtension } from "@peculiar/x509";
-import { lookupBIMIRecord, type BIMIRecord } from "./dns";
-import { lookupDMARC, isDMARCValidForBIMI, getDMARCBIMIReason, type DMARCRecord } from "./dmarc";
-import {
-  validateSVGTinyPS,
-  decompressSvgIfNeeded,
-  computeSvgHash,
-  categorizeSvgChecks,
-  type SVGValidationResult,
-} from "./svg";
-import { validateSvgRng, rngToCheckItems } from "./svg-rng";
-import { computeGrade } from "./grade";
-import type { BimiCheckItem, BimiGrade } from "./types";
-import { safeFetch } from "@/lib/net/safe-fetch";
-import { extractDnField, pemToDer, deriveCertType } from "@/lib/ct/parser";
-import { toArrayBuffer } from "@/lib/pem";
+import { BasicConstraintsExtension, SubjectAlternativeNameExtension, X509Certificate } from "@peculiar/x509";
 import { BIMI_MARK_TYPE_OID } from "@/lib/bimi/oids";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
+import { deriveCertType, extractDnField, pemToDer } from "@/lib/ct/parser";
+import { safeFetch } from "@/lib/net/safe-fetch";
+import { toArrayBuffer } from "@/lib/pem";
+import { type DMARCRecord, getDMARCBIMIReason, isDMARCValidForBIMI, lookupDMARC } from "./dmarc";
+import { type BIMIRecord, lookupBIMIRecord } from "./dns";
+import { computeGrade } from "./grade";
+import {
+  categorizeSvgChecks,
+  computeSvgHash,
+  decompressSvgIfNeeded,
+  type SVGValidationResult,
+  validateSVGTinyPS,
+} from "./svg";
+import { rngToCheckItems, validateSvgRng } from "./svg-rng";
+import type { BimiCheckItem, BimiGrade } from "./types";
 
 // CAs authorized to issue BIMI certificates per CA/Browser Forum VMC requirements.
 // Values match what normalizeIssuerOrg() produces from raw certificate DNs.

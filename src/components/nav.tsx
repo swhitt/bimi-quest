@@ -1,15 +1,15 @@
 "use client";
 
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { Suspense, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { caNameToSlug } from "@/lib/ca-slugs";
+import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { UniversalSearch } from "./universal-search";
-import { caNameToSlug } from "@/lib/ca-slugs";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from "@/components/ui/sheet";
 
 const navItems = [
   { href: "/", label: "Dashboard" },

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Award, ExternalLink, Moon, Shield, Star, Sun } from "lucide-react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { LogoSvg } from "@/components/logo-svg";
-import { stripWhiteSvgBg, tileBgForSvg, isLightBg, DARK_BG, LIGHT_BG } from "@/lib/svg-bg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getMarkTypeInfo } from "@/lib/mark-types";
-import { Sun, Moon, ExternalLink, Shield, Award, Star } from "lucide-react";
 import { formatUtcFull } from "@/components/ui/utc-time";
+import { getMarkTypeInfo } from "@/lib/mark-types";
+import { DARK_BG, isLightBg, LIGHT_BG, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 
 interface LogoData {
   svg: string | null;

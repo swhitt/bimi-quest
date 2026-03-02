@@ -1,5 +1,5 @@
-import type { BimiCheckItem } from "./types";
 import { decompressIfGzipped, sha256Hex } from "@/lib/pem";
+import type { BimiCheckItem } from "./types";
 
 export interface SVGValidationResult {
   valid: boolean;

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { displayRootCa, displayIssuerOrg, displayIssuerWithRoot, normalizeIssuerOrg } from "./ca-display";
+import { describe, expect, it } from "vitest";
+import { displayIssuerOrg, displayIssuerWithRoot, displayRootCa, normalizeIssuerOrg } from "./ca-display";
 
 describe("displayRootCa", () => {
   it("maps 'DigiCert, Inc.' to 'DigiCert'", () => {

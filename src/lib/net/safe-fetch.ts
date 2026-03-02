@@ -1,5 +1,5 @@
 import { promises as dns } from "dns";
-import { isPrivateIP, isPrivateHostname } from "./hostname";
+import { isPrivateHostname, isPrivateIP } from "./hostname";
 
 /**
  * Fetch wrapper that resolves DNS before connecting and validates all resolved

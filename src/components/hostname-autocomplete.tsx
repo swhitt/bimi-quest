@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 
 interface Suggestion {

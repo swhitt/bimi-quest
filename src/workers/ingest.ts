@@ -1,17 +1,17 @@
 import "dotenv/config";
 import { neon } from "@neondatabase/serverless";
-import { eq } from "drizzle-orm";
-import { ingestionCursors } from "@/lib/db/schema";
-import { db } from "@/lib/db";
-import { getSTH, getEntries, throttle } from "@/lib/ct/gorgon";
-import { parseCTLogEntry, hasBIMIOID, extractBIMIData, pemToDer } from "@/lib/ct/parser";
-import { scoreNotabilityBatch, classifyIndustryBatch, type BrandInput } from "@/lib/notability";
-import { processIngestBatch } from "@/lib/ct/ingest-batch";
-import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
-import { computeColorRichness } from "@/lib/svg-color-richness";
-import { computeVisualHash } from "@/lib/dhash";
 import { X509Certificate } from "@peculiar/x509";
+import { eq } from "drizzle-orm";
+import { getEntries, getSTH, throttle } from "@/lib/ct/gorgon";
+import { processIngestBatch } from "@/lib/ct/ingest-batch";
+import { extractBIMIData, hasBIMIOID, parseCTLogEntry, pemToDer } from "@/lib/ct/parser";
+import { db } from "@/lib/db";
+import { ingestionCursors } from "@/lib/db/schema";
+import { computeVisualHash } from "@/lib/dhash";
+import { scoreLogoQualityBatch, svgToPng } from "@/lib/logo-quality";
+import { type BrandInput, classifyIndustryBatch, scoreNotabilityBatch } from "@/lib/notability";
 import { toArrayBuffer } from "@/lib/pem";
+import { computeColorRichness } from "@/lib/svg-color-richness";
 import { errorMessage } from "@/lib/utils";
 
 const connectionString = process.env.DATABASE_URL;

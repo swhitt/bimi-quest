@@ -1,21 +1,17 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Download } from "lucide-react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCertTypeColors } from "@/lib/chart-colors";
 
 interface CertTypeChartProps {
   caBreakdown: { ca: string | null; total: number; vmcCount: number; cmcCount: number }[];
   markTypeBreakdown: { markType: string | null; count: number }[];
   apiQuery?: string;
 }
-
-const CERT_TYPE_COLORS = {
-  VMC: "oklch(0.65 0.18 230)",
-  CMC: "oklch(0.70 0.14 165)",
-};
 
 const MARK_TYPE_COLORS: Record<string, string> = {
   "Registered Mark": "oklch(0.60 0.16 280)",
@@ -56,13 +52,14 @@ function DonutTooltip({
 }
 
 export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }: CertTypeChartProps) {
+  const certColors = useCertTypeColors();
   const vmcTotal = caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
   const grandTotal = vmcTotal + cmcTotal;
 
   const outerData = [
-    { name: "VMC", value: vmcTotal, fill: CERT_TYPE_COLORS.VMC },
-    { name: "CMC", value: cmcTotal, fill: CERT_TYPE_COLORS.CMC },
+    { name: "VMC", value: vmcTotal, fill: certColors.VMC },
+    { name: "CMC", value: cmcTotal, fill: certColors.CMC },
   ].filter((d) => d.value > 0);
 
   const markTypes = markTypeBreakdown

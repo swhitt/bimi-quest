@@ -1,9 +1,9 @@
 import { X509Certificate } from "@peculiar/x509";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { normalizeIssuerOrg } from "@/lib/ca-display";
+import { extractBIMIData, hasBIMIOID } from "@/lib/ct/parser";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { extractBIMIData, hasBIMIOID } from "@/lib/ct/parser";
-import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { scoreNotability } from "@/lib/notability";
 import { toArrayBuffer } from "@/lib/pem";
 import { errorMessage } from "@/lib/utils";

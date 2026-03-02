@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDistanceToNow } from "date-fns";
-import { decodeExtension } from "@/lib/x509/decode-extensions";
-import { sanitizeSvg } from "@/lib/sanitize-svg";
-import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
 import { getMarkTypeInfo } from "@/lib/mark-types";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { decodeExtension } from "@/lib/x509/decode-extensions";
 
 // Extension entry: new format has { v, c }, old format is a plain hex string
 type ExtensionValue = string | { v: string; c: boolean };

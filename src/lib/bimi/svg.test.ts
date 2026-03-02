@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { gzipSync } from "node:zlib";
-import { validateSVGTinyPS, decompressSvgIfNeeded, computeSvgHash, categorizeSvgChecks } from "./svg";
+import { describe, expect, it } from "vitest";
+import { categorizeSvgChecks, computeSvgHash, decompressSvgIfNeeded, validateSVGTinyPS } from "./svg";
 
 const validSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps"

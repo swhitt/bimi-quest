@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ActiveFilters {
   type: string | null;

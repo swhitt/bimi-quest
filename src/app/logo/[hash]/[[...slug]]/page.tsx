@@ -1,9 +1,9 @@
+import { and, isNotNull, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { sql, and, isNotNull } from "drizzle-orm";
+import { displayIssuerOrg } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { displayIssuerOrg } from "@/lib/ca-display";
 import { domainSlug } from "@/lib/domain-slug";
 import { LogoDetailClient } from "./logo-detail-client";
 

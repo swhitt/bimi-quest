@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseDMARCRecord, isDMARCValidForBIMI, getDMARCBIMIReason, getOrgDomain } from "./dmarc";
+import { describe, expect, it } from "vitest";
+import { getDMARCBIMIReason, getOrgDomain, isDMARCValidForBIMI, parseDMARCRecord } from "./dmarc";
 
 describe("parseDMARCRecord", () => {
   it("parses a basic DMARC record", () => {

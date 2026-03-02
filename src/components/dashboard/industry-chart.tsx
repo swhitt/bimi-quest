@@ -1,13 +1,14 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ChartTooltipContent } from "@/components/chart-tooltip";
-import { useGlobalFilters } from "@/lib/use-global-filters";
-import { useFilteredData } from "@/lib/use-filtered-data";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartTooltipContent } from "@/components/chart-tooltip";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useFilteredData } from "@/lib/use-filtered-data";
+import { useCertTypeColors } from "@/lib/chart-colors";
+import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface IndustryRow {
   industry: string | null;
@@ -15,9 +16,6 @@ interface IndustryRow {
   vmcCount: number;
   cmcCount: number;
 }
-
-const VMC_COLOR = "oklch(0.65 0.18 230)";
-const CMC_COLOR = "oklch(0.70 0.14 165)";
 
 interface IndustryTooltipEntry {
   name: string;
@@ -50,6 +48,7 @@ function IndustryTooltip({
 }
 
 export function IndustryChart() {
+  const certColors = useCertTypeColors();
   const { buildApiParams } = useGlobalFilters();
   const filterParams = buildApiParams();
   const { data, loading } = useFilteredData<IndustryRow[]>(
@@ -123,12 +122,12 @@ export function IndustryChart() {
                     width={130}
                   />
                   <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<IndustryTooltip />} />
-                  <Bar dataKey="vmcCount" name="VMC" stackId="industry" fill={VMC_COLOR} fillOpacity={0.9} />
+                  <Bar dataKey="vmcCount" name="VMC" stackId="industry" fill={certColors.VMC} fillOpacity={0.9} />
                   <Bar
                     dataKey="cmcCount"
                     name="CMC"
                     stackId="industry"
-                    fill={CMC_COLOR}
+                    fill={certColors.CMC}
                     fillOpacity={0.7}
                     radius={[0, 3, 3, 0]}
                   />
@@ -138,11 +137,17 @@ export function IndustryChart() {
 
             <div className="flex items-center gap-4 px-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: VMC_COLOR, opacity: 0.9 }} />
+                <span
+                  className="inline-block h-2.5 w-4 rounded-sm"
+                  style={{ background: certColors.VMC, opacity: 0.9 }}
+                />
                 <span>VMC</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: CMC_COLOR, opacity: 0.7 }} />
+                <span
+                  className="inline-block h-2.5 w-4 rounded-sm"
+                  style={{ background: certColors.CMC, opacity: 0.7 }}
+                />
                 <span>CMC</span>
               </div>
             </div>

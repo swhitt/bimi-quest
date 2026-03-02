@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface UseFilteredDataResult<T> {

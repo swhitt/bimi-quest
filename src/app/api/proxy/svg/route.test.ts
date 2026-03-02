@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock safeFetch before importing the route
 vi.mock("@/lib/net/safe-fetch", () => ({
@@ -10,8 +10,8 @@ vi.mock("@/lib/logger", () => ({
   log: vi.fn(),
 }));
 
-import { GET, OPTIONS } from "./route";
 import { safeFetch } from "@/lib/net/safe-fetch";
+import { GET, OPTIONS } from "./route";
 
 const mockSafeFetch = safeFetch as unknown as ReturnType<typeof vi.fn>;
 

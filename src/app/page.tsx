@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { DashboardContent } from "./dashboard-content";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

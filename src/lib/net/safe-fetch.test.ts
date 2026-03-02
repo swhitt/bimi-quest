@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 // Mock the dns module before importing safeFetch
 vi.mock("dns", () => ({
@@ -8,8 +8,8 @@ vi.mock("dns", () => ({
   },
 }));
 
-import { safeFetch } from "./safe-fetch";
 import { promises as dns } from "dns";
+import { safeFetch } from "./safe-fetch";
 
 const mockResolve4 = dns.resolve4 as unknown as Mock;
 const mockResolve6 = dns.resolve6 as unknown as Mock;

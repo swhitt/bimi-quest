@@ -1,20 +1,20 @@
-import { ImageResponse } from "next/og";
 import { sql } from "drizzle-orm";
+import { ImageResponse } from "next/og";
+import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { getOgFonts } from "@/lib/og/fonts";
-import { renderLogoToPngDataUri } from "@/lib/og/render-logo";
 import {
   colors,
-  OG_WIDTH,
-  OG_HEIGHT,
-  validityColor,
   daysRemainingText,
   fmtDate,
-  shortFingerprint,
   formatSans,
+  OG_HEIGHT,
+  OG_WIDTH,
+  shortFingerprint,
+  validityColor,
 } from "@/lib/og/card-styles";
-import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { getOgFonts } from "@/lib/og/fonts";
+import { renderLogoToPngDataUri } from "@/lib/og/render-logo";
 
 export const runtime = "nodejs";
 

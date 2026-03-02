@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 const WorldMap = dynamic(() => import("@/components/world-map").then((mod) => ({ default: mod.WorldMap })), {
   ssr: false,

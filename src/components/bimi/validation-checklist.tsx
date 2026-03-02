@@ -1,11 +1,11 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { BimiCheckItem } from "@/lib/bimi/types";
-import { useState } from "react";
 
 const STATUS_ICON: Record<BimiCheckItem["status"], { icon: string; color: string; label: string }> = {
   pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400", label: "Passed" },

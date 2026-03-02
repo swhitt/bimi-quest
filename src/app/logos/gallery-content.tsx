@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { ListFilter } from "lucide-react";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { domainSlug } from "@/lib/domain-slug";
-import { sanitizeSvg } from "@/lib/sanitize-svg";
-import { stripWhiteSvgBg, tileBgForSvg, isLightBg } from "@/lib/svg-bg";
-import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PaginationBar } from "@/components/pagination-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { domainSlug } from "@/lib/domain-slug";
+import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { useLazyRender } from "@/lib/use-lazy-render";
 
@@ -320,15 +320,15 @@ export function GalleryContent() {
   const initPreset = (() => {
     const v = searchParams.get("view");
     if (v && v in PRESETS) return v as PresetKey;
-    // No view param and no legacy sort/score params → default to showcase
-    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "showcase" as PresetKey;
+    // No view param and no legacy sort/score params → default to fullColor
+    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "fullColor" as PresetKey;
     return null;
   })();
 
   const [activePreset, setActivePreset] = useState<PresetKey | null>(initPreset);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [customFilters, setCustomFilters] = useState<CustomFilters>(DEFAULT_FILTERS);
-  const [dedupSvg, setDedupSvg] = useState(searchParams.get("unique") === "1");
+  const [dedupSvg, setDedupSvg] = useState(searchParams.get("unique") !== "0");
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [logos, setLogos] = useState<Logo[]>([]);
   const [total, setTotal] = useState(0);

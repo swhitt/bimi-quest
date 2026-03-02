@@ -1,6 +1,6 @@
-import { log } from "@/lib/logger";
 import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
 import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
+import { log } from "@/lib/logger";
 
 export interface DiscordCertPayload {
   domain: string;

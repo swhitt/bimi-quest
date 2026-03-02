@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import { permanentRedirect, notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
-import { resolveCertParam } from "@/lib/db/filters";
+import type { Metadata } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
 import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { db } from "@/lib/db";
+import { resolveCertParam } from "@/lib/db/filters";
+import { certificates } from "@/lib/db/schema";
 import { CertificateDetail } from "./certificate-detail";
 
 interface Props {

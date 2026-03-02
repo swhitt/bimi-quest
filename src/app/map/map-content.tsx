@@ -1,8 +1,8 @@
-import { getBaseUrl } from "@/lib/server-url";
+import { WorldMapWrapper } from "@/components/map/world-map-wrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { WorldMapWrapper } from "@/components/map/world-map-wrapper";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
+import { getBaseUrl } from "@/lib/server-url";
 
 interface GeoEntry {
   country: string | null;

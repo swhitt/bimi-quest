@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { connection } from "next/server";
-import { GalleryContent } from "./gallery-content";
+import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GalleryContent } from "./gallery-content";
 
 export const metadata: Metadata = {
   title: "Logo Gallery",

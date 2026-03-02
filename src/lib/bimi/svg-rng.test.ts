@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { validateSvgRng, rngToCheckItems } from "./svg-rng";
+import { describe, expect, it } from "vitest";
+import { rngToCheckItems, validateSvgRng } from "./svg-rng";
 
 const validSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps"

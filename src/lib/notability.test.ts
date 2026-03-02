@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreate = vi.fn();
 
@@ -11,11 +11,11 @@ vi.mock("@anthropic-ai/sdk", () => {
 });
 
 import {
+  type BrandInput,
+  classifyIndustryBatch,
   INDUSTRIES,
   scoreNotability,
   scoreNotabilityBatch,
-  classifyIndustryBatch,
-  type BrandInput,
 } from "./notability";
 
 /** Helper: build a mock API response containing a tool_use block */

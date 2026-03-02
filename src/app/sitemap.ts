@@ -2,8 +2,9 @@ import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 
 export const revalidate = 3600;
-import { certificates } from "@/lib/db/schema";
+
 import { desc } from "drizzle-orm";
+import { certificates } from "@/lib/db/schema";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest";

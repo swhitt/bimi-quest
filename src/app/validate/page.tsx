@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { ValidateContent } from "./validate-content";
 
 export const metadata: Metadata = {

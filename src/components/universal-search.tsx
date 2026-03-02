@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { detectSearchType, normalizeHex, extractDomain, type SearchType } from "@/lib/search-detect";
+import { detectSearchType, extractDomain, normalizeHex, type SearchType } from "@/lib/search-detect";
 
 interface Suggestion {
   label: string;

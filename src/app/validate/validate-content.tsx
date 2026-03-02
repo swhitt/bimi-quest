@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
-import { ValidationGrade } from "@/components/bimi/validation-grade";
-import { ValidationChecklist } from "@/components/bimi/validation-checklist";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NextSteps } from "@/components/bimi/next-steps";
 import { TechnicalDetails } from "@/components/bimi/technical-details";
+import { ValidationChecklist } from "@/components/bimi/validation-checklist";
+import { ValidationGrade } from "@/components/bimi/validation-grade";
+import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
 
 interface ChainValidation {

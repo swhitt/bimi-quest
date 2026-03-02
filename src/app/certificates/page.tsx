@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { CertificatesContent } from "./certificates-content";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CertificatesContent } from "./certificates-content";
 
 export const metadata: Metadata = {
   title: "Certificates",

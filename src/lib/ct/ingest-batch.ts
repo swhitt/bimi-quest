@@ -1,22 +1,22 @@
-import { eq, and, inArray } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { certificates, chainCerts, certificateChainLinks, ingestionCursors } from "@/lib/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import { normalizeIssuerOrg } from "@/lib/ca-display";
+import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
 import { getEntries, throttle } from "@/lib/ct/gorgon";
 import {
-  parseCTLogEntry,
-  hasBIMIOID,
-  extractBIMIData,
-  parseChainCert,
-  extractDnField,
   computePemFingerprint,
+  extractBIMIData,
+  extractDnField,
+  hasBIMIOID,
+  parseChainCert,
+  parseCTLogEntry,
 } from "@/lib/ct/parser";
-import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
-import { normalizeIssuerOrg } from "@/lib/ca-display";
-import { scoreNotabilityBatch, type BrandInput } from "@/lib/notability";
-import { computeColorRichness } from "@/lib/svg-color-richness";
+import { db } from "@/lib/db";
+import { certificateChainLinks, certificates, chainCerts, ingestionCursors } from "@/lib/db/schema";
 import { computeVisualHash } from "@/lib/dhash";
+import { type BrandInput, scoreNotabilityBatch } from "@/lib/notability";
+import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
+import { computeColorRichness } from "@/lib/svg-color-richness";
 import { errorMessage } from "@/lib/utils";
-import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
 
 const BATCH_SIZE = 256;
 

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Defers rendering of expensive content until the element scrolls into (or near)

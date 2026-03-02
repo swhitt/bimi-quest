@@ -1,10 +1,10 @@
+import { desc, sql } from "drizzle-orm";
 import { ImageResponse } from "next/og";
-import { sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
+import { colors, OG_HEIGHT, OG_WIDTH } from "@/lib/og/card-styles";
 import { getOgFonts } from "@/lib/og/fonts";
 import { renderLogoToPngDataUri } from "@/lib/og/render-logo";
-import { colors, OG_WIDTH, OG_HEIGHT } from "@/lib/og/card-styles";
 
 export const runtime = "nodejs";
 

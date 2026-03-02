@@ -1,10 +1,10 @@
+import { desc, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { sql, desc } from "drizzle-orm";
+import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { HostContent } from "./host-content";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   params: Promise<{ hostname: string }>;

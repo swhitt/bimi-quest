@@ -1,11 +1,11 @@
+import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { eq, desc } from "drizzle-orm";
+import { Skeleton } from "@/components/ui/skeleton";
+import { displayIssuerOrg } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { displayIssuerOrg } from "@/lib/ca-display";
 import { OrgContent } from "./org-content";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   params: Promise<{ org: string }>;

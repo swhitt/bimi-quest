@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  pemToDer,
   buildOcspRequest,
-  parseOcspResponse,
-  extractOcspUrl,
   extractCrlUrl,
-  parseCrl,
   extractIssuerInfo,
+  extractOcspUrl,
   extractSubjectNameDer,
+  parseCrl,
+  parseOcspResponse,
+  pemToDer,
 } from "./revocation";
 
 // A real self-signed RSA certificate (generated via openssl) for structural tests.

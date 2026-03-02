@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 // CA slug -> issuer_org value used for filtering.
 const CA_SLUGS: Record<string, string> = {

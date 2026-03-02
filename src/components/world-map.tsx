@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
-import { geoNaturalEarth1, geoPath, type GeoPermissibleObjects } from "d3-geo";
+import { type GeoPermissibleObjects, geoNaturalEarth1, geoPath } from "d3-geo";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
-import type { Topology, GeometryCollection } from "topojson-specification";
+import type { GeometryCollection, Topology } from "topojson-specification";
 
 // ISO 3166-1 numeric -> alpha-2 mapping (covers all countries in world-110m.json)
 const NUM_TO_ALPHA2: Record<string, string> = {

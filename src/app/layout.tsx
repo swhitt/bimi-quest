@@ -1,15 +1,15 @@
-import type { Metadata } from "next";
-import Script from "next/script";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
-import { Nav } from "@/components/nav";
-import { Footer } from "@/components/footer";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/components/theme-provider";
-import { GlobalFilterBar } from "@/components/global-filter-bar";
-import { UpdateBanner } from "@/components/update-banner";
-import { OfflineBanner } from "@/components/offline-banner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import type { Metadata } from "next";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import Script from "next/script";
+import { Footer } from "@/components/footer";
+import { GlobalFilterBar } from "@/components/global-filter-bar";
+import { Nav } from "@/components/nav";
+import { OfflineBanner } from "@/components/offline-banner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { UpdateBanner } from "@/components/update-banner";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ValidationGrade } from "@/components/bimi/validation-grade";
 import { ValidationChecklist } from "@/components/bimi/validation-checklist";
+import { ValidationGrade } from "@/components/bimi/validation-grade";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
 
 interface ValidationResult {

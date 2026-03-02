@@ -1,8 +1,8 @@
 import { X509Certificate } from "@peculiar/x509";
-import type { CTLogEntry } from "./gorgon";
-import { toArrayBuffer, sha256Hex, decompressIfGzipped, pemToDer } from "@/lib/pem";
-import { bytesToHex } from "@/lib/hex";
 import { BIMI_MARK_TYPE_OID } from "@/lib/bimi/oids";
+import { bytesToHex } from "@/lib/hex";
+import { decompressIfGzipped, pemToDer, sha256Hex, toArrayBuffer } from "@/lib/pem";
+import type { CTLogEntry } from "./gorgon";
 
 // BIMI-relevant OIDs
 const LOGOTYPE_OID = "1.3.6.1.5.5.7.1.12";

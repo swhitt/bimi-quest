@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ───────────────────────────────────────────────────────────
 
@@ -101,8 +101,8 @@ vi.mock("@/lib/db/filters", () => ({
 }));
 
 // Import routes after all mocks are registered
-import { GET as getCertDetail } from "./[id]/route";
 import { GET as getRevocation } from "./[id]/revocation/route";
+import { GET as getCertDetail } from "./[id]/route";
 
 function makeRequest(path: string): NextRequest {
   return new NextRequest(new URL(path, "http://localhost:3000"), {

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, text, timestamp, bigint, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 export const certificates = pgTable(
   "certificates",

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { isPrivateIP, isPrivateHostname } from "./hostname";
+import { describe, expect, it } from "vitest";
+import { isPrivateHostname, isPrivateIP } from "./hostname";
 
 describe("isPrivateIP", () => {
   it("detects IPv4 loopback", () => {

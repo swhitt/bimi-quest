@@ -1,17 +1,13 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { CA_COLOR_INDEX, useChartColors, getCAColor } from "@/lib/chart-colors";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { displayIssuerOrg } from "@/lib/ca-display";
-
-// Distinct hues for VMC (blue) and CMC (teal/green), matching industry-chart.tsx
-const VMC_COLOR = "oklch(0.65 0.18 230)";
-const CMC_COLOR = "oklch(0.70 0.14 165)";
+import { CA_COLOR_INDEX, useCertTypeColors } from "@/lib/chart-colors";
+import { cn } from "@/lib/utils";
 
 interface CABreakdown {
   ca: string | null;
@@ -41,7 +37,17 @@ interface BarTooltipEntry {
   payload: MarketShareDataPoint;
 }
 
-function BarTooltip({ active, payload }: { active?: boolean; payload?: readonly BarTooltipEntry[] }) {
+function BarTooltip({
+  active,
+  payload,
+  vmcColor,
+  cmcColor,
+}: {
+  active?: boolean;
+  payload?: readonly BarTooltipEntry[];
+  vmcColor: string;
+  cmcColor: string;
+}) {
   if (!active || !payload?.length) return null;
 
   const entry = payload[0]?.payload;
@@ -49,10 +55,10 @@ function BarTooltip({ active, payload }: { active?: boolean; payload?: readonly 
 
   const rows = [];
   if (entry.vmcCount > 0) {
-    rows.push({ color: VMC_COLOR, name: "VMC", value: entry.vmcCount.toLocaleString() });
+    rows.push({ color: vmcColor, name: "VMC", value: entry.vmcCount.toLocaleString() });
   }
   if (entry.cmcCount > 0) {
-    rows.push({ color: CMC_COLOR, name: "CMC", value: entry.cmcCount.toLocaleString() });
+    rows.push({ color: cmcColor, name: "CMC", value: entry.cmcCount.toLocaleString() });
   }
 
   const pct = entry.grandTotal > 0 ? ((entry.total / entry.grandTotal) * 100).toFixed(1) : "0.0";
@@ -61,7 +67,7 @@ function BarTooltip({ active, payload }: { active?: boolean; payload?: readonly 
 }
 
 export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShareChartProps) {
-  const caColors = useChartColors();
+  const certColors = useCertTypeColors();
   const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
   const grandTotal = data.reduce((s, d) => s + d.total, 0);
@@ -125,26 +131,29 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                     tickLine={false}
                     width={110}
                   />
-                  <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<BarTooltip />} />
-                  <Bar dataKey="vmcCount" name="VMC" stackId="share" fill={VMC_COLOR} radius={[0, 0, 0, 0]}>
+                  <Tooltip
+                    cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+                    content={(props) => <BarTooltip {...props} vmcColor={certColors.VMC} cmcColor={certColors.CMC} />}
+                  />
+                  <Bar dataKey="vmcCount" name="VMC" stackId="share" fill={certColors.VMC} radius={[0, 0, 0, 0]}>
                     {chartData.map((entry) => {
                       const isSelected = entry.name === selectedCA;
                       return (
                         <Cell
                           key={`vmc-${entry.name}`}
-                          fill={VMC_COLOR}
+                          fill={certColors.VMC}
                           fillOpacity={isFiltered && !isSelected ? 0.2 : 0.9}
                         />
                       );
                     })}
                   </Bar>
-                  <Bar dataKey="cmcCount" name="CMC" stackId="share" fill={CMC_COLOR} radius={[0, 3, 3, 0]}>
+                  <Bar dataKey="cmcCount" name="CMC" stackId="share" fill={certColors.CMC} radius={[0, 3, 3, 0]}>
                     {chartData.map((entry) => {
                       const isSelected = entry.name === selectedCA;
                       return (
                         <Cell
                           key={`cmc-${entry.name}`}
-                          fill={CMC_COLOR}
+                          fill={certColors.CMC}
                           fillOpacity={isFiltered && !isSelected ? 0.2 : 0.8}
                         />
                       );
@@ -152,18 +161,6 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-
-            {/* Legend for VMC vs CMC distinction */}
-            <div className="flex items-center gap-4 px-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: VMC_COLOR, opacity: 0.9 }} />
-                <span>VMC</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: CMC_COLOR, opacity: 0.8 }} />
-                <span>CMC</span>
-              </div>
             </div>
 
             {/* Summary list with percentage */}
@@ -180,10 +177,6 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                       isFiltered && !isSelected && "opacity-50",
                     )}
                   >
-                    <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-                      style={{ background: getCAColor(caColors, entry.name) }}
-                    />
                     <span className="flex-1">{entry.name}</span>
                     <span className="tabular-nums text-muted-foreground">{entry.total.toLocaleString()}</span>
                     <span className="w-14 text-right tabular-nums">{pct.toFixed(1)}%</span>

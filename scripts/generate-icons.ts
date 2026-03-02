@@ -1,6 +1,6 @@
-import sharp from "sharp";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import sharp from "sharp";
 
 const ICON_DIR = resolve("public/icons");
 const LOGO = resolve("public/logo.svg");
