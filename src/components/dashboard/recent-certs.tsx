@@ -1,79 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
-import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
-import { PaginationBar, type Pagination } from "@/components/pagination-bar";
+import { displayIssuerOrg } from "@/lib/ca-display";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { ArrowRight } from "lucide-react";
 
 interface RecentCert {
   id: number;
   fingerprintSha256: string;
-  serialNumber: string;
   subjectCn: string | null;
   subjectOrg: string | null;
   issuerOrg: string | null;
-  rootCaOrg: string | null;
   certType: string | null;
   notBefore: string;
   subjectCountry: string | null;
   sanList: string[];
   logotypeSvg: string | null;
-  isPrecert: boolean | null;
   notabilityScore: number | null;
-  companyDescription: string | null;
 }
-
-const PAGE_SIZE = 10;
 
 export function RecentCerts() {
   const { buildApiParams } = useGlobalFilters();
   const [certs, setCerts] = useState<RecentCert[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: PAGE_SIZE,
-    total: 0,
-    totalPages: 1,
+  const [loadedParams, setLoadedParams] = useState<string | null>(null);
+
+  const filterParams = buildApiParams({
+    page: "1",
+    limit: "7",
+    sort: "notBefore",
+    dir: "desc",
   });
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-
-  const filterParams = buildApiParams();
-
-  // Reset to page 1 when filters change
-  const [prevFilters, setPrevFilters] = useState(filterParams);
-  if (filterParams !== prevFilters) {
-    setPrevFilters(filterParams);
-    setPage(1);
-  }
+  const loading = loadedParams !== filterParams;
 
   useEffect(() => {
-    setLoading(true);
-    const qs = buildApiParams({
-      page: String(page),
-      limit: String(PAGE_SIZE),
-      sort: "notBefore",
-      dir: "desc",
-    });
-    fetch(`/api/certificates?${qs}`)
+    fetch(`/api/certificates?${filterParams}`)
       .then((res) => res.json())
-      .then((json) => {
-        setCerts(json.data ?? []);
-        setPagination(json.pagination ?? { page, limit: PAGE_SIZE, total: 0, totalPages: 1 });
-      })
-      .catch(() => {
-        setCerts([]);
-      })
-      .finally(() => setLoading(false));
-  }, [filterParams, page]);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
+      .then((json) => setCerts(json.data ?? []))
+      .catch(() => setCerts([]))
+      .finally(() => setLoadedParams(filterParams));
+  }, [filterParams]);
 
   const sanitizedCerts = useMemo(
     () =>
@@ -85,119 +55,116 @@ export function RecentCerts() {
   );
 
   return (
-    <section>
-      <div className="flex items-center gap-3 mb-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Recent Issuances</h2>
-        <div className="flex-1 border-t" />
-      </div>
+    <div>
+      <h3 className="text-sm font-medium mb-3">Latest Issuances</h3>
       {loading && certs.length === 0 ? (
-        <p className="text-muted-foreground py-4 text-center" aria-live="polite">
+        <p className="text-muted-foreground py-4 text-center text-sm" aria-live="polite">
           Loading...
         </p>
       ) : sanitizedCerts.length > 0 ? (
         <div className="space-y-2">
-          {sanitizedCerts.map((cert) => (
-            <Link
-              key={cert.id}
-              href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border px-3 py-2 transition-colors hover:bg-secondary/50"
-            >
-              <div className="flex items-center gap-3">
-                {cert.logotypeSvg ? (
-                  <HoverCard openDelay={300} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <div
-                        className="h-10 w-10 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
-                        dangerouslySetInnerHTML={{
-                          __html: cert.logotypeSvg,
-                        }}
-                      />
-                    </HoverCardTrigger>
-                    <HoverCardContent side="right" className="w-56 p-3">
-                      <div className="flex flex-col items-center gap-2">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="pb-2 pr-2 font-medium w-10" />
+                  <th className="pb-2 pr-2 font-medium">Organization</th>
+                  <th className="pb-2 pr-2 font-medium hidden lg:table-cell">SANs</th>
+                  <th className="pb-2 pr-2 font-medium hidden sm:table-cell">Type</th>
+                  <th className="pb-2 pr-2 font-medium hidden sm:table-cell">CA</th>
+                  <th className="pb-2 pr-2 font-medium hidden md:table-cell">Country</th>
+                  <th className="pb-2 font-medium text-right">Issued</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sanitizedCerts.map((cert) => (
+                  <tr key={cert.id} className="border-b last:border-0 hover:bg-secondary/50 transition-colors">
+                    <td className="py-0 pr-2 w-10">
+                      {cert.logotypeSvg ? (
                         <div
-                          className="size-32 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                          dangerouslySetInnerHTML={{
-                            __html: cert.logotypeSvg,
-                          }}
+                          className="h-10 w-10 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
+                          dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
                         />
-                        <div className="text-center">
-                          <div className="font-medium text-sm">
-                            {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
-                          </div>
-                        </div>
+                      ) : (
+                        <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
+                      )}
+                    </td>
+                    <td className="py-1.5 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
+                          className="hover:underline font-medium"
+                        >
+                          {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
+                        </Link>
+                        {cert.notabilityScore != null && cert.notabilityScore >= 7 && (
+                          <span
+                            className={`size-1.5 rounded-full shrink-0 ${
+                              cert.notabilityScore >= 9 ? "bg-amber-500" : "bg-blue-500"
+                            }`}
+                            title={`Notability: ${cert.notabilityScore}`}
+                          />
+                        )}
                       </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                ) : (
-                  <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
-                )}
-                <div className="space-y-0.5">
-                  <div className="font-medium flex items-center gap-2">
-                    {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
-                    {cert.notabilityScore != null && cert.notabilityScore >= 7 && (
-                      <span
-                        className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                          cert.notabilityScore >= 9 ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"
-                        }`}
-                        title={cert.companyDescription || undefined}
-                      >
-                        ★ {cert.notabilityScore}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {cert.companyDescription || cert.sanList[0] || cert.subjectCn}
-                    {cert.subjectCountry && ` · ${cert.subjectCountry}`}
-                    {" · "}
-                    <span className="font-mono italic text-xs" title={cert.serialNumber}>
-                      ({cert.serialNumber.slice(0, 8)})
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <Badge variant="outline">
-                  <abbr
-                    className="no-underline"
-                    title={
-                      cert.certType === "VMC"
-                        ? "Verified Mark Certificate"
-                        : cert.certType === "CMC"
-                          ? "Common Mark Certificate"
-                          : undefined
-                    }
-                  >
-                    {cert.certType || "BIMI"}
-                  </abbr>
-                </Badge>
-                {cert.isPrecert && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] px-1 py-0 text-amber-600 dark:text-amber-400"
-                    title="Precertificate only (final certificate not yet logged)"
-                  >
-                    Precert
-                  </Badge>
-                )}
-                <Badge variant="secondary">{displayIssuerOrg(cert.issuerOrg)}</Badge>
-                {cert.rootCaOrg && displayRootCa(cert.rootCaOrg) !== displayIssuerOrg(cert.issuerOrg) && (
-                  <span className="text-[10px] text-muted-foreground">Root: {displayRootCa(cert.rootCaOrg)}</span>
-                )}
-                <span className="text-xs text-muted-foreground" title={format(new Date(cert.notBefore), "PPP pp")}>
-                  {formatDistanceToNow(new Date(cert.notBefore), {
-                    addSuffix: true,
-                  })}
-                </span>
-              </div>
-            </Link>
-          ))}
+                    </td>
+                    <td className="py-1.5 pr-2 hidden lg:table-cell text-muted-foreground text-xs max-w-[200px] truncate">
+                      {cert.sanList.length > 0 ? (
+                        <>
+                          {cert.sanList[0]}
+                          {cert.sanList.length > 1 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-muted-foreground/60 cursor-help">
+                                  {" "}
+                                  +{cert.sanList.length - 1} more
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-80">
+                                <ul className="space-y-0.5">
+                                  {cert.sanList.slice(1).map((san) => (
+                                    <li key={san} className="font-mono text-xs">
+                                      {san}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-1.5 pr-2 hidden sm:table-cell">
+                      <Badge variant="outline" className="text-[11px] px-1.5 py-0">
+                        {cert.certType || "BIMI"}
+                      </Badge>
+                    </td>
+                    <td className="py-1.5 pr-2 hidden sm:table-cell text-muted-foreground">
+                      {displayIssuerOrg(cert.issuerOrg)}
+                    </td>
+                    <td className="py-1.5 pr-2 hidden md:table-cell text-muted-foreground">
+                      {cert.subjectCountry || "—"}
+                    </td>
+                    <td className="py-1.5 text-right text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(cert.notBefore), { addSuffix: true })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <PaginationBar pagination={pagination} onPageChange={handlePageChange} />
+          <Link
+            href="/certificates"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors pt-1"
+          >
+            View all certificates <ArrowRight className="size-3" />
+          </Link>
         </div>
       ) : (
-        <p className="text-muted-foreground">No certificates found. Run the ingestion worker to populate data.</p>
+        <p className="text-muted-foreground text-sm">No recent issuances match current filters.</p>
       )}
-    </section>
+    </div>
   );
 }

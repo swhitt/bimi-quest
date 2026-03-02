@@ -7,7 +7,20 @@ export function buildApiParamsFromSearchParams(
   extra?: Record<string, string>,
 ): string {
   const params = new URLSearchParams();
-  const keys = ["ca", "root", "type", "mark", "validity", "from", "to", "country", "precert", "industry"];
+  const keys = [
+    "ca",
+    "root",
+    "type",
+    "mark",
+    "validity",
+    "from",
+    "to",
+    "expiresFrom",
+    "expiresTo",
+    "country",
+    "precert",
+    "industry",
+  ];
   for (const key of keys) {
     const val = searchParams[key];
     if (typeof val === "string" && val) params.set(key, val);

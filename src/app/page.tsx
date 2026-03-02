@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { DashboardContent } from "./dashboard-content";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HeroSearch } from "@/components/hero-search";
 
 export default async function DashboardPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -9,8 +8,7 @@ export default async function DashboardPage(props: {
   const searchParams = await props.searchParams;
 
   return (
-    <div className="space-y-5">
-      <HeroSearch />
+    <div className="space-y-6">
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent searchParams={searchParams} />
       </Suspense>
@@ -20,17 +18,32 @@ export default async function DashboardPage(props: {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-[120px] rounded-xl" />
-        ))}
+    <div className="space-y-6">
+      {/* Hero + secondary KPI strip */}
+      <div className="space-y-2">
+        <Skeleton className="h-[60px] w-64 rounded-lg" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-[48px] rounded-lg" />
+          ))}
+        </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-[350px] rounded-xl" />
-        <Skeleton className="h-[350px] rounded-xl" />
+      {/* 3-col chart row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-[320px] rounded-xl" />
+        <Skeleton className="h-[320px] rounded-xl" />
+        <Skeleton className="h-[320px] rounded-xl" />
       </div>
-      <Skeleton className="h-[300px] rounded-xl" />
+      {/* Industry (3) / Expiry (2) */}
+      <div className="grid gap-4 md:grid-cols-5">
+        <Skeleton className="h-[320px] rounded-xl md:col-span-3" />
+        <Skeleton className="h-[320px] rounded-xl md:col-span-2" />
+      </div>
+      {/* TopOrgs (2) / RecentCerts (3) */}
+      <div className="grid gap-4 md:grid-cols-5">
+        <Skeleton className="h-[280px] rounded-xl md:col-span-2" />
+        <Skeleton className="h-[280px] rounded-xl md:col-span-3" />
+      </div>
     </div>
   );
 }

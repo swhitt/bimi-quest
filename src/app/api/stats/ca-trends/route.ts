@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { sql, eq, gte, and, count, desc } from "drizzle-orm";
-import { buildPrecertCondition } from "@/lib/db/filters";
+import { buildCommonFilterConditions } from "@/lib/db/filters";
 import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   cutoff.setMonth(cutoff.getMonth() - months);
 
   try {
-    const baseConditions = [buildPrecertCondition(params.get("precert"))];
+    const baseConditions = buildCommonFilterConditions(params);
     if (ca) baseConditions.push(eq(certificates.issuerOrg, ca));
     if (root) baseConditions.push(eq(certificates.rootCaOrg, root));
 

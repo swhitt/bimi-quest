@@ -73,7 +73,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Market Share by CA</CardTitle>
+        <CardTitle>CA Market Share</CardTitle>
         <CardAction>
           <Button
             variant="ghost"
@@ -182,7 +182,9 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
             </div>
           </div>
         ) : (
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">No data available.</div>
+          <div className="flex h-[120px] items-center justify-center text-muted-foreground">
+            No certificates match current filters.
+          </div>
         )}
       </CardContent>
     </Card>

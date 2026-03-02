@@ -12,6 +12,88 @@ import { X, ListFilter, ChevronDown } from "lucide-react";
 import { ALL_CA_SLUGS, CA_DISPLAY_NAMES, CA_SLUG_TO_NAME, ROOT_CA_OPTIONS } from "@/lib/ca-slugs";
 import { ALL_MARK_TYPES } from "@/lib/mark-types";
 
+function formatDateISO(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function computeDatePresets(direction: "past" | "future") {
+  const now = new Date();
+  const labels =
+    direction === "past"
+      ? ["Last 30d", "Last 90d", "Last 6mo", "Last year"]
+      : ["Next 30d", "Next 90d", "Next 6mo", "Next year"];
+  const offsets = [30, 90, 180, 365];
+  return labels.map((label, i) => {
+    const d = new Date(now);
+    if (direction === "past") {
+      d.setDate(d.getDate() - offsets[i]);
+      return { label, from: formatDateISO(d), to: formatDateISO(now) };
+    }
+    d.setDate(d.getDate() + offsets[i]);
+    return { label, from: formatDateISO(now), to: formatDateISO(d) };
+  });
+}
+
+function datesMatch(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  // Allow 1-day tolerance for rounding
+  const diff = Math.abs(new Date(a).getTime() - new Date(b).getTime());
+  return diff <= 86400000;
+}
+
+function DatePresets({
+  direction,
+  currentFrom,
+  currentTo,
+  fromKey,
+  toKey,
+  onSelect,
+}: {
+  direction: "past" | "future";
+  currentFrom: string;
+  currentTo: string;
+  fromKey: string;
+  toKey: string;
+  onSelect: (updates: Record<string, string | null>) => void;
+}) {
+  const presets = computeDatePresets(direction);
+  const isCustom =
+    currentFrom && currentTo && !presets.some((p) => datesMatch(p.from, currentFrom) && datesMatch(p.to, currentTo));
+  const hasAny = currentFrom || currentTo;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {presets.map((p) => {
+        const active = datesMatch(p.from, currentFrom) && datesMatch(p.to, currentTo);
+        return (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => onSelect({ [fromKey]: p.from, [toKey]: p.to })}
+            className={`px-1.5 py-0.5 rounded text-[11px] transition-colors ${
+              active
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-muted-foreground/20 text-muted-foreground"
+            }`}
+          >
+            {p.label}
+          </button>
+        );
+      })}
+      {isCustom && <span className="px-1.5 py-0.5 rounded text-[11px] bg-primary text-primary-foreground">Custom</span>}
+      {hasAny && (
+        <button
+          type="button"
+          onClick={() => onSelect({ [fromKey]: null, [toKey]: null })}
+          className="px-1 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 const CERT_TYPES = [
   { value: "all", label: "All Types" },
   { value: "VMC", label: "VMC" },
@@ -99,6 +181,13 @@ function FilterBarInner() {
   const updateSecondaryFilter = useCallback(
     (key: string, value: string) => {
       router.push(buildUrl(caSlug, { [key]: value }));
+    },
+    [router, buildUrl, caSlug],
+  );
+
+  const updateMultipleFilters = useCallback(
+    (updates: Record<string, string | null>) => {
+      router.push(buildUrl(caSlug, updates));
     },
     [router, buildUrl, caSlug],
   );
@@ -350,44 +439,62 @@ function FilterBarInner() {
     ) : null;
 
   const dateRange = (fullWidth?: boolean) => (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">Issued</span>
-      <Input
-        type="date"
-        value={dateFrom}
-        onChange={(e) => updateSecondaryFilter("from", e.target.value)}
-        aria-label="Issued from date"
-        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+    <div className="flex flex-col gap-1.5">
+      <DatePresets
+        direction="past"
+        currentFrom={dateFrom}
+        currentTo={dateTo}
+        fromKey="from"
+        toKey="to"
+        onSelect={updateMultipleFilters}
       />
-      <span className="text-xs text-muted-foreground">to</span>
-      <Input
-        type="date"
-        value={dateTo}
-        onChange={(e) => updateSecondaryFilter("to", e.target.value)}
-        aria-label="Issued to date"
-        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-      />
+      <div className="flex items-center gap-1.5">
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => updateSecondaryFilter("from", e.target.value)}
+          aria-label="Issued from date"
+          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+        />
+        <span className="text-xs text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => updateSecondaryFilter("to", e.target.value)}
+          aria-label="Issued to date"
+          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+        />
+      </div>
     </div>
   );
 
   const expiresRange = (fullWidth?: boolean) => (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider shrink-0">Expires</span>
-      <Input
-        type="date"
-        value={expiresFrom}
-        onChange={(e) => updateSecondaryFilter("expiresFrom", e.target.value)}
-        aria-label="Expires from date"
-        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+    <div className="flex flex-col gap-1.5">
+      <DatePresets
+        direction="future"
+        currentFrom={expiresFrom}
+        currentTo={expiresTo}
+        fromKey="expiresFrom"
+        toKey="expiresTo"
+        onSelect={updateMultipleFilters}
       />
-      <span className="text-xs text-muted-foreground">to</span>
-      <Input
-        type="date"
-        value={expiresTo}
-        onChange={(e) => updateSecondaryFilter("expiresTo", e.target.value)}
-        aria-label="Expires to date"
-        className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-      />
+      <div className="flex items-center gap-1.5">
+        <Input
+          type="date"
+          value={expiresFrom}
+          onChange={(e) => updateSecondaryFilter("expiresFrom", e.target.value)}
+          aria-label="Expires from date"
+          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+        />
+        <span className="text-xs text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={expiresTo}
+          onChange={(e) => updateSecondaryFilter("expiresTo", e.target.value)}
+          aria-label="Expires to date"
+          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
+        />
+      </div>
     </div>
   );
 

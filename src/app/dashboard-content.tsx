@@ -1,8 +1,10 @@
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
+import { IndustryChart } from "@/components/dashboard/industry-chart";
+import { ExpiryChart } from "@/components/dashboard/expiry-chart";
+import { TopOrgs } from "@/components/dashboard/top-orgs";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
-import { formatDistanceToNow } from "date-fns";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { getBaseUrl } from "@/lib/server-url";
 
@@ -20,6 +22,12 @@ interface DashboardData {
   monthlyTrend: { month: string; ca: string | null; count: number }[];
   markTypeBreakdown: { markType: string | null; count: number }[];
   lastUpdated: string | null;
+  activeFilters: {
+    type: string | null;
+    mark: string | null;
+    industry: string | null;
+    country: string | null;
+  };
 }
 
 export async function DashboardContent({
@@ -48,8 +56,11 @@ export async function DashboardContent({
 
   const displayCA = data.selectedCA === "All Issuers" ? "All Issuers" : displayIssuerOrg(data.selectedCA);
 
+  const vmcTotal = data.caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
+  const cmcTotal = data.caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <KPICards
         selectedCA={displayCA}
         totalCerts={data.totalCerts}
@@ -60,22 +71,37 @@ export async function DashboardContent({
         newLast30d={data.newLast30d || 0}
         caNewLast30d={data.caNewLast30d || 0}
         expiringCount={data.expiringCount || 0}
+        vmcTotal={vmcTotal}
+        cmcTotal={cmcTotal}
+        activeFilters={data.activeFilters}
+        lastUpdated={data.lastUpdated}
       />
 
       <DashboardCharts
         caBreakdown={data.caBreakdown}
         monthlyTrend={data.monthlyTrend}
+        markTypeBreakdown={data.markTypeBreakdown}
         selectedCA={displayCA}
         apiQuery={apiQuery}
       />
 
-      <RecentCerts />
+      <div className="grid gap-4 md:grid-cols-5 items-stretch">
+        <div className="md:col-span-3">
+          <IndustryChart />
+        </div>
+        <div className="md:col-span-2">
+          <ExpiryChart />
+        </div>
+      </div>
 
-      {data.lastUpdated && (
-        <p className="text-xs text-muted-foreground text-right">
-          Data last updated {formatDistanceToNow(new Date(data.lastUpdated), { addSuffix: true })}
-        </p>
-      )}
+      <div className="grid gap-4 md:grid-cols-5 items-stretch">
+        <div className="md:col-span-2">
+          <TopOrgs />
+        </div>
+        <div className="md:col-span-3">
+          <RecentCerts />
+        </div>
+      </div>
     </div>
   );
 }

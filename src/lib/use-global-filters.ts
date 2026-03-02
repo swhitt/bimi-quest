@@ -27,6 +27,8 @@ export function useGlobalFilters() {
   const country = searchParams.get("country") || null;
   const precert = searchParams.get("precert") || null;
   const industry = searchParams.get("industry") || null;
+  const expiresFrom = searchParams.get("expiresFrom") || null;
+  const expiresTo = searchParams.get("expiresTo") || null;
 
   function buildApiParams(extra?: Record<string, string>) {
     const merged: Record<string, string | undefined> = {
@@ -37,6 +39,8 @@ export function useGlobalFilters() {
       validity: validity ?? undefined,
       from: from ?? undefined,
       to: to ?? undefined,
+      expiresFrom: expiresFrom ?? undefined,
+      expiresTo: expiresTo ?? undefined,
       country: country ?? undefined,
       precert: precert ?? undefined,
       industry: industry ?? undefined,
@@ -44,5 +48,19 @@ export function useGlobalFilters() {
     return buildApiParamsFromSearchParams(merged, extra);
   }
 
-  return { ca, root, type, mark, validity, from, to, country, precert, industry, buildApiParams };
+  return {
+    ca,
+    root,
+    type,
+    mark,
+    validity,
+    from,
+    to,
+    expiresFrom,
+    expiresTo,
+    country,
+    precert,
+    industry,
+    buildApiParams,
+  };
 }

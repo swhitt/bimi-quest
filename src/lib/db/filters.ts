@@ -1,4 +1,4 @@
-import { eq, like } from "drizzle-orm";
+import { type SQL, eq, gte, lte, like } from "drizzle-orm";
 import { db } from "./index";
 import { certificates } from "./schema";
 
@@ -82,4 +82,38 @@ export function buildPrecertCondition(precertParam: string | null) {
   if (precertParam === "cert") return eq(certificates.isPrecert, false);
   if (precertParam === "precert") return eq(certificates.isPrecert, true);
   return excludeDuplicatePrecerts();
+}
+
+/**
+ * Shared filter conditions for all list/stats endpoints.
+ * Handles: type, mark, from, to, expiresFrom, expiresTo, validity,
+ * precert, country, industry.
+ * Deliberately excludes `ca` and `root` so callers can layer those
+ * on for market-share semantics (global → base → CA tiers).
+ */
+export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
+  const conditions: SQL[] = [buildPrecertCondition(params.get("precert"))];
+
+  const certType = params.get("type");
+  const mark = params.get("mark");
+  const country = params.get("country");
+  const industry = params.get("industry");
+  const validity = params.get("validity");
+  const fromDate = parseDate(params.get("from"));
+  const toDate = parseDate(params.get("to"));
+  const expiresFromDate = parseDate(params.get("expiresFrom"));
+  const expiresToDate = parseDate(params.get("expiresTo"));
+
+  if (certType) conditions.push(eq(certificates.certType, certType));
+  if (mark) conditions.push(eq(certificates.markType, mark));
+  if (country) conditions.push(eq(certificates.subjectCountry, country));
+  if (industry) conditions.push(eq(certificates.industry, industry));
+  if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
+  if (toDate) conditions.push(lte(certificates.notBefore, toDate));
+  if (expiresFromDate) conditions.push(gte(certificates.notAfter, expiresFromDate));
+  if (expiresToDate) conditions.push(lte(certificates.notAfter, expiresToDate));
+  if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
+  if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
+
+  return conditions;
 }

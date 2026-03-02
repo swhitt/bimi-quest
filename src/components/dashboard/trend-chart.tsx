@@ -86,7 +86,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isFiltered ? `${selectedCA} Issuance Trend` : "Issuance Trends"}</CardTitle>
+        <CardTitle>{isFiltered ? `${selectedCA} Monthly Issuance` : "Monthly Issuance"}</CardTitle>
         <CardAction>
           <Button
             variant="ghost"
@@ -101,10 +101,14 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0">
         {pivoted.length > 0 ? (
-          <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time">
-            <ResponsiveContainer width="100%" height={260}>
+          <div
+            role="img"
+            aria-label="Bar chart showing BIMI certificate issuance trends over time"
+            className="h-full min-h-[260px]"
+          >
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
                 <XAxis
@@ -145,7 +149,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+          <div className="flex h-[120px] items-center justify-center text-muted-foreground">
             No trend data available yet.
           </div>
         )}

@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
-import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { displayIssuerOrg } from "@/lib/ca-display";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { UtcTime } from "@/components/ui/utc-time";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
@@ -68,12 +68,14 @@ function SortHeader({
   onSort: (key: string) => void;
 }) {
   const isActive = currentSort === sortKey;
-  const ariaSortValue = isActive ? (currentDir === "asc" ? "ascending" : "descending") : undefined;
+  const ariaLabel = isActive
+    ? `Sort by ${label}, currently ${currentDir === "asc" ? "ascending" : "descending"}`
+    : `Sort by ${label}`;
   return (
     <button
       className="flex items-center gap-1 hover:text-foreground transition-colors -ml-2 px-2 py-1.5 rounded"
       onClick={() => onSort(sortKey)}
-      aria-sort={ariaSortValue}
+      aria-label={ariaLabel}
     >
       {label}
       {isActive ? (
@@ -87,6 +89,11 @@ function SortHeader({
       )}
     </button>
   );
+}
+
+function useCertTable(data: CertRow[], columns: ColumnDef<CertRow>[]) {
+  "use no memo";
+  return useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 }
 
 export function CertificatesTable({
@@ -145,17 +152,13 @@ export function CertificatesTable({
   const columns: ColumnDef<CertRow>[] = [
     {
       id: "logo",
-      meta: { className: "hidden sm:table-cell" },
+      meta: { className: "hidden sm:table-cell w-[48px]" },
       header: "",
       size: 48,
       cell: ({ row }) => {
         const svg = row.original.logotypeSvg;
         if (!svg) {
-          return (
-            <div className="size-10 xl:size-8 rounded-md border bg-muted flex items-center justify-center">
-              <span className="text-xs text-muted-foreground">N/A</span>
-            </div>
-          );
+          return <div className="size-8 rounded-md border bg-muted" />;
         }
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
         const domain = row.original.sanList[0] || row.original.subjectCn;
@@ -163,7 +166,8 @@ export function CertificatesTable({
           <HoverCard openDelay={300} closeDelay={100}>
             <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
               <div
-                className="size-10 xl:size-8 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
+                className="size-8 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
+                suppressHydrationWarning
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
             </HoverCardTrigger>
@@ -171,14 +175,12 @@ export function CertificatesTable({
               <div className="flex flex-col items-center gap-3">
                 <div
                   className="size-36 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
+                  suppressHydrationWarning
                   dangerouslySetInnerHTML={{ __html: svg }}
                 />
                 <div className="text-center space-y-0.5">
                   <div className="font-medium text-sm">{org}</div>
                   {domain && <div className="text-xs text-muted-foreground">{domain}</div>}
-                  {row.original.issuerOrg && (
-                    <div className="text-xs text-muted-foreground">CA: {row.original.issuerOrg}</div>
-                  )}
                 </div>
               </div>
             </HoverCardContent>
@@ -199,74 +201,116 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
-        const domain = row.original.sanList[0] || row.original.subjectCn;
         const score = row.original.notabilityScore;
         const country = row.original.subjectCountry;
-        const sans = row.original.sanList;
-        const extraSans = sans.length > 1 ? sans.slice(1) : [];
         return (
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <Link
                 href={`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`}
-                className="font-medium hover:underline block truncate"
+                className="font-medium hover:underline truncate"
                 onClick={(e) => e.stopPropagation()}
               >
                 {org}
               </Link>
-              {score != null && (
+              {score != null && score >= 5 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
-                      className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium cursor-help ${
-                        score >= 9
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : score >= 7
-                            ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                            : "bg-muted text-muted-foreground"
+                      className={`shrink-0 size-1.5 rounded-full cursor-help ${
+                        score >= 9 ? "bg-amber-500" : score >= 7 ? "bg-blue-500" : "bg-muted-foreground/40"
                       }`}
-                    >
-                      ★ {score}
-                    </span>
+                    />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-64">
                     <p className="font-medium">Notability: {score}/10</p>
                     {row.original.companyDescription && (
                       <p className="text-foreground/70 mt-0.5">{row.original.companyDescription}</p>
                     )}
-                    <p className="text-foreground/50 mt-0.5">Brand recognition and email volume score.</p>
                   </TooltipContent>
                 </Tooltip>
               )}
               {country && <span className="shrink-0 text-[10px] text-muted-foreground font-mono">{country}</span>}
             </div>
-            <span className="text-xs text-muted-foreground block truncate">
-              {domain}
-              {extraSans.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <span className="text-muted-foreground/60 cursor-help"> +{extraSans.length} more</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-80">
-                    <ul className="space-y-0.5">
-                      {extraSans.map((san) => (
-                        <li key={san} className="font-mono text-xs">
-                          {san}
-                        </li>
-                      ))}
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </span>
-            {(row.original.companyDescription || row.original.industry) && (
-              <span className="text-[10px] text-muted-foreground/60 block truncate">
-                {row.original.industry && (
-                  <span className="inline-flex items-center rounded-full border border-border/50 px-1.5 py-px mr-1 text-[10px] font-medium text-muted-foreground/70">
-                    {row.original.industry}
-                  </span>
-                )}
-                {row.original.companyDescription}
+            {row.original.industry && (
+              <span className="text-[10px] text-muted-foreground/60 block truncate">{row.original.industry}</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "sans",
+      meta: { className: "hidden md:table-cell" },
+      header: "Domains",
+      cell: ({ row }) => {
+        const sans = row.original.sanList;
+        if (sans.length === 0) return <span className="text-muted-foreground">—</span>;
+        const extraSans = sans.slice(1);
+        return (
+          <div className="min-w-0">
+            <span className="text-xs font-mono block truncate">{sans[0]}</span>
+            {extraSans.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <span className="text-[11px] text-muted-foreground/60 cursor-help">+{extraSans.length} more</span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-80">
+                  <ul className="space-y-0.5">
+                    {extraSans.map((san) => (
+                      <li key={san} className="font-mono text-xs">
+                        {san}
+                      </li>
+                    ))}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "certType",
+      meta: { className: "hidden sm:table-cell" },
+      header: "Type",
+      cell: ({ row }) => {
+        const certType = row.original.certType || "BIMI";
+        const mtInfo = getMarkTypeInfo(row.original.markType);
+        return (
+          <div className="flex items-center gap-1">
+            <abbr
+              className="text-xs font-medium no-underline"
+              title={
+                certType === "VMC"
+                  ? "Verified Mark Certificate"
+                  : certType === "CMC"
+                    ? "Common Mark Certificate"
+                    : undefined
+              }
+            >
+              {certType}
+            </abbr>
+            {mtInfo && (
+              <span title={mtInfo.title} className={mtInfo.colorClass}>
+                <svg
+                  className="size-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {mtInfo.iconPaths.map((d, i) => (
+                    <path key={i} d={d} />
+                  ))}
+                </svg>
+              </span>
+            )}
+            {row.original.isPrecert && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400" title="Precertificate">
+                Pre
               </span>
             )}
           </div>
@@ -275,10 +319,10 @@ export function CertificatesTable({
     },
     {
       accessorKey: "issuerOrg",
-      meta: { className: "hidden sm:table-cell" },
+      meta: { className: "hidden lg:table-cell" },
       header: () => (
         <SortHeader
-          label="CA / Type"
+          label="CA"
           sortKey="issuerOrg"
           currentSort={currentSort}
           currentDir={currentDir}
@@ -287,55 +331,10 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         const issuer = displayIssuerOrg(row.original.issuerOrg);
-        const root = displayRootCa(row.original.rootCaOrg);
-        const showRoot = row.original.rootCaOrg && root !== issuer;
-        const certType = row.original.certType || "BIMI";
         return (
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Badge variant="secondary" className="whitespace-nowrap">
-                {issuer}
-              </Badge>
-              <abbr
-                className="text-xs text-muted-foreground no-underline"
-                title={
-                  certType === "VMC"
-                    ? "Verified Mark Certificate"
-                    : certType === "CMC"
-                      ? "Common Mark Certificate"
-                      : undefined
-                }
-              >
-                {certType}
-              </abbr>
-              {(() => {
-                const mtInfo = getMarkTypeInfo(row.original.markType);
-                return mtInfo ? (
-                  <span title={mtInfo.title} className={mtInfo.colorClass}>
-                    <svg
-                      className="size-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      {mtInfo.iconPaths.map((d, i) => (
-                        <path key={i} d={d} />
-                      ))}
-                    </svg>
-                  </span>
-                ) : null;
-              })()}
-              {row.original.isPrecert && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400" title="Precertificate">
-                  Pre
-                </span>
-              )}
-            </div>
-            {showRoot && <span className="text-[10px] text-muted-foreground block mt-0.5">Root: {root}</span>}
-          </div>
+          <Badge variant="secondary" className="whitespace-nowrap">
+            {issuer}
+          </Badge>
         );
       },
     },
@@ -373,30 +372,9 @@ export function CertificatesTable({
         return <UtcTime date={row.original.notAfter} relative expired={isExpired} />;
       },
     },
-    {
-      accessorKey: "ctLogTimestamp",
-      meta: { className: "hidden lg:table-cell" },
-      header: () => (
-        <SortHeader
-          label="CT Date"
-          sortKey="ctLogTimestamp"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          onSort={handleSort}
-        />
-      ),
-      cell: ({ row }) => {
-        if (!row.original.ctLogTimestamp) return "-";
-        return <UtcTime date={row.original.ctLogTimestamp} relative />;
-      },
-    },
   ];
 
-  const table = useReactTable({
-    data: sanitizedData,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
+  const table = useCertTable(sanitizedData, columns);
 
   const searchValue = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(searchValue);

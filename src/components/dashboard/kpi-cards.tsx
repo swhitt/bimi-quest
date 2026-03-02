@@ -1,6 +1,13 @@
 "use client";
 
-import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+interface ActiveFilters {
+  type: string | null;
+  mark: string | null;
+  industry: string | null;
+  country: string | null;
+}
 
 interface KPICardsProps {
   selectedCA: string;
@@ -12,6 +19,10 @@ interface KPICardsProps {
   newLast30d: number;
   caNewLast30d: number;
   expiringCount: number;
+  vmcTotal: number;
+  cmcTotal: number;
+  activeFilters?: ActiveFilters;
+  lastUpdated?: string | null;
 }
 
 function DeltaBadge({ value }: { value: number }) {
@@ -19,13 +30,12 @@ function DeltaBadge({ value }: { value: number }) {
   const isNegative = value < 0;
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+      className={`text-xs font-medium ${
         isNegative ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
       }`}
     >
-      {isNegative ? <TrendingDown className="size-3" /> : <TrendingUp className="size-3" />}
       {isNegative ? "" : "+"}
-      {value.toLocaleString()} (30d)
+      {value.toLocaleString()} / 30d
     </span>
   );
 }
@@ -40,51 +50,73 @@ export function KPICards({
   newLast30d: _newLast30d,
   caNewLast30d,
   expiringCount,
+  vmcTotal,
+  cmcTotal,
+  activeFilters,
+  lastUpdated,
 }: KPICardsProps) {
+  const vmcPct = vmcTotal + cmcTotal > 0 ? ((vmcTotal / (vmcTotal + cmcTotal)) * 100).toFixed(0) : "—";
+
+  const typeFilter = activeFilters?.type;
+  const certNoun = typeFilter ? `${typeFilter}s` : "certs";
+  const totalLabel = typeFilter ? `${totalCerts.toLocaleString()} ${certNoun}` : `${totalCerts.toLocaleString()} total`;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 border rounded-lg sm:divide-x divide-y md:divide-y-0 bg-card">
-      <div className="px-4 py-3">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active (Valid)</div>
-        <div className="text-2xl font-bold tabular-nums mt-1">{activeCerts.toLocaleString()}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          {totalCerts > 0
-            ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalCerts.toLocaleString()} total`
-            : "Currently valid certs"}
+    <div className="space-y-1">
+      {/* Hero metric */}
+      <div>
+        <p className="text-xs text-muted-foreground">{typeFilter ? `Active ${typeFilter}s` : "Active Certificates"}</p>
+        <div className="flex items-baseline gap-3">
+          <span className="text-4xl font-bold tabular-nums">{activeCerts.toLocaleString()}</span>
+          <span className="text-sm text-muted-foreground">
+            {totalCerts > 0
+              ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalLabel}`
+              : `Currently valid ${certNoun}`}
+          </span>
         </div>
+        {lastUpdated && (
+          <p className="text-xs text-muted-foreground/60">
+            Updated {formatDistanceToNow(new Date(lastUpdated), { addSuffix: true })}
+          </p>
+        )}
       </div>
 
-      <div className="px-4 py-3">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{selectedCA} Certs</div>
-        <div className="text-2xl font-bold tabular-nums mt-1">{caCerts.toLocaleString()}</div>
-        <div className="flex items-center justify-between mt-0.5">
-          <span className="text-xs text-muted-foreground">Issued by {selectedCA}</span>
-          <DeltaBadge value={caNewLast30d} />
+      {/* Secondary metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-2 pt-1">
+        <div>
+          <p className="text-xs text-muted-foreground">{selectedCA}</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-bold tabular-nums">{caCerts.toLocaleString()}</span>
+            <DeltaBadge value={caNewLast30d} />
+          </div>
         </div>
-      </div>
 
-      <div className="px-4 py-3">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Market Share</div>
-        <div className="text-2xl font-bold tabular-nums mt-1">{marketShare != null ? `${marketShare}%` : "100%"}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{selectedCA} vs market</div>
-      </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Market Share</p>
+          <span className="text-lg font-bold tabular-nums">{marketShare != null ? `${marketShare}%` : "100%"}</span>
+        </div>
 
-      <div className="px-4 py-3">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Unique Orgs</div>
-        <div className="text-2xl font-bold tabular-nums mt-1">{uniqueOrgs.toLocaleString()}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">Organizations using {selectedCA}</div>
-      </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Unique Orgs</p>
+          <span className="text-lg font-bold tabular-nums">{uniqueOrgs.toLocaleString()}</span>
+        </div>
 
-      <div className="px-4 py-3 sm:col-span-2 md:col-span-1">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Expiring Soon</div>
-        <div className="flex items-center gap-2 mt-1">
+        <div>
+          <p className="text-xs text-muted-foreground">Expiring Soon</p>
           <span
-            className={`text-2xl font-bold tabular-nums ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
+            className={`text-lg font-bold tabular-nums ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
           >
             {expiringCount.toLocaleString()}
           </span>
-          {expiringCount > 0 && <AlertTriangle className="size-5 text-amber-500" />}
         </div>
-        <div className="text-xs text-muted-foreground mt-0.5">Expiring within 30 days</div>
+
+        <div>
+          <p className="text-xs text-muted-foreground">VMC / CMC</p>
+          <span className="text-lg font-bold tabular-nums">{vmcPct}% VMC</span>
+          <span className="text-xs text-muted-foreground ml-1.5">
+            {vmcTotal.toLocaleString()} · {cmcTotal.toLocaleString()}
+          </span>
+        </div>
       </div>
     </div>
   );

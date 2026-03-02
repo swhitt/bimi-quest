@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { sql, eq, and, count, desc } from "drizzle-orm";
+import { sql, and, eq, count, desc, isNotNull } from "drizzle-orm";
 import { buildCommonFilterConditions } from "@/lib/db/filters";
 import { log } from "@/lib/logger";
 
@@ -12,31 +12,33 @@ export async function GET(request: NextRequest) {
 
   try {
     const conditions = buildCommonFilterConditions(params);
+    conditions.push(isNotNull(certificates.industry));
     if (ca) conditions.push(eq(certificates.issuerOrg, ca));
     if (root) conditions.push(eq(certificates.rootCaOrg, root));
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(...conditions);
 
-    const geoData = await db
+    const data = await db
       .select({
-        country: certificates.subjectCountry,
+        industry: certificates.industry,
         total: count(),
         vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
         cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
       })
       .from(certificates)
       .where(where)
-      .groupBy(certificates.subjectCountry)
-      .orderBy(desc(count()));
+      .groupBy(certificates.industry)
+      .orderBy(desc(count()))
+      .limit(15);
 
     return NextResponse.json(
-      { geoData },
+      { data },
       {
         headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
       },
     );
   } catch (error) {
-    log("error", "geo-stats.api.failed", { error: String(error), route: "/api/stats/geo" });
-    return NextResponse.json({ error: "Failed to fetch geo data" }, { status: 500 });
+    log("error", "industry-breakdown.api.failed", { error: String(error), route: "/api/stats/industry-breakdown" });
+    return NextResponse.json({ error: "Failed to fetch industry breakdown" }, { status: 500 });
   }
 }

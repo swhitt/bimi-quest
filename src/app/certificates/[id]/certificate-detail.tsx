@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -143,17 +144,6 @@ export function CertificateDetail({ id }: { id: string }) {
   const [bimiError, setBimiError] = useState<string | null>(null);
   const [revocationError, setRevocationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/certificates/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Certificate not found");
-        return res.json();
-      })
-      .then(setData)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
-
   const runBimiCheck = useCallback(() => {
     setBimiLoading(true);
     setBimiError(null);
@@ -180,13 +170,21 @@ export function CertificateDetail({ id }: { id: string }) {
       .finally(() => setRevocationLoading(false));
   }, [id]);
 
-  // Auto-run BIMI check and revocation check when data loads
   useEffect(() => {
-    if (data) {
-      runBimiCheck();
-      runRevocationCheck();
-    }
-  }, [data, runBimiCheck, runRevocationCheck]);
+    fetch(`/api/certificates/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Certificate not found");
+        return res.json();
+      })
+      .then((d) => {
+        setData(d);
+        // Kick off secondary checks from the async callback (not synchronous in effect body)
+        runBimiCheck();
+        runRevocationCheck();
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [id, runBimiCheck, runRevocationCheck]);
 
   const copyToClipboard = useCallback((text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -194,10 +192,8 @@ export function CertificateDetail({ id }: { id: string }) {
     setTimeout(() => setCopied(null), 2000);
   }, []);
 
-  const sanitizedSvg = useMemo<string | null>(
-    () => (data?.certificate.logotypeSvg ? sanitizeSvg(data.certificate.logotypeSvg) : null),
-    [data?.certificate.logotypeSvg],
-  );
+  const logotypeSvg = data?.certificate.logotypeSvg ?? null;
+  const sanitizedSvg = useMemo<string | null>(() => (logotypeSvg ? sanitizeSvg(logotypeSvg) : null), [logotypeSvg]);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificate...</div>;
@@ -374,17 +370,6 @@ export function CertificateDetail({ id }: { id: string }) {
               </svg>
             </a>
           )}
-          <a
-            href={`https://search.censys.io/certificates/${cert.fingerprintSha256}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            Censys
-            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3.5 3h5.5v5.5M9 3L3 9" />
-            </svg>
-          </a>
         </div>
       </div>
 
@@ -1377,10 +1362,13 @@ function LogoComparison({
           </div>
           <div className="flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
             {logoUrl && (
-              <img
+              <Image
                 src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
                 alt="Web BIMI logo"
                 className="max-h-full max-w-full object-contain"
+                width={200}
+                height={200}
+                unoptimized
               />
             )}
           </div>

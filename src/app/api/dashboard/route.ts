@@ -2,34 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
-import { buildPrecertCondition, parseDate } from "@/lib/db/filters";
+import { buildCommonFilterConditions } from "@/lib/db/filters";
 import { log } from "@/lib/logger";
 import { serverTiming } from "@/lib/server-timing";
-
-// Conditions without CA/root filters (for the "total" denominator)
-function buildGlobalConditions(params: URLSearchParams) {
-  const conditions = [buildPrecertCondition(params.get("precert"))];
-  const certType = params.get("type");
-  const fromDate = parseDate(params.get("from"));
-  const toDate = parseDate(params.get("to"));
-  const validity = params.get("validity");
-
-  if (certType) conditions.push(eq(certificates.certType, certType));
-  if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
-  if (toDate) conditions.push(lte(certificates.notBefore, toDate));
-  if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
-  if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
-
-  return conditions;
-}
-
-// Conditions including root CA filter (for breakdowns/trends)
-function buildBaseConditions(params: URLSearchParams) {
-  const conditions = buildGlobalConditions(params);
-  const root = params.get("root");
-  if (root) conditions.push(eq(certificates.rootCaOrg, root));
-  return conditions;
-}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -38,12 +13,16 @@ export async function GET(request: NextRequest) {
 
   const timing = serverTiming();
   try {
-    const globalConditions = buildGlobalConditions(searchParams);
+    // Global conditions: all common filters (type, mark, country, etc.) but no CA/root
+    const globalConditions = buildCommonFilterConditions(searchParams);
     const globalWhere = globalConditions.length > 0 ? and(...globalConditions) : undefined;
 
-    const baseConditions = buildBaseConditions(searchParams);
+    // Base conditions: global + root CA
+    const baseConditions = [...globalConditions];
+    if (selectedRoot) baseConditions.push(eq(certificates.rootCaOrg, selectedRoot));
     const baseWhere = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
+    // CA conditions: base + issuer CA
     const caConditions = selectedCA ? [...baseConditions, eq(certificates.issuerOrg, selectedCA)] : baseConditions;
     const caWhere = caConditions.length > 0 ? and(...caConditions) : undefined;
 
@@ -178,6 +157,12 @@ export async function GET(request: NextRequest) {
         caNewLast30d: caNewLast30dRow?.count || 0,
         activeCerts: activeCertsRow?.count || 0,
         lastUpdated: lastUpdatedRow?.lastRun?.toISOString() || null,
+        activeFilters: {
+          type: searchParams.get("type") || null,
+          mark: searchParams.get("mark") || null,
+          industry: searchParams.get("industry") || null,
+          country: searchParams.get("country") || null,
+        },
       },
       {
         headers: {
