@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
@@ -6,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalFilterBar } from "@/components/global-filter-bar";
 import { UpdateBanner } from "@/components/update-banner";
+import { OfflineBanner } from "@/components/offline-banner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -53,6 +55,19 @@ export const metadata: Metadata = {
       "application/rss+xml": "/api/feed",
     },
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BIMI Quest",
+  },
+  icons: {
+    icon: [{ url: "/favicon.ico", sizes: "32x32" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "theme-color": "#0C1222",
+  },
 };
 
 export default function RootLayout({
@@ -72,10 +87,14 @@ export default function RootLayout({
             <main className="container mx-auto px-4 py-4 flex-1">{children}</main>
             <Footer />
             <UpdateBanner />
+            <OfflineBanner />
           </TooltipProvider>
           <Analytics />
           <SpeedInsights />
         </ThemeProvider>
+        <Script id="sw-register" strategy="afterInteractive">
+          {`if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')`}
+        </Script>
       </body>
     </html>
   );
