@@ -134,7 +134,7 @@ export function Nav() {
         </Link>
 
         {/* Desktop nav links - hidden on mobile */}
-        <div className="hidden md:flex">
+        <div data-testid="main-nav" className="hidden md:flex">
           <Suspense
             fallback={
               <nav className="flex items-center gap-1 text-sm">

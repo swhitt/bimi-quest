@@ -61,7 +61,7 @@ export async function DashboardContent({
   const hasDateFilter = !!(searchParams.from || searchParams.to);
 
   return (
-    <div className="space-y-6">
+    <div data-testid="dashboard" className="space-y-6">
       <KPICards
         selectedCA={displayCA}
         totalCerts={data.totalCerts}

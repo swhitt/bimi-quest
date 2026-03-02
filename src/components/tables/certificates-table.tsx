@@ -257,7 +257,7 @@ export function CertificatesTable({
     {
       id: "sans",
       meta: { className: "hidden md:table-cell" },
-      header: "Domains",
+      header: "Hostnames",
       cell: ({ row }) => {
         const sans = row.original.sanList;
         if (sans.length === 0) return <span className="text-muted-foreground">—</span>;
@@ -483,7 +483,7 @@ export function CertificatesTable({
               size="sm"
               aria-label="Export current page as CSV"
               onClick={() => {
-                const csvHeader = "Organization,Domain,SANs,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
+                const csvHeader = "Organization,Domain,Hostnames,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
                 const csvRows = data.map((r) =>
                   [
                     `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,

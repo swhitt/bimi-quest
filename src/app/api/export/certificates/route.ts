@@ -24,7 +24,7 @@ const CSV_HEADER = [
   "CT Log Timestamp",
   "Notability Score",
   "Company Description",
-  "SANs",
+  "Hostnames",
   "Country",
 ].join(",");
 

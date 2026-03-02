@@ -69,7 +69,9 @@ export function KPICards({
       <div>
         <p className="text-xs text-muted-foreground">{typeFilter ? `Active ${typeFilter}s` : "Active Certificates"}</p>
         <div className="flex items-baseline gap-3">
-          <span className="text-4xl font-bold tabular-nums">{activeCerts.toLocaleString()}</span>
+          <span data-testid="kpi-total-certs" className="text-4xl font-bold tabular-nums">
+            {activeCerts.toLocaleString()}
+          </span>
           <span className="text-sm text-muted-foreground">
             {totalCerts > 0
               ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalLabel}`

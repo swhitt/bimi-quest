@@ -1,5 +1,8 @@
-import path from "path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
@@ -9,11 +12,15 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       include: ["lib/**/*.ts", "app/api/**/*.ts"],
       exclude: ["**/*.test.ts", "**/*.d.ts"],
+      thresholds: {
+        lines: 50,
+        branches: 50,
+      },
     },
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": resolve(__dirname, "src"),
     },
   },
 });

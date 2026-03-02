@@ -116,7 +116,7 @@ export function RecentCerts() {
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="pb-2 pr-2 font-medium w-10" />
                     <th className="pb-2 pr-2 font-medium">Organization</th>
-                    <th className="pb-2 pr-2 font-medium hidden lg:table-cell">SANs</th>
+                    <th className="pb-2 pr-2 font-medium hidden lg:table-cell">Hostnames</th>
                     <th className="pb-2 pr-2 font-medium hidden sm:table-cell">Type</th>
                     <th className="pb-2 pr-2 font-medium hidden sm:table-cell">CA</th>
                     <th className="pb-2 pr-2 font-medium hidden md:table-cell">Country</th>
