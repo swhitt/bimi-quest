@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { CACHE_PRESETS } from "@/lib/cache";
+import { db } from "@/lib/db";
 import { buildPrecertCondition } from "@/lib/db/filters";
+import { certificates } from "@/lib/db/schema";
 import { log } from "@/lib/logger";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest";
@@ -59,7 +60,7 @@ ${items}
     return new NextResponse(rss, {
       headers: {
         "Content-Type": "application/rss+xml; charset=utf-8",
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        "Cache-Control": CACHE_PRESETS.MEDIUM_LONG,
       },
     });
   } catch (error) {

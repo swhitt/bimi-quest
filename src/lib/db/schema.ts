@@ -53,6 +53,7 @@ export const certificates = pgTable(
     index("idx_certificates_serial_number").on(table.serialNumber),
     index("idx_certificates_not_before").on(table.notBefore),
     index("idx_certificates_issuer_org").on(table.issuerOrg),
+    index("idx_certs_issuer_notbefore").on(table.issuerOrg, table.notBefore),
     index("idx_certificates_subject_country").on(table.subjectCountry),
     index("idx_certificates_serial_precert").on(table.serialNumber, table.isPrecert),
     index("idx_certs_type_notbefore").on(table.certType, table.notBefore),

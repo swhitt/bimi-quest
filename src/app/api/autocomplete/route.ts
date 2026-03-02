@@ -1,7 +1,8 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { log } from "@/lib/logger";
+import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
+import { db } from "@/lib/db";
 
 /**
  * Fast autocomplete for hostname/org search.
@@ -42,10 +43,9 @@ export async function GET(request: NextRequest) {
     `);
 
     return NextResponse.json(result.rows, {
-      headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": CACHE_PRESETS.SHORT_BROWSER },
     });
   } catch (err) {
-    log("error", "autocomplete.api.failed", { error: String(err), route: "/api/autocomplete" });
-    return NextResponse.json({ error: "Failed to fetch autocomplete results" }, { status: 500 });
+    return apiError(err, "autocomplete.api.failed", "/api/autocomplete", "Failed to fetch autocomplete results");
   }
 }

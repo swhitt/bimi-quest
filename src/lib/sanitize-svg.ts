@@ -1,4 +1,4 @@
-import DOMPurify from "dompurify";
+import DOMPurify from "isomorphic-dompurify";
 
 const ALLOWED_TAGS = [
   "svg",
@@ -115,8 +115,6 @@ export function sanitizeSvg(raw: string): string {
   // identical output (DOMPurify strips it client-side, causing hydration mismatch)
   const stripped = raw.replace(/^\s*<\?xml[^?]*\?>\s*/i, "");
   const normalized = ensureViewBox(stripBrowserDropped(stripped));
-  // DOMPurify needs a browser DOM; during SSR pass through as-is
-  if (typeof window === "undefined") return normalized;
   return DOMPurify.sanitize(normalized, {
     USE_PROFILES: { svg: true, svgFilters: true },
     ALLOWED_TAGS,

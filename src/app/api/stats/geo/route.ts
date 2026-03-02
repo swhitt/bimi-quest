@@ -1,21 +1,16 @@
+import { count, desc, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
+import { buildStatsConditions } from "@/lib/db/filters";
 import { certificates } from "@/lib/db/schema";
-import { sql, eq, and, count, desc } from "drizzle-orm";
-import { buildCommonFilterConditions } from "@/lib/db/filters";
-import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const ca = params.get("ca");
-  const root = params.get("root");
 
   try {
-    const conditions = buildCommonFilterConditions(params);
-    if (ca) conditions.push(eq(certificates.issuerOrg, ca));
-    if (root) conditions.push(eq(certificates.rootCaOrg, root));
-
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = buildStatsConditions(params);
 
     const geoData = await db
       .select({
@@ -32,11 +27,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { geoData },
       {
-        headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+        headers: { "Cache-Control": CACHE_PRESETS.MEDIUM },
       },
     );
   } catch (error) {
-    log("error", "geo-stats.api.failed", { error: String(error), route: "/api/stats/geo" });
-    return NextResponse.json({ error: "Failed to fetch geo data" }, { status: 500 });
+    return apiError(error, "geo-stats.api.failed", "/api/stats/geo", "Failed to fetch geo data");
   }
 }

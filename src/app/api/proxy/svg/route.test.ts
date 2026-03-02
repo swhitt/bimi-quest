@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // Mock safeFetch before importing the route
@@ -32,8 +32,15 @@ function streamFromString(text: string): ReadableStream<Uint8Array> {
   });
 }
 
+const originalEnv = { ...process.env };
+
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.NEXT_PUBLIC_BASE_URL = "https://bimi.quest";
+});
+
+afterEach(() => {
+  process.env = { ...originalEnv };
 });
 
 describe("OPTIONS /api/proxy/svg", () => {

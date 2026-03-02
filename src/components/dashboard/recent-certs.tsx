@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
-import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { UtcTime } from "@/components/ui/utc-time";
 
 interface RecentCert {
   id: number;
@@ -20,39 +20,56 @@ interface RecentCert {
   notBefore: string;
   subjectCountry: string | null;
   sanList: string[];
-  logotypeSvg: string | null;
+  logotypeSvgHash: string | null;
+  hasLogo: boolean;
+  logoBg: string | null;
   notabilityScore: number | null;
 }
 
+const PAGE_SIZE = 7;
+
 export function RecentCerts() {
   const { buildApiParams } = useGlobalFilters();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [certs, setCerts] = useState<RecentCert[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [loadedParams, setLoadedParams] = useState<string | null>(null);
 
+  // Build "View all" link preserving current filters (CA in path, rest as search params)
+  const caMatch = pathname.match(/\/ca\/([^/]+)/);
+  const caSuffix = caMatch ? `/ca/${caMatch[1]}` : "";
+  const filterSearch = new URLSearchParams(searchParams.toString());
+  // Strip transient params that are specific to this widget
+  filterSearch.delete("page");
+  filterSearch.delete("limit");
+  const viewAllHref = `/certificates${caSuffix}${filterSearch.size > 0 ? `?${filterSearch}` : ""}`;
+
   const filterParams = buildApiParams({
-    page: "1",
-    limit: "7",
+    page: String(page),
+    limit: String(PAGE_SIZE),
     sort: "notBefore",
     dir: "desc",
   });
   const loading = loadedParams !== filterParams;
 
+  // Reset to page 1 when filters change
+  const baseFilterParams = buildApiParams();
+  useEffect(() => {
+    setPage(1);
+  }, [baseFilterParams]);
+
   useEffect(() => {
     fetch(`/api/certificates?${filterParams}`)
       .then((res) => res.json())
-      .then((json) => setCerts(json.data ?? []))
+      .then((json) => {
+        setCerts(json.data ?? []);
+        setTotalPages(json.pagination?.totalPages ?? 1);
+      })
       .catch(() => setCerts([]))
       .finally(() => setLoadedParams(filterParams));
   }, [filterParams]);
-
-  const sanitizedCerts = useMemo(
-    () =>
-      certs.map((c) => ({
-        ...c,
-        logotypeSvg: c.logotypeSvg ? sanitizeSvg(c.logotypeSvg) : null,
-      })),
-    [certs],
-  );
 
   return (
     <div>
@@ -61,7 +78,7 @@ export function RecentCerts() {
         <p className="text-muted-foreground py-4 text-center text-sm" aria-live="polite">
           Loading...
         </p>
-      ) : sanitizedCerts.length > 0 ? (
+      ) : certs.length > 0 ? (
         <div className="space-y-2">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -77,13 +94,17 @@ export function RecentCerts() {
                 </tr>
               </thead>
               <tbody>
-                {sanitizedCerts.map((cert) => (
+                {certs.map((cert) => (
                   <tr key={cert.id} className="border-b last:border-0 hover:bg-secondary/50 transition-colors">
                     <td className="py-0 pr-2 w-10">
-                      {cert.logotypeSvg ? (
-                        <div
-                          className="h-10 w-10 shrink-0 rounded border bg-white p-0.5 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                          dangerouslySetInnerHTML={{ __html: cert.logotypeSvg }}
+                      {cert.hasLogo && cert.logotypeSvgHash ? (
+                        <img
+                          src={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
+                          alt=""
+                          width={40}
+                          height={40}
+                          className="h-10 w-10 min-w-10 shrink-0 rounded border p-0.5 object-contain"
+                          style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
                         />
                       ) : (
                         <div className="h-10 w-10 shrink-0 rounded border bg-muted" />
@@ -147,7 +168,7 @@ export function RecentCerts() {
                       {cert.subjectCountry || "—"}
                     </td>
                     <td className="py-1.5 text-right text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(new Date(cert.notBefore), { addSuffix: true })}
+                      <UtcTime date={cert.notBefore} relative />
                     </td>
                   </tr>
                 ))}
@@ -155,12 +176,39 @@ export function RecentCerts() {
             </table>
           </div>
 
-          <Link
-            href="/certificates"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors pt-1"
-          >
-            View all certificates <ArrowRight className="size-3" />
-          </Link>
+          <div className="flex items-center justify-between pt-1">
+            <Link
+              href={viewAllHref}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              View all <ArrowRight className="size-3" />
+            </Link>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {page}/{totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">No recent issuances match current filters.</p>

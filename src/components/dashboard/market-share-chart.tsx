@@ -22,8 +22,30 @@ interface MarketShareChartProps {
   apiQuery?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function BarTooltip({ active, payload, colors }: any) {
+interface MarketShareDataPoint {
+  name: string;
+  total: number;
+  vmcCount: number;
+  cmcCount: number;
+  grandTotal: number;
+}
+
+interface BarTooltipEntry {
+  name: string;
+  value: number;
+  color: string;
+  payload: MarketShareDataPoint;
+}
+
+function BarTooltip({
+  active,
+  payload,
+  colors,
+}: {
+  active?: boolean;
+  payload?: readonly BarTooltipEntry[];
+  colors: ReturnType<typeof useChartColors>;
+}) {
   if (!active || !payload?.length) return null;
 
   const entry = payload[0]?.payload;
@@ -67,8 +89,8 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
       grandTotal,
     }));
 
-  // Compute the dynamic bar chart height: each bar ~40px, plus margins
-  const barHeight = Math.max(chartData.length * 40, 120);
+  // Cap the chart height to prevent layout shifts when filters change the data count
+  const barHeight = Math.min(Math.max(chartData.length * 40, 120), 400);
 
   return (
     <Card>
@@ -91,7 +113,11 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
       <CardContent>
         {chartData.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <div role="img" aria-label="Horizontal bar chart showing certificate distribution by Certificate Authority">
+            <div
+              role="img"
+              aria-label="Horizontal bar chart showing certificate distribution by Certificate Authority"
+              className="max-h-[400px] overflow-y-auto"
+            >
               <ResponsiveContainer width="100%" height={barHeight}>
                 <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
                   <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border" />

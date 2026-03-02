@@ -1,12 +1,12 @@
+import { and, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
-import { sql, and, isNotNull, gte, lte } from "drizzle-orm";
-import { log } from "@/lib/logger";
+import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
-import { serverTiming } from "@/lib/server-timing";
-import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { db } from "@/lib/db";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
+import { certificates } from "@/lib/db/schema";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { serverTiming } from "@/lib/server-timing";
 
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
@@ -115,10 +115,6 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (error) {
-    log("error", "gallery.api.failed", {
-      error: String(error),
-      route: "/api/gallery",
-    });
-    return NextResponse.json({ error: "Failed to fetch gallery" }, { status: 500 });
+    return apiError(error, "gallery.api.failed", "/api/gallery", "Failed to fetch gallery");
   }
 }

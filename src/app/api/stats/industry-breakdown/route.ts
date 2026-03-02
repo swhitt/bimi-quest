@@ -1,22 +1,16 @@
+import { and, count, desc, isNotNull, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
+import { buildStatsConditions } from "@/lib/db/filters";
 import { certificates } from "@/lib/db/schema";
-import { sql, and, eq, count, desc, isNotNull } from "drizzle-orm";
-import { buildCommonFilterConditions } from "@/lib/db/filters";
-import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const ca = params.get("ca");
-  const root = params.get("root");
 
   try {
-    const conditions = buildCommonFilterConditions(params);
-    conditions.push(isNotNull(certificates.industry));
-    if (ca) conditions.push(eq(certificates.issuerOrg, ca));
-    if (root) conditions.push(eq(certificates.rootCaOrg, root));
-
-    const where = and(...conditions);
+    const where = and(buildStatsConditions(params), isNotNull(certificates.industry));
 
     const data = await db
       .select({
@@ -34,11 +28,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { data },
       {
-        headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+        headers: { "Cache-Control": CACHE_PRESETS.MEDIUM },
       },
     );
   } catch (error) {
-    log("error", "industry-breakdown.api.failed", { error: String(error), route: "/api/stats/industry-breakdown" });
-    return NextResponse.json({ error: "Failed to fetch industry breakdown" }, { status: 500 });
+    return apiError(
+      error,
+      "industry-breakdown.api.failed",
+      "/api/stats/industry-breakdown",
+      "Failed to fetch industry breakdown",
+    );
   }
 }

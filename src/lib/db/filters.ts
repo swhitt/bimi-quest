@@ -1,4 +1,4 @@
-import { type SQL, eq, gte, lte, like } from "drizzle-orm";
+import { and, eq, gte, like, lte, type SQL } from "drizzle-orm";
 import { db } from "./index";
 import { certificates } from "./schema";
 
@@ -116,4 +116,22 @@ export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
   if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
 
   return conditions;
+}
+
+/**
+ * Build combined filter conditions for stats endpoints.
+ * Applies all common filters plus the `ca` (issuerOrg) and `root` (rootCaOrg)
+ * params that stats routes consistently need.
+ * Returns a single SQL expression ready for a `.where()` clause, or undefined
+ * when no filters are active.
+ */
+export function buildStatsConditions(params: URLSearchParams): ReturnType<typeof and> {
+  const conditions = buildCommonFilterConditions(params);
+
+  const ca = params.get("ca");
+  const root = params.get("root");
+  if (ca) conditions.push(eq(certificates.issuerOrg, ca));
+  if (root) conditions.push(eq(certificates.rootCaOrg, root));
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
 }

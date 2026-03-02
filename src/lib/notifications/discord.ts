@@ -1,5 +1,6 @@
 import { log } from "@/lib/logger";
 import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
 
 export interface DiscordCertPayload {
   domain: string;
@@ -56,7 +57,7 @@ export async function sendDiscordNotification(payload: DiscordCertPayload): Prom
       ...(showRootCa ? [{ name: "Root CA", value: rootDisplay, inline: true }] : []),
       { name: "Type", value: payload.certType, inline: true },
       ...(payload.country ? [{ name: "Country", value: payload.country, inline: true }] : []),
-      ...(payload.notabilityScore && payload.notabilityScore >= 5
+      ...(payload.notabilityScore && payload.notabilityScore >= NOTABILITY_NOTIFICATION_THRESHOLD
         ? [
             {
               name: "Notable",

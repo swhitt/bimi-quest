@@ -19,22 +19,39 @@ interface TrendChartProps {
   data: TrendDataPoint[];
   selectedCA: string;
   apiQuery?: string;
+  /** When true, the first month is kept (user set an explicit date filter) */
+  hasDateFilter?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TrendTooltip({ active, payload, label, colors }: any) {
+interface TrendTooltipEntry {
+  name: string;
+  value: number;
+  color: string;
+}
+
+function TrendTooltip({
+  active,
+  payload,
+  label,
+  colors,
+}: {
+  active?: boolean;
+  payload?: readonly TrendTooltipEntry[];
+  label?: string | number;
+  colors: ReturnType<typeof useChartColors>;
+}) {
   if (!active || !payload?.length) return null;
 
   const rows = [...payload]
-    .filter((p: { value: number }) => (p.value ?? 0) > 0)
-    .sort((a: { value: number }, b: { value: number }) => (b.value ?? 0) - (a.value ?? 0))
-    .map((p: { name: string; value: number }) => ({
+    .filter((p) => (p.value ?? 0) > 0)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+    .map((p) => ({
       color: getCAColor(colors, p.name ?? ""),
       name: p.name ?? "",
       value: (p.value ?? 0).toLocaleString(),
     }));
 
-  const total = payload.reduce((sum: number, p: { value: number }) => sum + (p.value ?? 0), 0);
+  const total = payload.reduce((sum, p) => sum + (p.value ?? 0), 0);
 
   let formattedLabel = String(label);
   try {
@@ -46,7 +63,7 @@ function TrendTooltip({ active, payload, label, colors }: any) {
   return <ChartTooltipContent label={`${formattedLabel} (${total.toLocaleString()} total)`} rows={rows} />;
 }
 
-export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps) {
+export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: TrendChartProps) {
   const colors = useChartColors();
   const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
 
@@ -56,9 +73,9 @@ export function TrendChart({ data, selectedCA, apiQuery = "" }: TrendChartProps)
     ca: displayIssuerOrg(d.ca),
   }));
 
-  // Drop the oldest month since it's always partial (query starts mid-month)
+  // Drop the oldest month when no date filter is active (it's partial from the 13-month window)
   const allMonths = [...new Set(normalized.map((d) => d.month))].sort();
-  const months = allMonths.slice(1);
+  const months = hasDateFilter ? allMonths : allMonths.slice(1);
 
   // When a specific CA is selected, show only that CA.
   // When "All Issuers", show stacked bars.

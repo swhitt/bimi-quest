@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { CACHE_PRESETS } from "@/lib/cache";
+import { log } from "@/lib/logger";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
-import { log } from "@/lib/logger";
 
 // In-memory LRU cache for SVG content
 const cache = new Map<string, { content: string; contentType: string; timestamp: number }>();
@@ -9,12 +10,30 @@ const CACHE_TTL = 86400_000; // 24 hours
 const MAX_CACHE_SIZE = 500;
 const MAX_SVG_SIZE = 1_048_576; // 1 MB
 
+function isAllowedOrigin(origin: string): boolean {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const allowedOrigins: string[] = [];
+  if (baseUrl) {
+    try {
+      allowedOrigins.push(new URL(baseUrl).origin);
+    } catch {
+      // Invalid BASE_URL; fall through to defaults
+    }
+  }
+  // Allow localhost origins in development
+  if (process.env.NODE_ENV !== "production") {
+    if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return true;
+    if (/^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) return true;
+  }
+  return allowedOrigins.includes(origin);
+}
+
 function corsHeaders(request: NextRequest): Record<string, string> {
   const origin = request.headers.get("Origin");
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, OPTIONS",
   };
-  if (origin) {
+  if (origin && isAllowedOrigin(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;
@@ -61,7 +80,7 @@ export async function GET(request: NextRequest) {
         ...corsHeaders(request),
         ...rl.headers,
         "Content-Type": cached.contentType,
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": CACHE_PRESETS.STATIC,
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
         "X-Content-Type-Options": "nosniff",
       },
@@ -145,7 +164,7 @@ export async function GET(request: NextRequest) {
         ...corsHeaders(request),
         ...rl.headers,
         "Content-Type": "image/svg+xml",
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": CACHE_PRESETS.STATIC,
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
         "X-Content-Type-Options": "nosniff",
       },

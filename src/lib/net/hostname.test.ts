@@ -55,9 +55,23 @@ describe("isPrivateIP", () => {
     expect(isPrivateIP("fd12:3456::1")).toBe(true);
   });
 
+  it("detects IPv4-mapped IPv6 addresses", () => {
+    expect(isPrivateIP("::ffff:127.0.0.1")).toBe(true);
+    expect(isPrivateIP("::ffff:10.0.0.1")).toBe(true);
+    expect(isPrivateIP("::ffff:192.168.1.1")).toBe(true);
+    expect(isPrivateIP("::ffff:8.8.8.8")).toBe(false);
+    expect(isPrivateIP("::ffff:1.1.1.1")).toBe(false);
+  });
+
+  it("detects documentation and discard IPv6 ranges", () => {
+    expect(isPrivateIP("2001:db8::1")).toBe(true);
+    expect(isPrivateIP("2001:db8:abcd::1")).toBe(true);
+    expect(isPrivateIP("100::1")).toBe(true);
+  });
+
   it("allows public IPv6", () => {
-    expect(isPrivateIP("2001:db8::1")).toBe(false);
     expect(isPrivateIP("2607:f8b0:4004:800::200e")).toBe(false);
+    expect(isPrivateIP("2001:4860:4860::8888")).toBe(false);
   });
 });
 

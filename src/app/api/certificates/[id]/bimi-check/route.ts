@@ -1,14 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { certificates, domainBimiState } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { validateSVGTinyPS } from "@/lib/bimi/svg";
+import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { isDMARCValidForBIMI, lookupDMARC } from "@/lib/bimi/dmarc";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
-import { lookupDMARC, isDMARCValidForBIMI } from "@/lib/bimi/dmarc";
-import { safeFetch } from "@/lib/net/safe-fetch";
+import { validateSVGTinyPS } from "@/lib/bimi/svg";
+import { CACHE_PRESETS } from "@/lib/cache";
+import { db } from "@/lib/db";
 import { resolveCertParam } from "@/lib/db/filters";
+import { certificates, domainBimiState } from "@/lib/db/schema";
+import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
-import { log } from "@/lib/logger";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ip = getClientIP(_request);
@@ -168,12 +169,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       {
         headers: {
           ...rl.headers,
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          "Cache-Control": CACHE_PRESETS.MEDIUM_LONG,
         },
       },
     );
   } catch (error) {
-    log("error", "bimi-check.api.failed", { error: String(error), route: "/api/certificates/[id]/bimi-check" });
-    return NextResponse.json({ error: "Failed to run BIMI check" }, { status: 500 });
+    return apiError(error, "bimi-check.api.failed", "/api/certificates/[id]/bimi-check", "Failed to run BIMI check");
   }
 }

@@ -42,7 +42,7 @@ export async function DashboardContent({
   let data: DashboardData;
   try {
     const res = await fetch(`${baseUrl}/api/dashboard?${apiQuery}`, {
-      cache: "no-store",
+      next: { revalidate: 60 },
     });
     if (!res.ok) throw new Error("Failed to load");
     data = await res.json();
@@ -58,6 +58,7 @@ export async function DashboardContent({
 
   const vmcTotal = data.caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = data.caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
+  const hasDateFilter = !!(searchParams.from || searchParams.to);
 
   return (
     <div className="space-y-6">
@@ -83,6 +84,7 @@ export async function DashboardContent({
         markTypeBreakdown={data.markTypeBreakdown}
         selectedCA={displayCA}
         apiQuery={apiQuery}
+        hasDateFilter={hasDateFilter}
       />
 
       <div className="grid gap-4 md:grid-cols-5 items-stretch">

@@ -12,9 +12,17 @@ export function isPrivateIP(ip: string): boolean {
     lower === "::" ||
     lower.startsWith("fe80:") ||
     lower.startsWith("fc00:") ||
-    lower.startsWith("fd")
+    lower.startsWith("fd") ||
+    lower.startsWith("2001:db8:") || // documentation range (2001:db8::/32)
+    lower.startsWith("100::") // discard prefix (100::/64)
   ) {
     return true;
+  }
+
+  // IPv4-mapped IPv6 addresses (::ffff:x.x.x.x) — extract the IPv4 part and re-check
+  const v4MappedMatch = lower.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (v4MappedMatch) {
+    return isPrivateIP(v4MappedMatch[1]);
   }
 
   // IPv4

@@ -7,12 +7,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { BimiCheckItem } from "@/lib/bimi/types";
 import { useState } from "react";
 
-const STATUS_ICON: Record<BimiCheckItem["status"], { icon: string; color: string }> = {
-  pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400" },
-  fail: { icon: "\u2717", color: "text-destructive" },
-  warn: { icon: "\u26A0", color: "text-amber-500 dark:text-amber-400" },
-  skip: { icon: "\u2014", color: "text-muted-foreground" },
-  info: { icon: "i", color: "text-blue-500 dark:text-blue-400" },
+const STATUS_ICON: Record<BimiCheckItem["status"], { icon: string; color: string; label: string }> = {
+  pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400", label: "Passed" },
+  fail: { icon: "\u2717", color: "text-destructive", label: "Failed" },
+  warn: { icon: "\u26A0", color: "text-amber-500 dark:text-amber-400", label: "Warning" },
+  skip: { icon: "\u2014", color: "text-muted-foreground", label: "Skipped" },
+  info: { icon: "i", color: "text-blue-500 dark:text-blue-400", label: "Information" },
 };
 
 const LPS_EXPLANATION =
@@ -20,13 +20,15 @@ const LPS_EXPLANATION =
 
 function CheckItemCard({ item }: { item: BimiCheckItem }) {
   const [expanded, setExpanded] = useState(false);
-  const { icon, color } = STATUS_ICON[item.status];
+  const { icon, color, label } = STATUS_ICON[item.status];
   const hasDetail = !!item.detail || !!item.specRef;
   const isLps = item.id === "bimi-lps";
 
   return (
     <div className="flex items-start gap-3 py-2">
-      <span className={`mt-0.5 text-lg font-bold leading-none ${color}`}>{icon}</span>
+      <span role="img" aria-label={label} className={`mt-0.5 text-lg font-bold leading-none ${color}`}>
+        {icon}
+      </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {isLps ? (

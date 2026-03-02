@@ -14,7 +14,7 @@ export async function CertificatesContent({
   let data: { data: []; pagination: { page: number; limit: number; total: number; totalPages: number } };
   try {
     const res = await fetch(`${baseUrl}/api/certificates?${apiQuery}`, {
-      cache: "no-store",
+      next: { revalidate: 60 },
     });
     if (!res.ok) throw new Error("Failed to load");
     data = await res.json();

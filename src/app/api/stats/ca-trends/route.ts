@@ -1,22 +1,19 @@
+import { and, count, desc, gte, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
+import { buildStatsConditions } from "@/lib/db/filters";
 import { certificates } from "@/lib/db/schema";
-import { sql, eq, gte, and, count, desc } from "drizzle-orm";
-import { buildCommonFilterConditions } from "@/lib/db/filters";
-import { log } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const months = Math.max(1, parseInt(params.get("months") ?? "", 10) || 12);
-  const ca = params.get("ca");
-  const root = params.get("root");
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - months);
 
   try {
-    const baseConditions = buildCommonFilterConditions(params);
-    if (ca) baseConditions.push(eq(certificates.issuerOrg, ca));
-    if (root) baseConditions.push(eq(certificates.rootCaOrg, root));
+    const where = buildStatsConditions(params);
 
     const [trends, topCAs] = await Promise.all([
       db
@@ -28,7 +25,7 @@ export async function GET(request: NextRequest) {
           cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
         })
         .from(certificates)
-        .where(and(...baseConditions, gte(certificates.notBefore, cutoff)))
+        .where(and(where, gte(certificates.notBefore, cutoff)))
         .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.rootCaOrg)
         .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
 
@@ -39,7 +36,7 @@ export async function GET(request: NextRequest) {
           total: count(),
         })
         .from(certificates)
-        .where(and(...baseConditions))
+        .where(where)
         .groupBy(certificates.rootCaOrg)
         .orderBy(desc(count()))
         .limit(10),
@@ -48,11 +45,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { trends, topCAs },
       {
-        headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" },
+        headers: { "Cache-Control": CACHE_PRESETS.MEDIUM },
       },
     );
   } catch (error) {
-    log("error", "ca-trends.api.failed", { error: String(error), route: "/api/stats/ca-trends" });
-    return NextResponse.json({ error: "Failed to fetch trends" }, { status: 500 });
+    return apiError(error, "ca-trends.api.failed", "/api/stats/ca-trends", "Failed to fetch trends");
   }
 }

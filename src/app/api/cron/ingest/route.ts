@@ -1,10 +1,11 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { ingestionCursors } from "@/lib/db/schema";
+import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
 import { getSTH } from "@/lib/ct/gorgon";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
-import { log } from "@/lib/logger";
+import { db } from "@/lib/db";
+import { ingestionCursors } from "@/lib/db/schema";
 
 // Vercel Pro allows up to 300s
 export const maxDuration = 300;
@@ -19,8 +20,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 500 });
   }
 
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const authHeader = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${cronSecret}`;
+  // Constant-time comparison to prevent timing attacks.
+  // Pad the shorter value so both buffers are equal length (timingSafeEqual requires it).
+  const maxLen = Math.max(authHeader.length, expected.length);
+  const authBuf = Buffer.alloc(maxLen);
+  const expectedBuf = Buffer.alloc(maxLen);
+  authBuf.write(authHeader);
+  expectedBuf.write(expected);
+  if (authHeader.length !== expected.length || !timingSafeEqual(authBuf, expectedBuf)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -60,7 +69,6 @@ export async function GET(request: NextRequest) {
       batchesRun: result.batchesRun,
     });
   } catch (error) {
-    log("error", "cron.ingest.failed", { error: String(error), route: "/api/cron/ingest" });
-    return NextResponse.json({ error: "Ingestion failed" }, { status: 500 });
+    return apiError(error, "cron.ingest.failed", "/api/cron/ingest", "Ingestion failed");
   }
 }

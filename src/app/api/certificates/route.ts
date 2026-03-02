@@ -1,34 +1,51 @@
+import { type AnyColumn, asc, count, desc } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
-import { desc, asc, count } from "drizzle-orm";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
-import { log } from "@/lib/logger";
+import { certificates } from "@/lib/db/schema";
+import { stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
+
+const VALID_SORT_COLUMNS = ["notBefore", "notAfter", "ctLogTimestamp", "subjectCn", "issuerOrg", "subjectOrg"] as const;
+
+const certificatesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  sort: z.enum(VALID_SORT_COLUMNS).default("notBefore"),
+  dir: z.enum(["asc", "desc"]).default("desc"),
+});
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
 
-  const page = Math.max(1, parseInt(params.get("page") ?? "", 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(params.get("limit") ?? "", 10) || 50));
-  const offset = (page - 1) * limit;
+  const parsed = certificatesQuerySchema.safeParse({
+    page: params.get("page") ?? undefined,
+    limit: params.get("limit") ?? undefined,
+    sort: params.get("sort") ?? undefined,
+    dir: params.get("dir") ?? undefined,
+  });
 
-  const sortBy = params.get("sort") || "notBefore";
-  const sortDir = params.get("dir") || "desc";
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.issues }, { status: 400 });
+  }
+
+  const { page, limit, sort: sortBy, dir: sortDir } = parsed.data;
+  const offset = (page - 1) * limit;
 
   try {
     const where = buildCertificateConditions(params);
 
-    // Sort column mapping
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sortColumns: Record<string, any> = {
+    const sortColumns: Record<string, AnyColumn> = {
       notBefore: certificates.notBefore,
       notAfter: certificates.notAfter,
       ctLogTimestamp: certificates.ctLogTimestamp,
       subjectCn: certificates.subjectCn,
       issuerOrg: certificates.issuerOrg,
       subjectOrg: certificates.subjectOrg,
-    };
-    const sortCol = sortColumns[sortBy] || certificates.notBefore;
+    } as const;
+    const sortCol = sortColumns[sortBy];
     const orderFn = sortDir === "asc" ? asc : desc;
 
     const [rows, [totalRow]] = await Promise.all([
@@ -48,6 +65,7 @@ export async function GET(request: NextRequest) {
           notAfter: certificates.notAfter,
           sanList: certificates.sanList,
           ctLogTimestamp: certificates.ctLogTimestamp,
+          logotypeSvgHash: certificates.logotypeSvgHash,
           logotypeSvg: certificates.logotypeSvg,
           isPrecert: certificates.isPrecert,
           notabilityScore: certificates.notabilityScore,
@@ -64,9 +82,16 @@ export async function GET(request: NextRequest) {
 
     const total = totalRow?.count || 0;
 
+    const data = rows.map(({ logotypeSvg, ...rest }) => {
+      const hasLogo = logotypeSvg != null;
+      const stripped = logotypeSvg ? stripWhiteSvgBg(logotypeSvg) : null;
+      const logoBg = stripped ? tileBgForSvg(stripped) : null;
+      return { ...rest, hasLogo, logoBg };
+    });
+
     return NextResponse.json(
       {
-        data: rows,
+        data,
         pagination: {
           page,
           limit,
@@ -75,11 +100,10 @@ export async function GET(request: NextRequest) {
         },
       },
       {
-        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+        headers: { "Cache-Control": CACHE_PRESETS.SHORT },
       },
     );
   } catch (error) {
-    log("error", "certificates.api.failed", { error: String(error), route: "/api/certificates" });
-    return NextResponse.json({ error: "Failed to fetch certificates" }, { status: 500 });
+    return apiError(error, "certificates.api.failed", "/api/certificates", "Failed to fetch certificates");
   }
 }

@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certificates, chainCerts, certificateChainLinks, ingestionCursors } from "@/lib/db/schema";
 import { getEntries, throttle } from "@/lib/ct/gorgon";
@@ -16,6 +16,7 @@ import { scoreNotabilityBatch, type BrandInput } from "@/lib/notability";
 import { computeColorRichness } from "@/lib/svg-color-richness";
 import { computeVisualHash } from "@/lib/dhash";
 import { errorMessage } from "@/lib/utils";
+import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
 
 const BATCH_SIZE = 256;
 
@@ -76,9 +77,8 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
           .where(eq(certificates.id, cert.id));
       }
 
-      // Only notify for notable brands (score >= 5) to avoid Discord spam
       const score = notability?.score ?? 0;
-      if (notify && score >= 5) {
+      if (notify && score >= NOTABILITY_NOTIFICATION_THRESHOLD) {
         dispatchNewCertNotification({
           certId: cert.id,
           fingerprintSha256: cert.fingerprintSha256,
@@ -164,7 +164,11 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
         }
         if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
 
-        const [inserted] = await db
+        // Insert cert + handle precert supersession atomically via db.batch().
+        // (neon-http does not support interactive transactions, but batch()
+        // executes all queries in a single HTTP transaction.)
+        const isPrecert = parsed.entryType === "precert";
+        const certInsertQuery = db
           .insert(certificates)
           .values({
             fingerprintSha256: bimiData.fingerprintSha256,
@@ -189,7 +193,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
             logotypeVisualHash: bimiData.logotypeSvg ? await computeVisualHash(bimiData.logotypeSvg) : null,
             rawPem: bimiData.rawPem,
-            isPrecert: parsed.entryType === "precert",
+            isPrecert,
             ctLogTimestamp: new Date(parsed.timestamp),
             ctLogIndex: entryIndex,
             ctLogName: "gorgon",
@@ -201,13 +205,15 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             fingerprintSha256: certificates.fingerprintSha256,
           });
 
-        if (inserted) {
-          // Mark precert/final pairs: if we just inserted a final cert, mark
-          // matching precert(s) as superseded. If we inserted a precert and a
-          // final cert already exists, mark this precert as superseded.
-          const isPrecert = parsed.entryType === "precert";
-          if (!isPrecert) {
-            await db
+        // Supersession query: for a final cert, mark matching precerts as
+        // superseded; for a precert, check if a final cert already exists.
+        const supersessionQuery = isPrecert
+          ? db
+              .select({ id: certificates.id })
+              .from(certificates)
+              .where(and(eq(certificates.serialNumber, bimiData.serialNumber), eq(certificates.isPrecert, false)))
+              .limit(1)
+          : db
               .update(certificates)
               .set({ isSuperseded: true })
               .where(
@@ -217,18 +223,18 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
                   eq(certificates.isSuperseded, false),
                 ),
               );
-          } else {
-            const [finalExists] = await db
-              .select({ id: certificates.id })
-              .from(certificates)
-              .where(and(eq(certificates.serialNumber, bimiData.serialNumber), eq(certificates.isPrecert, false)))
-              .limit(1);
-            if (finalExists) {
-              await db.update(certificates).set({ isSuperseded: true }).where(eq(certificates.id, inserted.id));
-            }
+
+        const [insertResult, supersessionResult] = await db.batch([certInsertQuery, supersessionQuery]);
+
+        const inserted = insertResult[0];
+
+        if (inserted) {
+          // For precerts: if a final cert already exists, mark this precert superseded
+          if (isPrecert && (supersessionResult as { id: number }[]).length > 0) {
+            await db.update(certificates).set({ isSuperseded: true }).where(eq(certificates.id, inserted.id));
           }
 
-          // Batch chain cert inserts: compute all fingerprints first, then bulk upsert
+          // Parse chain cert data (fingerprints + metadata) in parallel
           const chainData = await Promise.all(
             parsed.chainPems.map(async (pem) => ({
               info: parseChainCert(pem),
@@ -237,36 +243,51 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             })),
           );
 
-          for (let k = 0; k < chainData.length; k++) {
-            const { info: chainInfo, fingerprint, pem } = chainData[k];
-            const [chainCert] = await db
+          if (chainData.length > 0) {
+            // Batch INSERT all chain certs at once
+            const chainInsertResults = await db
               .insert(chainCerts)
-              .values({
-                fingerprintSha256: fingerprint,
-                subjectDn: chainInfo?.subjectDn || "unknown",
-                issuerDn: chainInfo?.issuerDn || "unknown",
-                rawPem: pem,
-                notBefore: chainInfo?.notBefore,
-                notAfter: chainInfo?.notAfter,
-              })
+              .values(
+                chainData.map(({ info: chainInfo, fingerprint, pem }) => ({
+                  fingerprintSha256: fingerprint,
+                  subjectDn: chainInfo?.subjectDn || "unknown",
+                  issuerDn: chainInfo?.issuerDn || "unknown",
+                  rawPem: pem,
+                  notBefore: chainInfo?.notBefore,
+                  notAfter: chainInfo?.notAfter,
+                })),
+              )
               .onConflictDoNothing({ target: chainCerts.fingerprintSha256 })
-              .returning({ id: chainCerts.id });
+              .returning({ id: chainCerts.id, fingerprintSha256: chainCerts.fingerprintSha256 });
 
-            let chainCertId = chainCert?.id;
-            if (!chainCertId) {
-              const [existing] = await db
-                .select({ id: chainCerts.id })
-                .from(chainCerts)
-                .where(eq(chainCerts.fingerprintSha256, fingerprint))
-                .limit(1);
-              chainCertId = existing.id;
+            // Build a fingerprint -> id map from returned rows (newly inserted)
+            const chainIdMap = new Map<string, number>();
+            for (const row of chainInsertResults) {
+              chainIdMap.set(row.fingerprintSha256, row.id);
             }
 
-            await db.insert(certificateChainLinks).values({
-              leafCertId: inserted.id,
-              chainCertId,
-              chainPosition: k + 1,
-            });
+            // For chain certs that already existed (not returned by INSERT),
+            // batch SELECT their IDs
+            const missingFingerprints = chainData.map((c) => c.fingerprint).filter((fp) => !chainIdMap.has(fp));
+
+            if (missingFingerprints.length > 0) {
+              const existingRows = await db
+                .select({ id: chainCerts.id, fingerprintSha256: chainCerts.fingerprintSha256 })
+                .from(chainCerts)
+                .where(inArray(chainCerts.fingerprintSha256, missingFingerprints));
+              for (const row of existingRows) {
+                chainIdMap.set(row.fingerprintSha256, row.id);
+              }
+            }
+
+            // Batch INSERT all chain links at once
+            await db.insert(certificateChainLinks).values(
+              chainData.map(({ fingerprint }, k) => ({
+                leafCertId: inserted.id,
+                chainCertId: chainIdMap.get(fingerprint)!,
+                chainPosition: k + 1,
+              })),
+            );
           }
 
           found++;

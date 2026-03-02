@@ -8,6 +8,9 @@ export function pemToDer(pem: string): Uint8Array {
     .replace(/-----BEGIN [^-]+-----/g, "")
     .replace(/-----END [^-]+-----/g, "")
     .replace(/\s+/g, "");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) {
+    throw new Error("Invalid base64 in PEM data");
+  }
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {

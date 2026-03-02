@@ -1,9 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
-import { certificates } from "@/lib/db/schema";
 import { asc, desc, sql } from "drizzle-orm";
-import { log } from "@/lib/logger";
+import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { db } from "@/lib/db";
+import { certificates } from "@/lib/db/schema";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 /**
  * Resolve a domain to its newest certificate, or fall back to validate.
@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
       found: false,
     });
   } catch (err) {
-    log("error", "resolve.api.failed", { error: String(err), route: "/api/resolve" });
-    return NextResponse.json({ error: "Failed to resolve domain" }, { status: 500 });
+    return apiError(err, "resolve.api.failed", "/api/resolve", "Failed to resolve domain");
   }
 }

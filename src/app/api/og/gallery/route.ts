@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { ogCache } from "@/lib/db/schema";
 
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
       return new NextResponse(buf, {
         headers: {
           "Content-Type": "image/png",
-          "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=3600",
+          "Cache-Control": CACHE_PRESETS.LONG_STATIC,
         },
       });
     }

@@ -22,6 +22,7 @@ interface DashboardChartsProps {
   markTypeBreakdown: { markType: string | null; count: number }[];
   selectedCA: string;
   apiQuery: string;
+  hasDateFilter?: boolean;
 }
 
 export function DashboardCharts({
@@ -30,12 +31,13 @@ export function DashboardCharts({
   markTypeBreakdown,
   selectedCA,
   apiQuery,
+  hasDateFilter,
 }: DashboardChartsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-stretch">
       <MarketShareChart data={caBreakdown} selectedCA={selectedCA} apiQuery={apiQuery} />
-      <TrendChart data={monthlyTrend} selectedCA={selectedCA} apiQuery={apiQuery} />
-      <CertTypeChart caBreakdown={caBreakdown} markTypeBreakdown={markTypeBreakdown} />
+      <TrendChart data={monthlyTrend} selectedCA={selectedCA} apiQuery={apiQuery} hasDateFilter={hasDateFilter} />
+      <CertTypeChart caBreakdown={caBreakdown} markTypeBreakdown={markTypeBreakdown} apiQuery={apiQuery} />
     </div>
   );
 }

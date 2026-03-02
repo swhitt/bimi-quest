@@ -1,8 +1,9 @@
+import { count, desc, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
-import { count, desc, isNotNull } from "drizzle-orm";
-import { log } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -16,12 +17,8 @@ export async function GET() {
       .groupBy(certificates.industry)
       .orderBy(desc(count()));
 
-    return NextResponse.json(
-      { industries: rows },
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } },
-    );
+    return NextResponse.json({ industries: rows }, { headers: { "Cache-Control": CACHE_PRESETS.MEDIUM_LONG } });
   } catch (error) {
-    log("error", "industries.api.failed", { error: String(error), route: "/api/stats/industries" });
-    return NextResponse.json({ error: "Failed to fetch industries" }, { status: 500 });
+    return apiError(error, "industries.api.failed", "/api/stats/industries", "Failed to fetch industries");
   }
 }

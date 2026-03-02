@@ -1,15 +1,32 @@
+import { and, count, countDistinct, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { certificates, ingestionCursors } from "@/lib/db/schema";
-import { sql, eq, count, countDistinct, and, gte, lte, desc } from "drizzle-orm";
 import { buildCommonFilterConditions } from "@/lib/db/filters";
-import { log } from "@/lib/logger";
+import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { serverTiming } from "@/lib/server-timing";
+
+const dashboardQuerySchema = z.object({
+  ca: z.string().optional(),
+  root: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const selectedCA = searchParams.get("ca") || null;
-  const selectedRoot = searchParams.get("root") || null;
+
+  const parsed = dashboardQuerySchema.safeParse({
+    ca: searchParams.get("ca") ?? undefined,
+    root: searchParams.get("root") ?? undefined,
+  });
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.issues }, { status: 400 });
+  }
+
+  const selectedCA = parsed.data.ca ?? null;
+  const selectedRoot = parsed.data.root ?? null;
 
   const timing = serverTiming();
   try {
@@ -166,13 +183,12 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": CACHE_PRESETS.SHORT,
           "Server-Timing": timing.header("db"),
         },
       },
     );
   } catch (error) {
-    log("error", "dashboard.api.failed", { error: String(error), route: "/api/dashboard" });
-    return NextResponse.json({ error: "Failed to fetch dashboard data" }, { status: 500 });
+    return apiError(error, "dashboard.api.failed", "/api/dashboard", "Failed to fetch dashboard data");
   }
 }

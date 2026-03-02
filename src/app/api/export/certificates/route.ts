@@ -1,10 +1,11 @@
+import { count, desc } from "drizzle-orm";
 import { type NextRequest } from "next/server";
-import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
-import { desc, count } from "drizzle-orm";
-import { buildCertificateConditions } from "@/lib/db/certificate-filters";
-import { log } from "@/lib/logger";
+import { apiError } from "@/lib/api-utils";
 import { escapeCSV } from "@/lib/csv";
+import { db } from "@/lib/db";
+import { buildCertificateConditions } from "@/lib/db/certificate-filters";
+import { certificates } from "@/lib/db/schema";
+import { log } from "@/lib/logger";
 
 const MAX_ROWS = 50_000;
 const BATCH_SIZE = 5_000;
@@ -174,10 +175,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    log("error", "export.certificates.failed", { error: String(error) });
-    return new Response(JSON.stringify({ error: "Failed to export certificates" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return apiError(error, "export.certificates.failed", "/api/export/certificates", "Failed to export certificates");
   }
 }

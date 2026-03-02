@@ -19,7 +19,7 @@ export async function MapContent({ searchParams }: { searchParams: Record<string
   let data: GeoEntry[];
   try {
     const res = await fetch(`${baseUrl}/api/stats/geo?${apiQuery}`, {
-      cache: "no-store",
+      next: { revalidate: 60 },
     });
     if (!res.ok) throw new Error("Failed to load");
     const json = await res.json();

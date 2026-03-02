@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from "@tanstack/react-table";
@@ -16,7 +16,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
-import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { UtcTime } from "@/components/ui/utc-time";
@@ -40,7 +39,9 @@ export interface CertRow {
   notAfter: string;
   sanList: string[];
   ctLogTimestamp: string | null;
-  logotypeSvg: string | null;
+  logotypeSvgHash: string | null;
+  hasLogo: boolean;
+  logoBg: string | null;
   isPrecert: boolean | null;
   notabilityScore: number | null;
   companyDescription: string | null;
@@ -92,6 +93,8 @@ function SortHeader({
 }
 
 function useCertTable(data: CertRow[], columns: ColumnDef<CertRow>[]) {
+  // React Compiler pragma: disable auto-memoization for this hook
+  // because TanStack Table manages its own internal memoization
   "use no memo";
   return useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 }
@@ -104,12 +107,6 @@ export function CertificatesTable({
 }: CertificatesTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  // Pre-sanitize SVGs once so column renderers don't re-sanitize on every render
-  const sanitizedData = useMemo(
-    () => data.map((c) => ({ ...c, logotypeSvg: c.logotypeSvg ? sanitizeSvg(c.logotypeSvg) : null })),
-    [data],
-  );
 
   const currentSort = searchParams.get("sort") || "notBefore";
   const currentDir = searchParams.get("dir") || "desc";
@@ -156,27 +153,36 @@ export function CertificatesTable({
       header: "",
       size: 48,
       cell: ({ row }) => {
-        const svg = row.original.logotypeSvg;
-        if (!svg) {
+        const hash = row.original.logotypeSvgHash;
+        if (!hash || !row.original.hasLogo) {
           return <div className="size-8 rounded-md border bg-muted" />;
         }
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
         const domain = row.original.sanList[0] || row.original.subjectCn;
+        const svgUrl = `/api/logo/${hash}?format=svg`;
+        const bg = row.original.logoBg;
         return (
           <HoverCard openDelay={300} closeDelay={100}>
             <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <div
-                className="size-8 rounded-md border bg-white p-0.5 shrink-0 overflow-hidden [&>svg]:w-full [&>svg]:h-full cursor-zoom-in"
-                suppressHydrationWarning
-                dangerouslySetInnerHTML={{ __html: svg }}
+              <img
+                src={svgUrl}
+                alt={`${org} logo`}
+                loading="lazy"
+                width={32}
+                height={32}
+                className="size-8 min-w-8 rounded-md border p-0.5 object-contain cursor-zoom-in"
+                style={bg ? { backgroundColor: bg } : undefined}
               />
             </HoverCardTrigger>
             <HoverCardContent side="right" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-col items-center gap-3">
-                <div
-                  className="size-36 rounded-lg border bg-white p-2 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
-                  suppressHydrationWarning
-                  dangerouslySetInnerHTML={{ __html: svg }}
+                <img
+                  src={svgUrl}
+                  alt={`${org} logo`}
+                  width={144}
+                  height={144}
+                  className="size-36 rounded-lg border p-2 object-contain"
+                  style={bg ? { backgroundColor: bg } : undefined}
                 />
                 <div className="text-center space-y-0.5">
                   <div className="font-medium text-sm">{org}</div>
@@ -374,7 +380,7 @@ export function CertificatesTable({
     },
   ];
 
-  const table = useCertTable(sanitizedData, columns);
+  const table = useCertTable(data, columns);
 
   const searchValue = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(searchValue);

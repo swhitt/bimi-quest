@@ -63,9 +63,13 @@ export function PaginationBar({
               }
             }}
             onBlur={(e) => {
-              const val = Math.max(1, Math.min(pagination.totalPages, parseInt(e.target.value) || 1));
-              if (val !== pagination.page) {
-                onPageChange(val);
+              const parsed = parseInt(e.currentTarget.value, 10);
+              if (isNaN(parsed) || parsed < 1 || parsed > pagination.totalPages) {
+                e.currentTarget.value = String(pagination.page);
+                return;
+              }
+              if (parsed !== pagination.page) {
+                onPageChange(parsed);
               }
             }}
           />

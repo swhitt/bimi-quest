@@ -1,17 +1,30 @@
+import { and, count, desc, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { type NextRequest } from "next/server";
-import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
-import { sql, count, and, desc, gte } from "drizzle-orm";
-import { buildCertificateConditions } from "@/lib/db/certificate-filters";
-import { log } from "@/lib/logger";
+import { apiError } from "@/lib/api-utils";
 import { escapeCSV } from "@/lib/csv";
+import { db } from "@/lib/db";
+import { buildCertificateConditions } from "@/lib/db/certificate-filters";
+import { buildStatsConditions } from "@/lib/db/filters";
+import { certificates } from "@/lib/db/schema";
+
+const VALID_DATASETS = new Set(["market-share", "trends", "industries", "cert-types", "expiry"]);
+
+function csvResponse(csv: string, filename: string) {
+  return new Response(csv, {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const dataset = params.get("dataset");
 
-  if (dataset !== "market-share" && dataset !== "trends") {
-    return new Response(JSON.stringify({ error: 'Invalid dataset. Use "market-share" or "trends".' }), {
+  if (!dataset || !VALID_DATASETS.has(dataset)) {
+    return new Response(JSON.stringify({ error: `Invalid dataset. Use one of: ${[...VALID_DATASETS].join(", ")}` }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
@@ -42,51 +55,101 @@ export async function GET(request: NextRequest) {
         return [escapeCSV(r.ca || "Unknown"), r.total, r.vmcCount, r.cmcCount, share].join(",");
       });
 
-      const csv = [header, ...csvRows].join("\n");
-      return new Response(csv, {
-        headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="bimi-market-share-${timestamp}.csv"`,
-          "Cache-Control": "no-store",
-        },
-      });
+      return csvResponse([header, ...csvRows].join("\n"), `bimi-market-share-${timestamp}.csv`);
     }
 
-    // dataset === "trends" - fetch 13 months, drop the partial first month
-    const thirteenMonthsAgo = new Date();
-    thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
+    if (dataset === "trends") {
+      const thirteenMonthsAgo = new Date();
+      thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
 
-    const allRows = await db
-      .select({
-        month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-        ca: certificates.issuerOrg,
-        count: count(),
-      })
-      .from(certificates)
-      .where(and(baseWhere, gte(certificates.notBefore, thirteenMonthsAgo)))
-      .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
-      .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`);
+      const allRows = await db
+        .select({
+          month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
+          ca: certificates.issuerOrg,
+          count: count(),
+        })
+        .from(certificates)
+        .where(and(baseWhere, gte(certificates.notBefore, thirteenMonthsAgo)))
+        .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
+        .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`);
 
-    // Drop the partial first month
-    const firstMonth = allRows.length > 0 ? allRows[0].month : null;
-    const rows = firstMonth ? allRows.filter((r) => r.month !== firstMonth) : allRows;
+      const firstMonth = allRows.length > 0 ? allRows[0].month : null;
+      const rows = firstMonth ? allRows.filter((r) => r.month !== firstMonth) : allRows;
 
-    const header = "Month,CA,Count";
-    const csvRows = rows.map((r) => [escapeCSV(r.month), escapeCSV(r.ca || "Unknown"), r.count].join(","));
+      const header = "Month,CA,Count";
+      const csvRows = rows.map((r) => [escapeCSV(r.month), escapeCSV(r.ca || "Unknown"), r.count].join(","));
 
-    const csv = [header, ...csvRows].join("\n");
-    return new Response(csv, {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="bimi-trends-${timestamp}.csv"`,
-        "Cache-Control": "no-store",
-      },
-    });
+      return csvResponse([header, ...csvRows].join("\n"), `bimi-trends-${timestamp}.csv`);
+    }
+
+    if (dataset === "industries") {
+      const statsWhere = and(buildStatsConditions(params), isNotNull(certificates.industry));
+      const rows = await db
+        .select({
+          industry: certificates.industry,
+          total: count(),
+          vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
+          cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
+        })
+        .from(certificates)
+        .where(statsWhere)
+        .groupBy(certificates.industry)
+        .orderBy(desc(count()));
+
+      const header = "Industry,Total,VMC,CMC";
+      const csvRows = rows.map((r) => [escapeCSV(r.industry || "Unknown"), r.total, r.vmcCount, r.cmcCount].join(","));
+
+      return csvResponse([header, ...csvRows].join("\n"), `bimi-industries-${timestamp}.csv`);
+    }
+
+    if (dataset === "cert-types") {
+      const rows = await db
+        .select({
+          certType: certificates.certType,
+          markType: certificates.markType,
+          total: count(),
+        })
+        .from(certificates)
+        .where(baseWhere)
+        .groupBy(certificates.certType, certificates.markType)
+        .orderBy(desc(count()));
+
+      const header = "Cert Type,Mark Type,Count";
+      const csvRows = rows.map((r) =>
+        [escapeCSV(r.certType || "Unknown"), escapeCSV(r.markType || "Unknown"), r.total].join(","),
+      );
+
+      return csvResponse([header, ...csvRows].join("\n"), `bimi-cert-types-${timestamp}.csv`);
+    }
+
+    if (dataset === "expiry") {
+      const now = new Date();
+      const twelveMonthsFromNow = new Date(now);
+      twelveMonthsFromNow.setMonth(twelveMonthsFromNow.getMonth() + 12);
+
+      const statsWhere = and(
+        buildStatsConditions(params),
+        gte(certificates.notAfter, now),
+        lte(certificates.notAfter, twelveMonthsFromNow),
+      );
+
+      const rows = await db
+        .select({
+          month: sql<string>`to_char(${certificates.notAfter}, 'YYYY-MM')`,
+          ca: certificates.issuerOrg,
+          total: count(),
+        })
+        .from(certificates)
+        .where(statsWhere)
+        .groupBy(sql`to_char(${certificates.notAfter}, 'YYYY-MM')`, certificates.issuerOrg)
+        .orderBy(sql`to_char(${certificates.notAfter}, 'YYYY-MM')`, desc(count()));
+
+      const header = "Expiry Month,CA,Count";
+      const csvRows = rows.map((r) => [escapeCSV(r.month), escapeCSV(r.ca || "Unknown"), r.total].join(","));
+
+      return csvResponse([header, ...csvRows].join("\n"), `bimi-expiry-${timestamp}.csv`);
+    }
   } catch (error) {
-    log("error", "export.dashboard.failed", { error: String(error), dataset });
-    return new Response(JSON.stringify({ error: "Failed to export dashboard data" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return apiError(error, "export.dashboard.failed", "/api/export/dashboard", "Failed to export dashboard data");
   }
 }

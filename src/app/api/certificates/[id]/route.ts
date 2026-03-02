@@ -1,13 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
-import { db } from "@/lib/db";
-import { certificates, chainCerts, certificateChainLinks, domainBimiState } from "@/lib/db/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { resolveCertParam } from "@/lib/db/filters";
-import { extractDnField, pemToDer } from "@/lib/ct/parser";
-import { toArrayBuffer } from "@/lib/pem";
 import { X509Certificate } from "@peculiar/x509";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
+import { extractDnField, pemToDer } from "@/lib/ct/parser";
+import { db } from "@/lib/db";
+import { resolveCertParam } from "@/lib/db/filters";
+import { certificateChainLinks, certificates, chainCerts, domainBimiState } from "@/lib/db/schema";
 import { log } from "@/lib/logger";
+import { toArrayBuffer } from "@/lib/pem";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { serverTiming } from "@/lib/server-timing";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -128,13 +130,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+          "Cache-Control": CACHE_PRESETS.MEDIUM,
           "Server-Timing": timing.header("db"),
         },
       },
     );
   } catch (error) {
-    log("error", "certificate-detail.api.failed", { error: String(error), route: "/api/certificates/[id]" });
-    return NextResponse.json({ error: "Failed to fetch certificate" }, { status: 500 });
+    return apiError(error, "certificate-detail.api.failed", "/api/certificates/[id]", "Failed to fetch certificate");
   }
 }

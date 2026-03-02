@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useChartColors, getCAColor, CA_COLOR_INDEX } from "@/lib/chart-colors";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface ExpiryRow {
@@ -16,20 +18,35 @@ interface ExpiryRow {
   total: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ExpiryTooltip({ active, payload, label, colors }: any) {
+interface ExpiryTooltipEntry {
+  name: string;
+  value: number;
+  color: string;
+}
+
+function ExpiryTooltip({
+  active,
+  payload,
+  label,
+  colors,
+}: {
+  active?: boolean;
+  payload?: readonly ExpiryTooltipEntry[];
+  label?: string | number;
+  colors: ReturnType<typeof useChartColors>;
+}) {
   if (!active || !payload?.length) return null;
 
   const rows = [...payload]
-    .filter((p: { value: number }) => (p.value ?? 0) > 0)
-    .sort((a: { value: number }, b: { value: number }) => (b.value ?? 0) - (a.value ?? 0))
-    .map((p: { name: string; value: number }) => ({
+    .filter((p) => (p.value ?? 0) > 0)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+    .map((p) => ({
       color: getCAColor(colors, p.name ?? ""),
       name: p.name ?? "",
       value: (p.value ?? 0).toLocaleString(),
     }));
 
-  const total = payload.reduce((sum: number, p: { value: number }) => sum + (p.value ?? 0), 0);
+  const total = payload.reduce((sum, p) => sum + (p.value ?? 0), 0);
 
   let formattedLabel = String(label);
   try {
@@ -101,6 +118,20 @@ export function ExpiryChart() {
     <Card>
       <CardHeader>
         <CardTitle>Upcoming Expirations</CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Download expiry data as CSV"
+            onClick={() => {
+              const q = filterParams;
+              const sep = q ? "&" : "";
+              window.location.href = `/api/export/dashboard?dataset=expiry${sep}${q}`;
+            }}
+          >
+            <Download />
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {pivoted.length > 0 ? (

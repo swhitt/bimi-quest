@@ -1,12 +1,15 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 interface CertTypeChartProps {
   caBreakdown: { ca: string | null; total: number; vmcCount: number; cmcCount: number }[];
   markTypeBreakdown: { markType: string | null; count: number }[];
+  apiQuery?: string;
 }
 
 const CERT_TYPE_COLORS = {
@@ -24,8 +27,13 @@ function getMarkColor(markType: string, index: number): string {
   return MARK_TYPE_COLORS[markType] || `oklch(0.60 0.12 ${(index * 72 + 180) % 360})`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DonutTooltip({ active, payload }: any) {
+interface DonutTooltipEntry {
+  name: string;
+  value: number;
+  payload: { name: string; value: number; fill: string };
+}
+
+function DonutTooltip({ active, payload }: { active?: boolean; payload?: readonly DonutTooltipEntry[] }) {
   if (!active || !payload?.length) return null;
   const entry = payload[0]?.payload;
   if (!entry) return null;
@@ -38,7 +46,7 @@ function DonutTooltip({ active, payload }: any) {
   );
 }
 
-export function CertTypeChart({ caBreakdown, markTypeBreakdown }: CertTypeChartProps) {
+export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }: CertTypeChartProps) {
   const vmcTotal = caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
 
@@ -61,6 +69,19 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown }: CertTypeChartP
     <Card>
       <CardHeader>
         <CardTitle>VMC vs CMC</CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Download cert type data as CSV"
+            onClick={() => {
+              const sep = apiQuery ? "&" : "";
+              window.location.href = `/api/export/dashboard?dataset=cert-types${sep}${apiQuery}`;
+            }}
+          >
+            <Download />
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent className="flex-1 min-h-0">
         {grandTotal > 0 ? (

@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { validateDomain } from "@/lib/bimi/validate";
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
-import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { validateDomain } from "@/lib/bimi/validate";
 import { log } from "@/lib/logger";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -22,8 +22,13 @@ export async function POST(request: NextRequest) {
       domain = domain.split("@").pop() || "";
     }
 
-    // Basic domain format validation
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+    // Domain format validation: max 253 chars, each label checked individually to avoid ReDoS
+    if (domain.length > 253) {
+      return NextResponse.json({ error: "Invalid domain format" }, { status: 400 });
+    }
+    const labels = domain.split(".");
+    const labelPattern = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+    if (labels.length < 2 || labels.some((l) => l.length === 0 || l.length > 63 || !labelPattern.test(l))) {
       return NextResponse.json({ error: "Invalid domain format" }, { status: 400 });
     }
 

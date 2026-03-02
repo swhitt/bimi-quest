@@ -1,23 +1,24 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { certificates, chainCerts, certificateChainLinks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-utils";
+import { CACHE_PRESETS } from "@/lib/cache";
+import { db } from "@/lib/db";
 import { resolveCertParam } from "@/lib/db/filters";
+import { certificateChainLinks, certificates, chainCerts } from "@/lib/db/schema";
 import { isPrivateHostname } from "@/lib/net/hostname";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import {
   buildOcspRequest,
-  parseOcspResponse,
-  extractIssuerInfo,
-  pemToDer,
-  parseCrl,
-  extractOcspUrl,
-  extractCrlUrl,
-  type OcspResult,
   type CrlResult,
+  extractCrlUrl,
+  extractIssuerInfo,
+  extractOcspUrl,
+  type OcspResult,
+  parseCrl,
+  parseOcspResponse,
+  pemToDer,
 } from "@/lib/x509/revocation";
-import { log } from "@/lib/logger";
 
 const MAX_CRL_SIZE = 5 * 1024 * 1024; // 5MB
 const FETCH_TIMEOUT = 10_000; // 10s
@@ -75,12 +76,16 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(
       { ocsp: ocspResult, crl: crlResult },
       {
-        headers: { ...rl.headers, "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+        headers: { ...rl.headers, "Cache-Control": CACHE_PRESETS.MEDIUM_LONG },
       },
     );
   } catch (err) {
-    log("error", "revocation.api.failed", { error: String(err), route: "/api/certificates/[id]/revocation" });
-    return NextResponse.json({ error: "Failed to check revocation status" }, { status: 500 });
+    return apiError(
+      err,
+      "revocation.api.failed",
+      "/api/certificates/[id]/revocation",
+      "Failed to check revocation status",
+    );
   }
 }
 

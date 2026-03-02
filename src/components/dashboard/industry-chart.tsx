@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 interface IndustryRow {
   industry: string | null;
@@ -17,19 +19,32 @@ interface IndustryRow {
 const VMC_COLOR = "oklch(0.65 0.18 230)";
 const CMC_COLOR = "oklch(0.70 0.14 165)";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function IndustryTooltip({ active, payload, label }: any) {
+interface IndustryTooltipEntry {
+  name: string;
+  value: number;
+  color: string;
+}
+
+function IndustryTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: readonly IndustryTooltipEntry[];
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
 
   const rows = payload
-    .filter((p: { value: number }) => (p.value ?? 0) > 0)
-    .map((p: { name: string; value: number; color: string }) => ({
+    .filter((p) => (p.value ?? 0) > 0)
+    .map((p) => ({
       color: p.color,
       name: p.name,
       value: (p.value ?? 0).toLocaleString(),
     }));
 
-  const total = payload.reduce((sum: number, p: { value: number }) => sum + (p.value ?? 0), 0);
+  const total = payload.reduce((sum, p) => sum + (p.value ?? 0), 0);
 
   return <ChartTooltipContent label={`${label} (${total.toLocaleString()} total)`} rows={rows} />;
 }
@@ -76,13 +91,27 @@ export function IndustryChart() {
     <Card>
       <CardHeader>
         <CardTitle>Adoption by Sector</CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Download industry data as CSV"
+            onClick={() => {
+              const q = filterParams;
+              const sep = q ? "&" : "";
+              window.location.href = `/api/export/dashboard?dataset=industries${sep}${q}`;
+            }}
+          >
+            <Download />
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {chartData.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <div role="img" aria-label="Horizontal bar chart showing certificate distribution by industry">
+            <div role="img" aria-label="Horizontal bar chart showing certificate distribution by industry" className="">
               <ResponsiveContainer width="100%" height={barHeight}>
-                <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     type="number"
@@ -98,7 +127,7 @@ export function IndustryChart() {
                     className="fill-muted-foreground"
                     axisLine={false}
                     tickLine={false}
-                    width={110}
+                    width={130}
                   />
                   <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<IndustryTooltip />} />
                   <Bar dataKey="vmcCount" name="VMC" stackId="industry" fill={VMC_COLOR} fillOpacity={0.9} />
