@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       sort === "recent"
         ? sql`max(${certificates.notBefore}) desc`
         : sort === "quality"
-          ? sql`max(${certificates.logoQualityScore}) desc nulls last, max(${certificates.notabilityScore}) desc nulls last`
+          ? sql`max(${certificates.logoQualityScore}) desc nulls last, max(${certificates.notBefore}) desc`
           : sql`max(${certificates.notabilityScore}) desc nulls last, max(${certificates.notBefore}) desc`;
 
     // Determines which cert is "representative" within each org group

@@ -321,7 +321,7 @@ export function GalleryContent() {
     const v = searchParams.get("view");
     if (v && v in PRESETS) return v as PresetKey;
     // No view param and no legacy sort/score params → default to fullColor
-    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "fullColor" as PresetKey;
+    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "full-color" as PresetKey;
     return null;
   })();
 
