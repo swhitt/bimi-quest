@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +13,19 @@ interface EntryNavigatorProps {
   treeSize: number;
   onNavigate: (newStart: number) => void;
   onPageSizeChange: (size: number) => void;
+  jumpInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-const PAGE_SIZES = [10, 25, 50];
+const PAGE_SIZES = [50, 100, 200];
 
-export function EntryNavigator({ startIndex, pageSize, treeSize, onNavigate, onPageSizeChange }: EntryNavigatorProps) {
+export function EntryNavigator({
+  startIndex,
+  pageSize,
+  treeSize,
+  onNavigate,
+  onPageSizeChange,
+  jumpInputRef,
+}: EntryNavigatorProps) {
   const [jumpValue, setJumpValue] = useState("");
 
   const atStart = startIndex <= 0;
@@ -52,9 +61,11 @@ export function EntryNavigator({ startIndex, pageSize, treeSize, onNavigate, onP
         className="flex items-center gap-1.5"
       >
         <Input
+          ref={jumpInputRef}
           type="number"
           min={0}
           placeholder="Index"
+          aria-label="Jump to entry index"
           value={jumpValue}
           onChange={(e) => setJumpValue(e.target.value)}
           className="w-28 h-8 text-sm tabular-nums"
@@ -63,12 +74,6 @@ export function EntryNavigator({ startIndex, pageSize, treeSize, onNavigate, onP
           Go
         </Button>
       </form>
-
-      {/* Latest */}
-      <Button variant="outline" size="sm" onClick={handleLatest} disabled={atEnd}>
-        <ChevronsRight className="size-4" />
-        Latest
-      </Button>
 
       {/* Prev / Next */}
       <div className="flex items-center gap-1">
@@ -89,7 +94,7 @@ export function EntryNavigator({ startIndex, pageSize, treeSize, onNavigate, onP
 
       {/* Page size */}
       <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
-        <SelectTrigger size="sm" className="w-auto text-xs">
+        <SelectTrigger size="sm" className="w-auto text-xs" aria-label="Entries per page">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -100,6 +105,10 @@ export function EntryNavigator({ startIndex, pageSize, treeSize, onNavigate, onP
           ))}
         </SelectContent>
       </Select>
+
+      <Button variant="outline" size="sm" onClick={handleLatest} disabled={atEnd}>
+        Newest
+      </Button>
     </div>
   );
 }

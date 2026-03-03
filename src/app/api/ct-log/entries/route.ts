@@ -8,7 +8,7 @@ import { getEntries, getSTH } from "@/lib/ct/gorgon";
 
 const querySchema = z.object({
   start: z.coerce.number().int().min(0),
-  count: z.coerce.number().int().min(1).max(50).default(25),
+  count: z.coerce.number().int().min(1).max(200).default(100),
 });
 
 export async function GET(request: NextRequest) {
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         range: { start, end, treeSize },
       },
       {
-        headers: { "Cache-Control": CACHE_PRESETS.IMMUTABLE },
+        headers: { "Cache-Control": CACHE_PRESETS.SHORT },
       },
     );
   } catch (error) {

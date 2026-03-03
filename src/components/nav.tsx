@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -14,6 +15,7 @@ import { UniversalSearch } from "./universal-search";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/certificates", label: "Certificates" },
+  { href: "/ct-log", label: "Log" },
   { href: "/logos", label: "Logos" },
   { href: "/validate", label: "Validate" },
   { href: "/map", label: "Map" },
@@ -129,7 +131,7 @@ export function Nav() {
     <header className="border-b bg-background sticky top-0 z-50">
       <div className="container mx-auto flex h-12 items-center px-4">
         <Link href="/" className="mr-3 md:mr-6 flex items-center gap-2">
-          <img src="/logo.svg" alt="" className="size-6" />
+          <Image src="/logo.svg" alt="" width={24} height={24} unoptimized />
           <span className="text-base font-semibold">BIMI Quest</span>
         </Link>
 
@@ -162,7 +164,7 @@ export function Nav() {
             <div className="flex flex-col h-full">
               {/* Logo header */}
               <div className="flex items-center gap-2 p-4 border-b">
-                <img src="/logo.svg" alt="" className="size-6" />
+                <Image src="/logo.svg" alt="" width={24} height={24} unoptimized />
                 <span className="text-base font-semibold">BIMI Quest</span>
               </div>
 

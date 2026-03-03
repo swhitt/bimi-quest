@@ -53,7 +53,7 @@ export function derToPem(der: Uint8Array): string {
   return `-----BEGIN CERTIFICATE-----\n${lines.join("\n")}\n-----END CERTIFICATE-----`;
 }
 
-async function sha256(data: Uint8Array): Promise<string> {
+export async function sha256(data: Uint8Array): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", toArrayBuffer(data));
   return bytesToHex(new Uint8Array(hash));
 }
@@ -250,7 +250,7 @@ export function extractDnField(dn: string, field: string): string | null {
 }
 
 /** Extract Subject Alternative Names (DNS names) using @peculiar/x509 */
-function extractSANs(cert: X509Certificate): string[] {
+export function extractSANs(cert: X509Certificate): string[] {
   try {
     const sanExt = cert.getExtension(SubjectAlternativeNameExtension);
     if (!sanExt) return [];
@@ -279,7 +279,7 @@ export function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
 
 /** Try to extract SVG logotype from the logotype extension (RFC 3709).
  *  SVGs are embedded as gzip-compressed base64 data URIs inside the ASN.1 structure. */
-function extractLogotypeSvg(cert: X509Certificate): { svgHash: string | null; svgContent: string | null } {
+export function extractLogotypeSvg(cert: X509Certificate): { svgHash: string | null; svgContent: string | null } {
   try {
     const ext = cert.extensions.find((e) => e.type === LOGOTYPE_OID);
     if (!ext) return { svgHash: null, svgContent: null };

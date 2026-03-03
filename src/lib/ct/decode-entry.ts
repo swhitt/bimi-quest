@@ -1,11 +1,35 @@
-import { SubjectAlternativeNameExtension, X509Certificate } from "@peculiar/x509";
+import { X509Certificate } from "@peculiar/x509";
 import { bytesToHex } from "@/lib/hex";
 import { toArrayBuffer } from "@/lib/pem";
 import type { CTLogEntry } from "./gorgon";
-import { base64ToBuffer, extractDnField, hasBIMIOID, parseChainFromExtraData, readUint24, readUint64 } from "./parser";
+import {
+  base64ToBuffer,
+  extractDnField,
+  extractLogotypeSvg,
+  extractSANs,
+  hasBIMIOID,
+  parseChainFromExtraData,
+  readUint24,
+  readUint64,
+  sha256,
+} from "./parser";
 
-// Tailwind color names for byte map regions
-const COLORS = {
+// Tailwind color name -> hex value mapping for byte map regions
+export const BYTE_COLORS = {
+  blue: "#3b82f6",
+  violet: "#8b5cf6",
+  amber: "#f59e0b",
+  emerald: "#10b981",
+  rose: "#f43f5e",
+  cyan: "#06b6d4",
+  orange: "#f97316",
+  pink: "#ec4899",
+} as const;
+
+export type ByteColor = keyof typeof BYTE_COLORS;
+
+// Semantic region -> color mapping
+const COLORS: Record<string, ByteColor> = {
   version: "blue",
   leafType: "violet",
   timestamp: "amber",
@@ -14,13 +38,13 @@ const COLORS = {
   certLength: "cyan",
   certDer: "orange",
   extensions: "pink",
-} as const;
+};
 
 export interface ByteRange {
   start: number;
   end: number; // exclusive
   label: string;
-  color: string;
+  color: ByteColor;
   value: string;
   description: string;
 }
@@ -47,6 +71,7 @@ export interface DecodedCert {
   keySize: number | null;
   isBIMI: boolean;
   extensionOIDs: string[];
+  logotypeSvg: string | null;
 }
 
 export interface DecodedChainCert {
@@ -67,16 +92,6 @@ export interface DecodedCTEntry {
   };
 }
 
-function extractSANs(cert: X509Certificate): string[] {
-  try {
-    const sanExt = cert.getExtension(SubjectAlternativeNameExtension);
-    if (!sanExt) return [];
-    return sanExt.names.items.filter((n) => n.type === "dns").map((n) => n.value);
-  } catch {
-    return [];
-  }
-}
-
 function getKeySize(cert: X509Certificate): number | null {
   try {
     const algo = cert.publicKey.algorithm;
@@ -92,15 +107,10 @@ function getKeySize(cert: X509Certificate): number | null {
   }
 }
 
-async function computeFingerprint(der: Uint8Array): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-256", toArrayBuffer(der));
-  return bytesToHex(new Uint8Array(hash));
-}
-
 async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | null> {
   try {
     const cert = new X509Certificate(toArrayBuffer(certDer));
-    const fingerprint = await computeFingerprint(certDer);
+    const fingerprint = await sha256(certDer);
 
     return {
       subject: extractDnField(cert.subject, "CN") ?? cert.subject,
@@ -115,6 +125,7 @@ async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | nul
       keySize: getKeySize(cert),
       isBIMI: hasBIMIOID(cert),
       extensionOIDs: cert.extensions.map((ext) => ext.type),
+      logotypeSvg: extractLogotypeSvg(cert).svgContent,
     };
   } catch {
     return null;
@@ -147,6 +158,11 @@ function parseChainCerts(extraBuf: Uint8Array, entryType: number): DecodedChainC
 export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<DecodedCTEntry> {
   const leafBuf = base64ToBuffer(entry.leaf_input);
   const byteMap: ByteRange[] = [];
+
+  // MerkleTreeLeaf minimum: 1 (version) + 1 (leaf type) + 8 (timestamp) + 2 (entry type) = 12 bytes
+  if (leafBuf.length < 12) {
+    throw new Error(`Leaf input too short: ${leafBuf.length} bytes (minimum 12)`);
+  }
 
   // Version (byte 0)
   const version = leafBuf[0];
@@ -197,10 +213,11 @@ export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<D
 
   let certDer: Uint8Array;
   let certLenOffset: number;
+  let issuerKeyHash: string | undefined;
 
   if (entryTypeRaw === 1) {
     // Precert: 32-byte issuer key hash
-    const issuerKeyHash = bytesToHex(leafBuf.slice(12, 44));
+    issuerKeyHash = bytesToHex(leafBuf.slice(12, 44));
     byteMap.push({
       start: 12,
       end: 44,
@@ -215,6 +232,9 @@ export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<D
   }
 
   // Cert/TBS length (3 bytes)
+  if (certLenOffset + 3 > leafBuf.length) {
+    throw new Error(`Leaf input too short for cert length at offset ${certLenOffset}`);
+  }
   const certLen = readUint24(leafBuf, certLenOffset);
   byteMap.push({
     start: certLenOffset,
@@ -253,16 +273,16 @@ export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<D
     });
   }
 
-  // Get the actual cert to parse. For precerts, it's in extra_data.
+  // Decode extra_data once for both cert extraction (precert) and chain parsing
+  const extraBuf = base64ToBuffer(entry.extra_data);
+
   if (entryTypeRaw === 0) {
     certDer = leafBuf.slice(certStart, certEnd);
   } else {
-    const extraBuf = base64ToBuffer(entry.extra_data);
     const preCertLen = readUint24(extraBuf, 0);
     certDer = extraBuf.slice(3, 3 + preCertLen);
   }
 
-  const extraBuf = base64ToBuffer(entry.extra_data);
   const [cert, chain] = await Promise.all([
     parseCertMetadata(certDer),
     Promise.resolve(parseChainCerts(extraBuf, entryTypeRaw)),
@@ -276,8 +296,8 @@ export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<D
     entryType,
   };
 
-  if (entryTypeRaw === 1) {
-    leaf.issuerKeyHash = bytesToHex(leafBuf.slice(12, 44));
+  if (issuerKeyHash) {
+    leaf.issuerKeyHash = issuerKeyHash;
   }
 
   return {

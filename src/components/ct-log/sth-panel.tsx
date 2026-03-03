@@ -11,6 +11,7 @@ export interface STHResponse {
   timestamp: number;
   sha256_root_hash: string;
   tree_head_signature: string;
+  lastChecked: string | null;
 }
 
 interface STHPanelProps {
@@ -104,6 +105,25 @@ export function STHPanel({ sth, loading }: STHPanelProps) {
                 {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
               </button>
             </div>
+          )}
+        </div>
+
+        {/* Last Checked */}
+        <div className="space-y-0.5">
+          <p className="text-xs text-muted-foreground">Last Checked</p>
+          {loading || !sth?.lastChecked ? (
+            <Skeleton className="h-5 w-16" />
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-sm font-semibold tabular-nums cursor-help">
+                  {formatRelativeTime(new Date(sth.lastChecked).getTime())}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-mono">{formatAbsoluteTime(new Date(sth.lastChecked).getTime())}</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </CardContent>
