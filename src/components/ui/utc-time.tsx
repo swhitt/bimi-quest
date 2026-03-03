@@ -13,6 +13,8 @@ interface UtcTimeProps {
   compact?: boolean;
   /** Apply destructive styling for expired dates */
   expired?: boolean;
+  /** Extra lines appended to the tooltip */
+  tooltipExtra?: React.ReactNode;
 }
 
 function utcDate(d: Date): string {
@@ -50,7 +52,7 @@ function localStr(d: Date): string {
   }).format(d);
 }
 
-export function UtcTime({ date, showTime, relative, compact, expired }: UtcTimeProps) {
+export function UtcTime({ date, showTime, relative, compact, expired, tooltipExtra }: UtcTimeProps) {
   const d = typeof date === "string" ? new Date(date) : date;
 
   return (
@@ -82,6 +84,7 @@ export function UtcTime({ date, showTime, relative, compact, expired }: UtcTimeP
         <TooltipContent>
           <p className="font-mono">{formatUtcFull(d)}</p>
           <p className="opacity-70">{localStr(d)}</p>
+          {tooltipExtra}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

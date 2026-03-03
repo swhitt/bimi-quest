@@ -120,7 +120,7 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
                     className="fill-muted-foreground"
                     axisLine={false}
                     tickLine={false}
-                    width={130}
+                    width={155}
                   />
                   <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<IndustryTooltip />} />
                   <Bar dataKey="vmcCount" name="VMC" stackId="industry" fill={certColors.VMC} fillOpacity={0.9} />

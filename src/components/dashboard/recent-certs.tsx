@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { UtcTime } from "@/components/ui/utc-time";
+import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
@@ -26,6 +26,7 @@ export interface RecentCert {
   hasLogo: boolean;
   logoBg: string | null;
   notabilityScore: number | null;
+  createdAt: string | null;
 }
 
 const PAGE_SIZE = 7;
@@ -275,7 +276,17 @@ export function RecentCerts({
                           {cert.subjectCountry || "—"}
                         </td>
                         <td className="py-1.5 text-right text-muted-foreground whitespace-nowrap">
-                          <UtcTime date={cert.notBefore} relative />
+                          <UtcTime
+                            date={cert.notBefore}
+                            relative
+                            tooltipExtra={
+                              cert.createdAt ? (
+                                <p className="font-mono text-xs mt-1 pt-1 border-t border-border/50">
+                                  Ingested: {formatUtcFull(cert.createdAt)}
+                                </p>
+                              ) : undefined
+                            }
+                          />
                         </td>
                       </tr>
                     );

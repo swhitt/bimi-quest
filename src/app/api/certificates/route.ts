@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
           notabilityScore: certificates.notabilityScore,
           companyDescription: certificates.companyDescription,
           industry: certificates.industry,
+          createdAt: certificates.createdAt,
         })
         .from(certificates)
         .where(where)
