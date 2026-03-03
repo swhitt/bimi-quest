@@ -8,6 +8,11 @@ export function buildApiParamsFromSearchParams(
 ): string {
   const params = new URLSearchParams();
   const keys = [
+    "page",
+    "limit",
+    "sort",
+    "dir",
+    "search",
     "ca",
     "root",
     "type",

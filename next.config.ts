@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     "/validate": ["./src/lib/bimi/svg-tiny-ps.rng"],
     "/certificates/*": ["./src/lib/bimi/svg-tiny-ps.rng"],
   },
+  async rewrites() {
+    return [{ source: "/certificates/page/:page", destination: "/certificates?page=:page" }];
+  },
   async headers() {
     return [
       {
