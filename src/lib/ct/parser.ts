@@ -1,4 +1,4 @@
-import { X509Certificate } from "@peculiar/x509";
+import { SubjectAlternativeNameExtension, X509Certificate } from "@peculiar/x509";
 import { BIMI_MARK_TYPE_OID } from "@/lib/bimi/oids";
 import { bytesToHex } from "@/lib/hex";
 import { decompressIfGzipped, pemToDer, sha256Hex, toArrayBuffer } from "@/lib/pem";
@@ -44,24 +44,11 @@ export interface BIMICertData {
 }
 
 function base64ToBuffer(b64: string): Uint8Array {
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(b64, "base64"));
-  }
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+  return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
 function derToPem(der: Uint8Array): string {
-  let b64: string;
-  if (typeof Buffer !== "undefined") {
-    b64 = Buffer.from(der).toString("base64");
-  } else {
-    b64 = btoa(String.fromCharCode(...der));
-  }
+  const b64 = Buffer.from(der).toString("base64");
   const lines = b64.match(/.{1,64}/g) || [];
   return `-----BEGIN CERTIFICATE-----\n${lines.join("\n")}\n-----END CERTIFICATE-----`;
 }
@@ -73,7 +60,7 @@ async function sha256(data: Uint8Array): Promise<string> {
 
 /** Read a 3-byte big-endian length from a buffer */
 function readUint24(buf: Uint8Array, offset: number): number {
-  return (buf[offset] << 16) | (buf[offset + 1] << 8) | buf[offset + 2];
+  return buf[offset] * 65536 + (buf[offset + 1] << 8) + buf[offset + 2];
 }
 
 /** Read an 8-byte big-endian timestamp */
@@ -262,70 +249,15 @@ export function extractDnField(dn: string, field: string): string | null {
   return match[1].replace(/\\(.)/g, "$1").trim();
 }
 
-/** Extract Subject Alternative Names (DNS names) */
+/** Extract Subject Alternative Names (DNS names) using @peculiar/x509 */
 function extractSANs(cert: X509Certificate): string[] {
   try {
-    const sanExt = cert.extensions.find(
-      (ext) => ext.type === "2.5.29.17", // subjectAltName OID
-    );
+    const sanExt = cert.getExtension(SubjectAlternativeNameExtension);
     if (!sanExt) return [];
-
-    // @peculiar/x509 provides a SubjectAlternativeNameExtension type
-    // but we'll parse the extension value manually for DNS names
-    // The SAN extension contains a SEQUENCE of GeneralNames
-    // GeneralName with tag [2] (context-specific, primitive) is dNSName
-    const value = new Uint8Array(sanExt.value);
-    return parseSANDnsNames(value);
+    return sanExt.names.items.filter((n) => n.type === "dns").map((n) => n.value);
   } catch {
     return [];
   }
-}
-
-/** Parse DNS names from a SubjectAlternativeName extension value (DER-encoded) */
-function parseSANDnsNames(data: Uint8Array): string[] {
-  const names: string[] = [];
-  try {
-    // Skip outer SEQUENCE tag and length
-    let offset = 0;
-    if (data[offset] !== 0x30) return names; // Not a SEQUENCE
-    offset++;
-    const seqLen = readDerLength(data, offset);
-    offset += seqLen.bytesRead;
-
-    const end = offset + seqLen.length;
-    while (offset < end && offset < data.length) {
-      const tag = data[offset];
-      offset++;
-      const lenInfo = readDerLength(data, offset);
-      offset += lenInfo.bytesRead;
-
-      // Context-specific tag [2] = dNSName (tag byte = 0x82)
-      if (tag === 0x82) {
-        const nameBytes = data.slice(offset, offset + lenInfo.length);
-        const name = new TextDecoder().decode(nameBytes);
-        names.push(name);
-      }
-
-      offset += lenInfo.length;
-    }
-  } catch {
-    // Best-effort SAN parsing
-  }
-  return names;
-}
-
-/** Read a DER length field (handles short and long forms) */
-function readDerLength(data: Uint8Array, offset: number): { length: number; bytesRead: number } {
-  const first = data[offset];
-  if (first < 0x80) {
-    return { length: first, bytesRead: 1 };
-  }
-  const numBytes = first & 0x7f;
-  let length = 0;
-  for (let i = 0; i < numBytes; i++) {
-    length = (length << 8) | data[offset + 1 + i];
-  }
-  return { length, bytesRead: 1 + numBytes };
 }
 
 /** Extract BIMI mark type from the subject DN field (OID 1.3.6.1.4.1.53087.1.13) */
@@ -400,6 +332,53 @@ function extractLogotypeSvg(cert: X509Certificate): { svgHash: string | null; sv
     return { svgHash: null, svgContent: null };
   } catch {
     return { svgHash: null, svgContent: null };
+  }
+}
+
+/** Extract the SHA-256 hash from the logotype extension (OID 1.3.6.1.5.5.7.1.12).
+ *  The hash is embedded as a 32-byte OCTET STRING (DER tag 04, length 20h) in the ASN.1 structure. */
+function extractLogotypeSvgHash(cert: X509Certificate): string | null {
+  try {
+    const ext = cert.getExtension(LOGOTYPE_OID);
+    if (!ext) return null;
+    const rawHex = Buffer.from(ext.value).toString("hex");
+    const hashMatch = rawHex.match(/0420([0-9a-f]{64})/);
+    return hashMatch ? hashMatch[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface CertBasicInfo {
+  issuer: string;
+  issuerOrg: string | null;
+  notBefore: Date;
+  notAfter: Date;
+  certType: "VMC" | "CMC" | null;
+  markType: string | null;
+  sans: string[];
+  logotypeSvgHash: string | null;
+}
+
+/** Parse a PEM certificate and return basic BIMI-relevant info.
+ *  Returns null if the PEM cannot be parsed. */
+export function parseCertBasicInfo(pem: string): CertBasicInfo | null {
+  try {
+    const der = pemToDer(pem);
+    const cert = new X509Certificate(toArrayBuffer(der));
+    const markType = extractMarkType(cert);
+    return {
+      issuer: cert.issuer,
+      issuerOrg: extractDnField(cert.issuer, "O") ?? extractDnField(cert.issuer, "2.5.4.10"),
+      notBefore: cert.notBefore,
+      notAfter: cert.notAfter,
+      certType: deriveCertType(markType),
+      markType,
+      sans: extractSANs(cert),
+      logotypeSvgHash: extractLogotypeSvgHash(cert),
+    };
+  } catch {
+    return null;
   }
 }
 

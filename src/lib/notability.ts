@@ -189,7 +189,7 @@ export async function scoreNotabilityBatch(brands: BrandInput[]): Promise<Map<st
     for (const r of items) {
       if (!isNotabilityInput(r) || typeof r.id !== "string") continue;
       const normalized = normalizeResult(r);
-      results.set(r.id, normalized);
+      if (normalized) results.set(r.id, normalized);
     }
   } catch (err) {
     console.warn("scoreNotabilityBatch failed:", errorMessage(err));
@@ -286,7 +286,8 @@ function normalizeResult(input: {
   reason: string;
   description: string;
   industry?: string;
-}): NotabilityResult {
+}): NotabilityResult | null {
+  if (typeof input.score !== "number" || isNaN(input.score)) return null;
   return {
     score: Math.max(1, Math.min(10, Math.round(input.score))),
     reason: (input.reason || "").slice(0, 200),

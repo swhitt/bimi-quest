@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { verifyCronAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { ogCache } from "@/lib/db/schema";
 import { generateMosaic } from "@/lib/og/mosaic";
@@ -6,7 +7,9 @@ import { generateMosaic } from "@/lib/og/mosaic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
   const png = await generateMosaic();
   const base64 = png.toString("base64");
 

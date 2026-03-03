@@ -47,6 +47,8 @@ export interface IngestBatchResult {
   certsFound: number;
   lastIndex: number;
   batchesRun: number;
+  parseFailed: number;
+  scoringFailed: number;
 }
 
 /** Batch-score pending certs with Haiku, update DB, and send notifications for notable ones. */
@@ -62,40 +64,47 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
 
   const scores = await scoreNotabilityBatch(brands);
 
-  await Promise.all(
-    batch.map(async (cert) => {
-      const notability = scores.get(String(cert.id)) ?? null;
-      if (notability) {
-        await db
-          .update(certificates)
-          .set({
-            notabilityScore: notability.score,
-            notabilityReason: notability.reason,
-            companyDescription: notability.description,
-            industry: notability.industry,
-          })
-          .where(eq(certificates.id, cert.id));
-      }
+  // Batch all score updates into a single HTTP request via Neon's db.batch()
+  const updateQueries = batch
+    .filter((cert) => scores.has(String(cert.id)))
+    .map((cert) => {
+      const notability = scores.get(String(cert.id))!;
+      return db
+        .update(certificates)
+        .set({
+          notabilityScore: notability.score,
+          notabilityReason: notability.reason,
+          companyDescription: notability.description,
+          industry: notability.industry,
+        })
+        .where(eq(certificates.id, cert.id));
+    });
 
-      const score = notability?.score ?? 0;
-      if (notify && score >= NOTABILITY_NOTIFICATION_THRESHOLD) {
-        dispatchNewCertNotification({
-          certId: cert.id,
-          fingerprintSha256: cert.fingerprintSha256,
-          domain: cert.domain,
-          org: cert.org || "unknown",
-          issuer: cert.issuer,
-          rootCa: cert.rootCa,
-          certType: cert.certType ?? "VMC",
-          country: cert.country,
-          notabilityScore: notability?.score,
-          notabilityReason: notability?.reason,
-          companyDescription: notability?.description,
-          hasLogo: cert.hasLogo,
-        }).catch((err) => console.warn("Notification dispatch failed:", err));
-      }
-    }),
-  );
+  if (updateQueries.length > 0) {
+    await (db as any).batch(updateQueries);
+  }
+
+  // Dispatch notifications for notable certs (separate from DB update)
+  for (const cert of batch) {
+    const notability = scores.get(String(cert.id)) ?? null;
+    const score = notability?.score ?? 0;
+    if (notify && score >= NOTABILITY_NOTIFICATION_THRESHOLD) {
+      dispatchNewCertNotification({
+        certId: cert.id,
+        fingerprintSha256: cert.fingerprintSha256,
+        domain: cert.domain,
+        org: cert.org || "unknown",
+        issuer: cert.issuer,
+        rootCa: cert.rootCa,
+        certType: cert.certType ?? "VMC",
+        country: cert.country,
+        notabilityScore: notability?.score,
+        notabilityReason: notability?.reason,
+        companyDescription: notability?.description,
+        hasLogo: cert.hasLogo,
+      }).catch((err) => console.warn("Notification dispatch failed:", err));
+    }
+  }
 }
 
 /**
@@ -111,6 +120,8 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
   let found = 0;
   let processed = startIndex;
   let batchesRun = 0;
+  let parseFailed = 0;
+  let scoringFailed = 0;
   // Collect all inserted certs for post-ingestion scoring
   const allPendingScores: PendingCert[] = [];
 
@@ -145,7 +156,10 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
 
       try {
         const parsed = parseCTLogEntry(entry);
-        if (!parsed) continue;
+        if (!parsed) {
+          parseFailed++;
+          continue;
+        }
         if (!hasBIMIOID(parsed.cert)) continue;
 
         const bimiData = await extractBIMIData(parsed.cert, parsed.certDer);
@@ -280,14 +294,17 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
               }
             }
 
-            // Batch INSERT all chain links at once
-            await db.insert(certificateChainLinks).values(
-              chainData.map(({ fingerprint }, k) => ({
-                leafCertId: inserted.id,
-                chainCertId: chainIdMap.get(fingerprint)!,
-                chainPosition: k + 1,
-              })),
-            );
+            // Batch INSERT all chain links, skipping any with unresolved fingerprints
+            const chainLinks = chainData
+              .map(({ fingerprint }, k) => {
+                const chainCertId = chainIdMap.get(fingerprint);
+                return chainCertId != null ? { leafCertId: inserted.id, chainCertId, chainPosition: k + 1 } : null;
+              })
+              .filter((link): link is NonNullable<typeof link> => link != null);
+
+            if (chainLinks.length > 0) {
+              await db.insert(certificateChainLinks).values(chainLinks);
+            }
           }
 
           found++;
@@ -353,10 +370,11 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       try {
         await flushScores(batch, notify);
       } catch (err) {
+        scoringFailed += batch.length;
         console.error("Scoring flush failed:", err);
       }
     }
   }
 
-  return { certsFound: found, lastIndex: processed, batchesRun };
+  return { certsFound: found, lastIndex: processed, batchesRun, parseFailed, scoringFailed };
 }

@@ -94,11 +94,17 @@ vi.mock("@peculiar/x509", () => ({
   })),
 }));
 
-// Mock resolveCertParam separately so each test can control the resolution
+// Mock resolveCertParam separately so each test can control the resolution.
+// resolveOrError (in @/lib/api-utils) delegates to resolveCertParam, so mocking
+// the latter controls both.
 const mockResolveCertParam = vi.fn();
-vi.mock("@/lib/db/filters", () => ({
-  resolveCertParam: (...args: unknown[]) => mockResolveCertParam(...args),
-}));
+vi.mock("@/lib/db/filters", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    resolveCertParam: (...args: unknown[]) => mockResolveCertParam(...args),
+  };
+});
 
 // Import routes after all mocks are registered
 import { GET as getRevocation } from "./[id]/revocation/route";

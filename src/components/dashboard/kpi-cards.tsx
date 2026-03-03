@@ -18,7 +18,6 @@ interface KPICardsProps {
   activeCerts: number;
   marketShare: number | null;
   uniqueOrgs: number;
-  newLast30d: number;
   caNewLast30d: number;
   expiringCount: number;
   vmcTotal: number;
@@ -49,7 +48,6 @@ export function KPICards({
   activeCerts,
   marketShare,
   uniqueOrgs,
-  newLast30d: _newLast30d,
   caNewLast30d,
   expiringCount,
   vmcTotal,

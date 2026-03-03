@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFilteredData } from "@/lib/use-filtered-data";
 
-interface OrgRow {
+export interface OrgRow {
   org: string | null;
   total: number;
   maxNotability: number | null;
@@ -13,11 +13,12 @@ interface OrgRow {
   country: string | null;
 }
 
-export function TopOrgs() {
+export function TopOrgs({ initialData }: { initialData?: OrgRow[] }) {
   const { data: orgs, loading } = useFilteredData<OrgRow[]>(
     "/api/stats/top-orgs",
     (json: unknown) => (json as { data?: OrgRow[] }).data ?? [],
-    [],
+    initialData ?? [],
+    initialData,
   );
 
   if (loading && orgs.length === 0) {

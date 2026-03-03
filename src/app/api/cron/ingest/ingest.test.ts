@@ -45,11 +45,15 @@ vi.mock("@/lib/ct/ingest-batch", () => ({
   processIngestBatch: (...args: unknown[]) => mockProcessIngestBatch(...args),
 }));
 
-vi.mock("@/lib/api-utils", () => ({
-  apiError: vi.fn((_error: unknown, _key: string, _route: string, message: string) =>
-    NextResponse.json({ error: message }, { status: 500 }),
-  ),
-}));
+vi.mock("@/lib/api-utils", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    apiError: vi.fn((_error: unknown, _key: string, _route: string, message: string) =>
+      NextResponse.json({ error: message }, { status: 500 }),
+    ),
+  };
+});
 
 // Import route after all mocks are registered
 import { GET } from "./route";

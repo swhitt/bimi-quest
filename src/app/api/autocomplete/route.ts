@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
+import { escapeLike } from "@/lib/db/certificate-filters";
 
 /**
  * Fast autocomplete for hostname/org search.
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([]);
   }
 
-  const pattern = `%${q}%`;
+  const pattern = `%${escapeLike(q)}%`;
 
   try {
     // Search SANs and orgs in parallel, ranked by similarity then cert count.

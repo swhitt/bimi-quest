@@ -1,10 +1,11 @@
-import { and, count, countDistinct, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { buildCommonFilterConditions } from "@/lib/db/filters";
+import { cmcCount, vmcCount } from "@/lib/db/query-fragments";
 import { certificates, ingestionCursors } from "@/lib/db/schema";
 import { serverTiming } from "@/lib/server-timing";
 
@@ -57,104 +58,72 @@ export async function GET(request: NextRequest) {
 
     const trendConditions = [...baseConditions, gte(certificates.notBefore, thirteenMonthsAgo)];
 
-    // Run all independent queries in parallel
-    const [
-      [totalRow],
-      [caRow],
-      caBreakdown,
-      monthlyTrend,
-      [uniques],
-      [expiringRow],
-      markTypeBreakdown,
-      [newLast30dRow],
-      [caNewLast30dRow],
-      [lastUpdatedRow],
-      [activeCertsRow],
-    ] = await Promise.all([
-      // Total certificates (global filters only, no CA/root filter - used as denominator for market share)
-      db.select({ count: count() }).from(certificates).where(globalWhere),
+    // Run all independent queries in parallel, consolidating count queries that share filter conditions
+    const [[totalRow], [caOverview], caBreakdown, monthlyTrend, markTypeBreakdown, [lastUpdatedRow]] =
+      await Promise.all([
+        // Total certificates (global filters only, no CA/root filter - used as denominator for market share)
+        db.select({ count: count() }).from(certificates).where(globalWhere),
 
-      // Certificates for selected CA (or all if no CA selected)
-      db.select({ count: count() }).from(certificates).where(caWhere),
+        // Consolidated CA-filtered counts: total, active, expiring, new last 30d, unique orgs
+        db
+          .select({
+            total: count(),
+            activeCerts: count(sql`CASE WHEN ${certificates.notAfter} >= NOW() THEN 1 END`),
+            expiringSoon: count(
+              sql`CASE WHEN ${certificates.notAfter} >= NOW() AND ${certificates.notAfter} <= ${thirtyDaysFromNow} THEN 1 END`,
+            ),
+            newLast30d: count(sql`CASE WHEN ${certificates.notBefore} >= ${thirtyDaysAgo} THEN 1 END`),
+            uniqueOrgs: countDistinct(certificates.subjectOrg),
+          })
+          .from(certificates)
+          .where(caWhere),
 
-      // CA breakdown grouped by issuing CA (base filters)
-      db
-        .select({
-          ca: certificates.issuerOrg,
-          total: count(),
-          vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
-          cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
-        })
-        .from(certificates)
-        .where(baseWhere)
-        .groupBy(certificates.issuerOrg)
-        .orderBy(desc(count())),
+        // CA breakdown grouped by issuing CA (base filters)
+        db
+          .select({
+            ca: certificates.issuerOrg,
+            total: count(),
+            vmcCount,
+            cmcCount,
+          })
+          .from(certificates)
+          .where(baseWhere)
+          .groupBy(certificates.issuerOrg)
+          .orderBy(desc(count())),
 
-      // Monthly trend (last 12 months, grouped by issuing CA)
-      db
-        .select({
-          month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-          ca: certificates.issuerOrg,
-          count: count(),
-        })
-        .from(certificates)
-        .where(and(...trendConditions))
-        .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
-        .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
+        // Monthly trend (last 12 months, grouped by issuing CA)
+        db
+          .select({
+            month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
+            ca: certificates.issuerOrg,
+            count: count(),
+          })
+          .from(certificates)
+          .where(and(...trendConditions))
+          .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
+          .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
 
-      // Unique orgs (with all filters)
-      db
-        .select({
-          uniqueOrgs: countDistinct(certificates.subjectOrg),
-        })
-        .from(certificates)
-        .where(caWhere),
+        // Mark type breakdown (base filters)
+        db
+          .select({
+            markType: certificates.markType,
+            count: count(),
+          })
+          .from(certificates)
+          .where(baseWhere)
+          .groupBy(certificates.markType)
+          .orderBy(desc(count())),
 
-      // Certs expiring in the next 30 days
-      db
-        .select({ count: count() })
-        .from(certificates)
-        .where(and(...caConditions, gte(certificates.notAfter, now), lte(certificates.notAfter, thirtyDaysFromNow))),
-
-      // Mark type breakdown (base filters)
-      db
-        .select({
-          markType: certificates.markType,
-          count: count(),
-        })
-        .from(certificates)
-        .where(baseWhere)
-        .groupBy(certificates.markType)
-        .orderBy(desc(count())),
-
-      // New certs in last 30 days (global filters, for delta denominator)
-      db
-        .select({ count: count() })
-        .from(certificates)
-        .where(and(...globalConditions, gte(certificates.notBefore, thirtyDaysAgo))),
-
-      // New certs in last 30 days (CA filters, for delta)
-      db
-        .select({ count: count() })
-        .from(certificates)
-        .where(and(...caConditions, gte(certificates.notBefore, thirtyDaysAgo))),
-
-      // Last ingestion run timestamp
-      db
-        .select({ lastRun: ingestionCursors.lastRun })
-        .from(ingestionCursors)
-        .orderBy(desc(ingestionCursors.lastRun))
-        .limit(1),
-
-      // Currently valid certificates (notAfter >= now, with CA filters)
-      db
-        .select({ count: count() })
-        .from(certificates)
-        .where(and(...caConditions, gte(certificates.notAfter, now))),
-    ]);
+        // Last ingestion run timestamp
+        db
+          .select({ lastRun: ingestionCursors.lastRun })
+          .from(ingestionCursors)
+          .orderBy(desc(ingestionCursors.lastRun))
+          .limit(1),
+      ]);
 
     const totalCerts = totalRow?.count || 0;
-    const caCerts = caRow?.count || 0;
+    const caCerts = caOverview?.total || 0;
 
     const hasCAFilter = selectedCA || selectedRoot;
     const marketShare = hasCAFilter && totalCerts > 0 ? parseFloat(((caCerts / totalCerts) * 100).toFixed(1)) : null;
@@ -165,14 +134,13 @@ export async function GET(request: NextRequest) {
         totalCerts,
         caCerts,
         marketShare,
-        uniqueOrgs: uniques?.uniqueOrgs || 0,
+        uniqueOrgs: caOverview?.uniqueOrgs || 0,
         caBreakdown,
         monthlyTrend,
-        expiringCount: expiringRow?.count || 0,
+        expiringCount: caOverview?.expiringSoon || 0,
         markTypeBreakdown,
-        newLast30d: newLast30dRow?.count || 0,
-        caNewLast30d: caNewLast30dRow?.count || 0,
-        activeCerts: activeCertsRow?.count || 0,
+        caNewLast30d: caOverview?.newLast30d || 0,
+        activeCerts: caOverview?.activeCerts || 0,
         lastUpdated: lastUpdatedRow?.lastRun?.toISOString() || null,
         activeFilters: {
           type: searchParams.get("type") || null,

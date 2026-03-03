@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 import { certificates } from "@/lib/db/schema";
 import { log } from "@/lib/logger";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 const MAX_ROWS = 50_000;
 const BATCH_SIZE = 5_000;
@@ -100,6 +101,10 @@ function rowToJSON(row: ExportRow) {
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rl = await checkRateLimit(`export-certs:${ip}`, { windowMs: 60_000, max: 5 }, request);
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
+
   const params = request.nextUrl.searchParams;
   const format = params.get("format") === "json" ? "json" : "csv";
 

@@ -1,8 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 import { validateDomain } from "@/lib/bimi/validate";
 import { log } from "@/lib/logger";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+
+// Vercel serverless function timeout — validation does multiple external fetches
+// (DNS, SVG, certificate) so it needs more than the default 10s.
+export const maxDuration = 30;
+
+const validateBodySchema = z.object({
+  domain: z.string().trim().toLowerCase(),
+  selector: z.string().trim().toLowerCase().default("default"),
+});
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -10,8 +20,21 @@ export async function POST(request: NextRequest) {
   if (!rl.allowed) return rateLimitResponse(rl.headers);
 
   try {
-    const body = await request.json();
-    let domain: string = body.domain?.trim().toLowerCase();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400, headers: rl.headers });
+    }
+    const parsed = validateBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request body", details: parsed.error.issues },
+        { status: 400, headers: rl.headers },
+      );
+    }
+    let { domain } = parsed.data;
+    const { selector } = parsed.data;
 
     if (!domain) {
       return NextResponse.json({ error: "Domain is required" }, { status: 400 });
@@ -32,7 +55,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid domain format" }, { status: 400 });
     }
 
-    const selector: string = body.selector?.trim().toLowerCase() || "default";
     const result = await validateDomain(domain, selector);
 
     // If we found a valid cert, try to ingest it (fire-and-forget)

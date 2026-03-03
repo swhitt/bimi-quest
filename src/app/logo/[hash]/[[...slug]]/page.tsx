@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, isNotNull, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -11,7 +12,8 @@ interface Props {
   params: Promise<{ hash: string; slug?: string[] }>;
 }
 
-async function getLogo(hash: string) {
+/** Deduplicated logo lookup shared by generateMetadata and the page component. */
+const getLogo = cache(async (hash: string) => {
   const [row] = await db
     .select({
       svgHash: certificates.logotypeSvgHash,
@@ -36,7 +38,7 @@ async function getLogo(hash: string) {
     .where(and(sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
     .limit(1);
   return row ?? null;
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { hash } = await params;

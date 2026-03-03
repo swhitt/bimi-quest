@@ -1,9 +1,9 @@
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { ExpiryChart } from "@/components/dashboard/expiry-chart";
-import { IndustryChart } from "@/components/dashboard/industry-chart";
+import { ExpiryChart, type ExpiryRow } from "@/components/dashboard/expiry-chart";
+import { IndustryChart, type IndustryRow } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
-import { RecentCerts } from "@/components/dashboard/recent-certs";
-import { TopOrgs } from "@/components/dashboard/top-orgs";
+import { RecentCerts, type RecentCert } from "@/components/dashboard/recent-certs";
+import { TopOrgs, type OrgRow } from "@/components/dashboard/top-orgs";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 import { getBaseUrl } from "@/lib/server-url";
@@ -30,6 +30,17 @@ interface DashboardData {
   };
 }
 
+/** Fetch JSON from an internal API route, returning null on failure. */
+async function fetchJson<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 export async function DashboardContent({
   searchParams,
 }: {
@@ -39,14 +50,25 @@ export async function DashboardContent({
 
   const baseUrl = await getBaseUrl();
 
-  let data: DashboardData;
-  try {
-    const res = await fetch(`${baseUrl}/api/dashboard?${apiQuery}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) throw new Error("Failed to load");
-    data = await res.json();
-  } catch {
+  // Fetch dashboard data and sub-widget data in parallel to eliminate waterfall
+  const recentCertsParams = buildApiParamsFromSearchParams(searchParams, {
+    page: "1",
+    limit: "7",
+    sort: "notBefore",
+    dir: "desc",
+  });
+
+  const [dashboardRes, industryRes, expiryRes, topOrgsRes, recentCertsRes] = await Promise.all([
+    fetchJson<DashboardData>(`${baseUrl}/api/dashboard?${apiQuery}`),
+    fetchJson<{ data: IndustryRow[] }>(`${baseUrl}/api/stats/industry-breakdown?${apiQuery}`),
+    fetchJson<{ data: ExpiryRow[] }>(`${baseUrl}/api/stats/expiry-timeline?${apiQuery}`),
+    fetchJson<{ data: OrgRow[] }>(`${baseUrl}/api/stats/top-orgs?${apiQuery}`),
+    fetchJson<{ data: RecentCert[]; pagination: { totalPages: number } }>(
+      `${baseUrl}/api/certificates?${recentCertsParams}`,
+    ),
+  ]);
+
+  if (!dashboardRes) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
         <p className="text-destructive">Failed to load dashboard data</p>
@@ -54,6 +76,7 @@ export async function DashboardContent({
     );
   }
 
+  const data = dashboardRes;
   const displayCA = data.selectedCA === "All Issuers" ? "All Issuers" : displayIssuerOrg(data.selectedCA);
 
   const vmcTotal = data.caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
@@ -69,7 +92,6 @@ export async function DashboardContent({
         activeCerts={data.activeCerts || 0}
         marketShare={data.marketShare}
         uniqueOrgs={data.uniqueOrgs}
-        newLast30d={data.newLast30d || 0}
         caNewLast30d={data.caNewLast30d || 0}
         expiringCount={data.expiringCount || 0}
         vmcTotal={vmcTotal}
@@ -89,19 +111,22 @@ export async function DashboardContent({
 
       <div className="grid gap-4 md:grid-cols-5 items-stretch">
         <div className="md:col-span-3">
-          <IndustryChart />
+          <IndustryChart initialData={industryRes?.data ?? undefined} />
         </div>
         <div className="md:col-span-2">
-          <ExpiryChart />
+          <ExpiryChart initialData={expiryRes?.data ?? undefined} />
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-5 items-stretch">
         <div className="md:col-span-2">
-          <TopOrgs />
+          <TopOrgs initialData={topOrgsRes?.data ?? undefined} />
         </div>
         <div className="md:col-span-3">
-          <RecentCerts />
+          <RecentCerts
+            initialData={recentCertsRes?.data ?? undefined}
+            initialTotalPages={recentCertsRes?.pagination?.totalPages ?? undefined}
+          />
         </div>
       </div>
     </div>

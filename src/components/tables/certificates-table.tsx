@@ -3,7 +3,7 @@
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
@@ -159,300 +159,303 @@ export function CertificatesTable({
     [currentSort, currentDir, updateParams],
   );
 
-  const columns: ColumnDef<CertRow>[] = [
-    {
-      id: "logo",
-      meta: { className: "w-9 sm:w-14" },
-      header: "",
-      size: 56,
-      cell: ({ row }) => {
-        const hash = row.original.logotypeSvgHash;
-        if (!hash || !row.original.hasLogo) {
-          return <div className="size-8 sm:size-11 rounded-lg border border-border/30 bg-muted/50" />;
-        }
-        const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
-        const svgUrl = `/api/logo/${hash}?format=svg`;
-        const bg = row.original.logoBg;
-        const logoHref = `/logo/${row.original.fingerprintSha256.slice(0, 16)}`;
-        return (
-          <Link href={logoHref} onClick={(e) => e.stopPropagation()} aria-label={`${org} logo`}>
-            <img
-              src={svgUrl}
-              alt={`${org} logo`}
-              loading="lazy"
-              width={44}
-              height={44}
-              className="size-8 sm:size-11 min-w-8 sm:min-w-11 rounded-lg border border-border/30 object-contain shadow-sm transition-transform duration-150 group-hover/row:scale-105"
-              style={bg ? { backgroundColor: bg } : undefined}
-            />
-          </Link>
-        );
-      },
-    },
-    {
-      accessorKey: "subjectOrg",
-      meta: { className: "min-w-0 overflow-hidden" },
-      header: () => (
-        <SortHeader
-          label="Organization"
-          sortKey="subjectOrg"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          onSort={handleSort}
-        />
-      ),
-      cell: ({ row }) => {
-        const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
-        const firstDomain = row.original.sanList[0] || row.original.subjectCn;
-        const orgHref = row.original.subjectOrg
-          ? `/orgs/${encodeURIComponent(row.original.subjectOrg)}`
-          : `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
-        return (
-          <div className="min-w-0">
-            <Link
-              href={orgHref}
-              className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate block transition-colors duration-150"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {org}
+  const columns = useMemo<ColumnDef<CertRow>[]>(
+    () => [
+      {
+        id: "logo",
+        meta: { className: "w-9 sm:w-14" },
+        header: "",
+        size: 56,
+        cell: ({ row }) => {
+          const hash = row.original.logotypeSvgHash;
+          if (!hash || !row.original.hasLogo) {
+            return <div className="size-8 sm:size-11 rounded-lg border border-border/30 bg-muted/50" />;
+          }
+          const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
+          const svgUrl = `/api/logo/${hash}?format=svg`;
+          const bg = row.original.logoBg;
+          const logoHref = `/logo/${row.original.fingerprintSha256.slice(0, 16)}`;
+          return (
+            <Link href={logoHref} onClick={(e) => e.stopPropagation()} aria-label={`${org} logo`}>
+              <img
+                src={svgUrl}
+                alt={`${org} logo`}
+                loading="lazy"
+                width={44}
+                height={44}
+                className="size-8 sm:size-11 min-w-8 sm:min-w-11 rounded-lg border border-border/30 object-contain shadow-sm transition-transform duration-150 group-hover/row:scale-105"
+                style={bg ? { backgroundColor: bg } : undefined}
+              />
             </Link>
-            {firstDomain && (
-              <span className="text-[11px] md:hidden block truncate">
-                <Link
-                  href={`/hosts/${encodeURIComponent(firstDomain)}`}
-                  className="font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {firstDomain}
-                </Link>
-                {row.original.sanList.length > 1 && (
-                  <span className="text-muted-foreground/50"> +{row.original.sanList.length - 1}</span>
-                )}
-              </span>
-            )}
-            {row.original.industry && (
-              <span className="text-[10px] text-muted-foreground/50 block truncate leading-tight">
-                {row.original.industry}
-              </span>
-            )}
-          </div>
-        );
+          );
+        },
       },
-    },
-    {
-      id: "sans",
-      meta: { className: "hidden md:table-cell md:w-[140px] lg:w-[160px] xl:w-[200px]" },
-      header: "Hostnames",
-      cell: ({ row }) => {
-        const sans = row.original.sanList;
-        if (sans.length === 0) return <span className="text-muted-foreground/40">—</span>;
-        const extraSans = sans.slice(1);
-        return (
-          <div className="min-w-0">
-            <Link
-              href={`/hosts/${encodeURIComponent(sans[0])}`}
-              className="text-xs font-mono text-muted-foreground block truncate hover:text-foreground hover:underline transition-colors duration-150"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {sans[0]}
-            </Link>
-            {extraSans.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <span className="text-[11px] text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors duration-150">
-                    +{extraSans.length} more
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-80">
-                  <ul className="space-y-0.5">
-                    {extraSans.map((san) => (
-                      <li key={san} className="font-mono text-xs">
-                        <Link href={`/hosts/${encodeURIComponent(san)}`} className="hover:underline">
-                          {san}
-                        </Link>
-                      </li>
+      {
+        accessorKey: "subjectOrg",
+        meta: { className: "min-w-0 overflow-hidden" },
+        header: () => (
+          <SortHeader
+            label="Organization"
+            sortKey="subjectOrg"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
+        cell: ({ row }) => {
+          const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
+          const firstDomain = row.original.sanList[0] || row.original.subjectCn;
+          const orgHref = row.original.subjectOrg
+            ? `/orgs/${encodeURIComponent(row.original.subjectOrg)}`
+            : `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
+          return (
+            <div className="min-w-0">
+              <Link
+                href={orgHref}
+                className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate block transition-colors duration-150"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {org}
+              </Link>
+              {firstDomain && (
+                <span className="text-[11px] md:hidden block truncate">
+                  <Link
+                    href={`/hosts/${encodeURIComponent(firstDomain)}`}
+                    className="font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {firstDomain}
+                  </Link>
+                  {row.original.sanList.length > 1 && (
+                    <span className="text-muted-foreground/50"> +{row.original.sanList.length - 1}</span>
+                  )}
+                </span>
+              )}
+              {row.original.industry && (
+                <span className="text-[10px] text-muted-foreground/50 block truncate leading-tight">
+                  {row.original.industry}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: "sans",
+        meta: { className: "hidden md:table-cell md:w-[140px] lg:w-[160px] xl:w-[200px]" },
+        header: "Hostnames",
+        cell: ({ row }) => {
+          const sans = row.original.sanList;
+          if (sans.length === 0) return <span className="text-muted-foreground/40">—</span>;
+          const extraSans = sans.slice(1);
+          return (
+            <div className="min-w-0">
+              <Link
+                href={`/hosts/${encodeURIComponent(sans[0])}`}
+                className="text-xs font-mono text-muted-foreground block truncate hover:text-foreground hover:underline transition-colors duration-150"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {sans[0]}
+              </Link>
+              {extraSans.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <span className="text-[11px] text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors duration-150">
+                      +{extraSans.length} more
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-80">
+                    <ul className="space-y-0.5">
+                      {extraSans.map((san) => (
+                        <li key={san} className="font-mono text-xs">
+                          <Link href={`/hosts/${encodeURIComponent(san)}`} className="hover:underline">
+                            {san}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "certType",
+        meta: { className: "hidden sm:table-cell sm:w-[68px]" },
+        header: "Type",
+        cell: ({ row }) => {
+          const certType = row.original.certType || "BIMI";
+          const mtInfo = getMarkTypeInfo(row.original.markType);
+          return (
+            <div className="flex items-center gap-1">
+              <abbr
+                className={cn("text-xs font-medium no-underline", row.original.isPrecert && "opacity-50")}
+                title={[
+                  certType === "VMC"
+                    ? "Verified Mark Certificate"
+                    : certType === "CMC"
+                      ? "Common Mark Certificate"
+                      : certType,
+                  mtInfo?.title,
+                  row.original.isPrecert ? "Precertificate" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              >
+                {certType}
+              </abbr>
+              {mtInfo && (
+                <span title={mtInfo.title} className={mtInfo.colorClass}>
+                  <svg
+                    className="size-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {mtInfo.iconPaths.map((d, i) => (
+                      <path key={i} d={d} />
                     ))}
-                  </ul>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        );
+                  </svg>
+                </span>
+              )}
+            </div>
+          );
+        },
       },
-    },
-    {
-      accessorKey: "certType",
-      meta: { className: "hidden sm:table-cell sm:w-[68px]" },
-      header: "Type",
-      cell: ({ row }) => {
-        const certType = row.original.certType || "BIMI";
-        const mtInfo = getMarkTypeInfo(row.original.markType);
-        return (
-          <div className="flex items-center gap-1">
-            <abbr
-              className={cn("text-xs font-medium no-underline", row.original.isPrecert && "opacity-50")}
-              title={[
-                certType === "VMC"
-                  ? "Verified Mark Certificate"
-                  : certType === "CMC"
-                    ? "Common Mark Certificate"
-                    : certType,
-                mtInfo?.title,
-                row.original.isPrecert ? "Precertificate" : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+      {
+        // Notability score: not sortable via API (subjectCountry/notabilityScore not in VALID_SORT_COLUMNS)
+        id: "notabilityScore",
+        meta: { className: "hidden sm:table-cell sm:w-[52px]" },
+        header: "Score",
+        cell: ({ row }) => {
+          const score = row.original.notabilityScore;
+          if (score == null || score < 5) {
+            return <span className="text-muted-foreground/40">—</span>;
+          }
+          const colorClass =
+            score >= 9
+              ? "text-amber-500 font-medium"
+              : score >= 7
+                ? "text-blue-500 font-medium"
+                : "text-muted-foreground font-medium";
+          return <span className={`text-xs tabular-nums ${colorClass}`}>{score}</span>;
+        },
+      },
+      {
+        // Country: not sortable via API (subjectCountry not in VALID_SORT_COLUMNS)
+        id: "subjectCountry",
+        meta: { className: "hidden xl:table-cell xl:w-[56px]" },
+        header: "Country",
+        cell: ({ row }) => {
+          const country = row.original.subjectCountry;
+          if (!country) return <span className="text-muted-foreground/40">—</span>;
+          return <span className="text-xs font-mono text-muted-foreground/60 tracking-wider">{country}</span>;
+        },
+      },
+      {
+        accessorKey: "issuerOrg",
+        meta: { className: "hidden lg:table-cell lg:w-[104px] xl:w-[116px]" },
+        header: () => (
+          <SortHeader
+            label="CA"
+            sortKey="issuerOrg"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
+        cell: ({ row }) => {
+          const issuer = displayIssuerOrg(row.original.issuerOrg);
+          return (
+            <Badge
+              variant="outline"
+              className="whitespace-nowrap max-w-full truncate text-[11px] font-normal text-muted-foreground/70 border-border/50"
             >
-              {certType}
-            </abbr>
-            {mtInfo && (
-              <span title={mtInfo.title} className={mtInfo.colorClass}>
-                <svg
-                  className="size-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {mtInfo.iconPaths.map((d, i) => (
-                    <path key={i} d={d} />
-                  ))}
-                </svg>
+              {issuer}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "notBefore",
+        meta: { className: "w-[56px] sm:w-[96px] text-right sm:text-left" },
+        header: () => (
+          <SortHeader
+            label="Issued"
+            sortKey="notBefore"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
+        cell: ({ row }) => {
+          if (!row.original.notBefore) return "-";
+          return (
+            <>
+              <span className="sm:hidden">
+                <UtcTime date={row.original.notBefore} compact />
               </span>
-            )}
-          </div>
-        );
+              <span className="hidden sm:inline-block">
+                <UtcTime date={row.original.notBefore} relative />
+              </span>
+            </>
+          );
+        },
       },
-    },
-    {
-      // Notability score: not sortable via API (subjectCountry/notabilityScore not in VALID_SORT_COLUMNS)
-      id: "notabilityScore",
-      meta: { className: "hidden sm:table-cell sm:w-[52px]" },
-      header: "Score",
-      cell: ({ row }) => {
-        const score = row.original.notabilityScore;
-        if (score == null || score < 5) {
-          return <span className="text-muted-foreground/40">—</span>;
-        }
-        const colorClass =
-          score >= 9
-            ? "text-amber-500 font-medium"
-            : score >= 7
-              ? "text-blue-500 font-medium"
-              : "text-muted-foreground font-medium";
-        return <span className={`text-xs tabular-nums ${colorClass}`}>{score}</span>;
-      },
-    },
-    {
-      // Country: not sortable via API (subjectCountry not in VALID_SORT_COLUMNS)
-      id: "subjectCountry",
-      meta: { className: "hidden xl:table-cell xl:w-[56px]" },
-      header: "Country",
-      cell: ({ row }) => {
-        const country = row.original.subjectCountry;
-        if (!country) return <span className="text-muted-foreground/40">—</span>;
-        return <span className="text-xs font-mono text-muted-foreground/60 tracking-wider">{country}</span>;
-      },
-    },
-    {
-      accessorKey: "issuerOrg",
-      meta: { className: "hidden lg:table-cell lg:w-[104px] xl:w-[116px]" },
-      header: () => (
-        <SortHeader
-          label="CA"
-          sortKey="issuerOrg"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          onSort={handleSort}
-        />
-      ),
-      cell: ({ row }) => {
-        const issuer = displayIssuerOrg(row.original.issuerOrg);
-        return (
-          <Badge
-            variant="outline"
-            className="whitespace-nowrap max-w-full truncate text-[11px] font-normal text-muted-foreground/70 border-border/50"
-          >
-            {issuer}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: "notBefore",
-      meta: { className: "w-[56px] sm:w-[96px] text-right sm:text-left" },
-      header: () => (
-        <SortHeader
-          label="Issued"
-          sortKey="notBefore"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          onSort={handleSort}
-        />
-      ),
-      cell: ({ row }) => {
-        if (!row.original.notBefore) return "-";
-        return (
-          <>
-            <span className="sm:hidden">
-              <UtcTime date={row.original.notBefore} compact />
+      {
+        accessorKey: "notAfter",
+        meta: { className: "hidden md:table-cell md:w-[96px]" },
+        header: () => (
+          <SortHeader
+            label="Expires"
+            sortKey="notAfter"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
+        cell: ({ row }) => {
+          if (!row.original.notAfter) return "-";
+          const status = getCertValidity(row.original.notAfter);
+          const colorClass =
+            status === "active"
+              ? "text-green-700 dark:text-emerald-400/80"
+              : status === "expiring-soon"
+                ? "text-amber-700 dark:text-amber-400/70"
+                : "text-muted-foreground/70 line-through decoration-muted-foreground/30";
+          return (
+            <span className={colorClass}>
+              <UtcTime date={row.original.notAfter} relative expired={status === "expired"} />
             </span>
-            <span className="hidden sm:inline-block">
-              <UtcTime date={row.original.notBefore} relative />
-            </span>
-          </>
-        );
+          );
+        },
       },
-    },
-    {
-      accessorKey: "notAfter",
-      meta: { className: "hidden md:table-cell md:w-[96px]" },
-      header: () => (
-        <SortHeader
-          label="Expires"
-          sortKey="notAfter"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          onSort={handleSort}
-        />
-      ),
-      cell: ({ row }) => {
-        if (!row.original.notAfter) return "-";
-        const status = getCertValidity(row.original.notAfter);
-        const colorClass =
-          status === "active"
-            ? "text-green-700 dark:text-emerald-400/80"
-            : status === "expiring-soon"
-              ? "text-amber-700 dark:text-amber-400/70"
-              : "text-muted-foreground/70 line-through decoration-muted-foreground/30";
-        return (
-          <span className={colorClass}>
-            <UtcTime date={row.original.notAfter} relative expired={status === "expired"} />
-          </span>
-        );
+      {
+        // CT Log Timestamp: hidden by default, visible at xl breakpoint
+        accessorKey: "ctLogTimestamp",
+        meta: { className: "hidden xl:table-cell xl:w-[108px]" },
+        header: () => (
+          <SortHeader
+            label="CT Logged"
+            sortKey="ctLogTimestamp"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
+        cell: ({ row }) => {
+          if (!row.original.ctLogTimestamp) return <span className="text-muted-foreground/40">—</span>;
+          return <UtcTime date={row.original.ctLogTimestamp} relative />;
+        },
       },
-    },
-    {
-      // CT Log Timestamp: hidden by default, visible at xl breakpoint
-      accessorKey: "ctLogTimestamp",
-      meta: { className: "hidden xl:table-cell xl:w-[108px]" },
-      header: () => (
-        <SortHeader
-          label="CT Logged"
-          sortKey="ctLogTimestamp"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          onSort={handleSort}
-        />
-      ),
-      cell: ({ row }) => {
-        if (!row.original.ctLogTimestamp) return <span className="text-muted-foreground/40">—</span>;
-        return <UtcTime date={row.original.ctLogTimestamp} relative />;
-      },
-    },
-  ];
+    ],
+    [currentSort, currentDir, handleSort],
+  );
 
   const table = useCertTable(data, columns);
 

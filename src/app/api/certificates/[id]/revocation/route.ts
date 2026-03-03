@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-utils";
+import { apiError, resolveOrError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { resolveCertParam } from "@/lib/db/filters";
 import { certificateChainLinks, certificates, chainCerts } from "@/lib/db/schema";
 import { isPrivateHostname } from "@/lib/net/hostname";
 import { safeFetch } from "@/lib/net/safe-fetch";
@@ -30,9 +29,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { id: rawId } = await params;
 
   try {
-    const { id: certId, error } = await resolveCertParam(rawId);
-    if (error) return NextResponse.json({ error: error.message }, { status: error.status });
-    if (!certId) return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
+    const result = await resolveOrError(rawId);
+    if (result instanceof NextResponse) return result;
+    const certId = result;
 
     // Fetch the leaf cert
     const [cert] = await db

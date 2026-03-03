@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -11,13 +12,11 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const { fingerprint } = await resolveCertParam(id);
-  if (!fingerprint) {
-    return { title: "Certificate Not Found" };
-  }
+/** Deduplicated param resolution shared by generateMetadata and the page component. */
+const cachedResolveCertParam = cache((id: string) => resolveCertParam(id));
 
+/** Deduplicated cert lookup shared by generateMetadata and the page component. */
+const getCertByFingerprint = cache(async (fingerprint: string) => {
   const [cert] = await db
     .select({
       fingerprintSha256: certificates.fingerprintSha256,
@@ -33,6 +32,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .from(certificates)
     .where(eq(certificates.fingerprintSha256, fingerprint))
     .limit(1);
+  return cert ?? null;
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const { fingerprint } = await cachedResolveCertParam(id);
+  if (!fingerprint) {
+    return { title: "Certificate Not Found" };
+  }
+
+  const cert = await getCertByFingerprint(fingerprint);
 
   if (!cert) {
     return { title: "Certificate Not Found" };
@@ -91,7 +101,7 @@ export default async function CertificateDetailPage({ params }: Props) {
   const { id } = await params;
 
   // Redirect non-canonical URLs (numeric IDs or short prefixes) to full fingerprint
-  const { fingerprint, error } = await resolveCertParam(id);
+  const { fingerprint, error } = await cachedResolveCertParam(id);
   if (error) notFound();
   if (!fingerprint) notFound();
   if (id !== fingerprint) permanentRedirect(`/certificates/${fingerprint}`);

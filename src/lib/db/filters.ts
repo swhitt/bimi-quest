@@ -104,7 +104,7 @@ export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
   const expiresFromDate = parseDate(params.get("expiresFrom"));
   const expiresToDate = parseDate(params.get("expiresTo"));
 
-  if (certType) conditions.push(eq(certificates.certType, certType));
+  if (certType === "VMC" || certType === "CMC") conditions.push(eq(certificates.certType, certType));
   if (mark) conditions.push(eq(certificates.markType, mark));
   if (country) conditions.push(eq(certificates.subjectCountry, country));
   if (industry) conditions.push(eq(certificates.industry, industry));

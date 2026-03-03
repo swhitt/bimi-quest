@@ -29,7 +29,7 @@ interface Logo {
   count: number;
 }
 
-interface GalleryResponse {
+export interface GalleryResponse {
   logos: Logo[];
   total: number;
   page: number;
@@ -310,7 +310,7 @@ function LogoTile({ logo }: { logo: Logo }) {
 
 /* ── GalleryContent ─────────────────────────────────────────────────── */
 
-export function GalleryContent() {
+export function GalleryContent({ initialLogos, initialTotal }: { initialLogos?: Logo[]; initialTotal?: number }) {
   const searchParams = useSearchParams();
   const { buildApiParams } = useGlobalFilters();
   const filterQuery = buildApiParams();
@@ -330,13 +330,14 @@ export function GalleryContent() {
   const [customFilters, setCustomFilters] = useState<CustomFilters>(DEFAULT_FILTERS);
   const [dedupSvg, setDedupSvg] = useState(searchParams.get("unique") !== "0");
   const [infiniteScroll, setInfiniteScroll] = useState(true);
-  const [logos, setLogos] = useState<Logo[]>([]);
-  const [total, setTotal] = useState(0);
+  const [logos, setLogos] = useState<Logo[]>(initialLogos ?? []);
+  const [total, setTotal] = useState(initialTotal ?? 0);
   const [page, setPage] = useState(initialPage);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialLogos);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const hasInitialData = useRef(!!initialLogos);
 
   const fetchPage = useCallback(
     (p: number, append = false) => {
@@ -394,6 +395,11 @@ export function GalleryContent() {
 
   // Refetch when preset/filters/dedup change
   useEffect(() => {
+    // Skip the first fetch if the server provided initial data
+    if (hasInitialData.current) {
+      hasInitialData.current = false;
+      return;
+    }
     setLogos([]);
     fetchPage(1);
   }, [fetchPage]);

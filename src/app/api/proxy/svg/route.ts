@@ -3,6 +3,7 @@ import { CACHE_PRESETS } from "@/lib/cache";
 import { log } from "@/lib/logger";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
+import { sanitizeSvg } from "@/lib/sanitize-svg";
 
 // In-memory LRU cache for SVG content
 const cache = new Map<string, { content: string; contentType: string; timestamp: number }>();
@@ -142,15 +143,17 @@ export async function GET(request: NextRequest) {
       chunks.push(value);
     }
 
-    const content = new TextDecoder().decode(Buffer.concat(chunks));
+    const rawContent = new TextDecoder().decode(Buffer.concat(chunks));
 
     // Verify it looks like SVG
-    if (!content.includes("<svg") && !content.includes("<SVG")) {
+    if (!rawContent.includes("<svg") && !rawContent.includes("<SVG")) {
       return NextResponse.json(
         { error: "Response does not appear to be SVG" },
         { status: 502, headers: corsHeaders(request) },
       );
     }
+
+    const content = sanitizeSvg(rawContent);
 
     // Cache the result (simple LRU: evict oldest when full)
     if (cache.size >= MAX_CACHE_SIZE) {

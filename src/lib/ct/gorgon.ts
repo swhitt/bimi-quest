@@ -46,13 +46,21 @@ async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<R
 /** Get the current Signed Tree Head */
 export async function getSTH(): Promise<STHResponse> {
   const res = await fetchWithRetry(`${BASE_URL}/ct/v1/get-sth`);
-  return res.json();
+  const body = await res.json();
+  if (typeof body.tree_size !== "number") {
+    throw new Error(`Gorgon get-sth: expected numeric tree_size, got ${JSON.stringify(body.tree_size)}`);
+  }
+  return body;
 }
 
 /** Fetch a batch of log entries. Max 1000 per request. */
 export async function getEntries(start: number, end: number): Promise<GetEntriesResponse> {
   const res = await fetchWithRetry(`${BASE_URL}/ct/v1/get-entries?start=${start}&end=${end}`);
-  return res.json();
+  const body = await res.json();
+  if (!Array.isArray(body.entries)) {
+    throw new Error(`Gorgon get-entries (${start}-${end}): expected entries array, got ${typeof body.entries}`);
+  }
+  return body;
 }
 
 /** Sleep utility for throttling between batch requests */

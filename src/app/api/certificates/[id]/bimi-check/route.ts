@@ -1,12 +1,11 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-utils";
+import { apiError, resolveOrError } from "@/lib/api-utils";
 import { isDMARCValidForBIMI, lookupDMARC } from "@/lib/bimi/dmarc";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
-import { validateSVGTinyPS } from "@/lib/bimi/svg";
+import { computeSvgHash, validateSVGTinyPS } from "@/lib/bimi/svg";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { resolveCertParam } from "@/lib/db/filters";
 import { certificates, domainBimiState } from "@/lib/db/schema";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
@@ -18,9 +17,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { id: rawId } = await params;
 
   try {
-    const { id: certId, error } = await resolveCertParam(rawId);
-    if (error) return NextResponse.json({ error: error.message }, { status: error.status });
-    if (!certId) return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
+    const result = await resolveOrError(rawId);
+    if (result instanceof NextResponse) return result;
+    const certId = result;
 
     const [cert] = await db
       .select({
@@ -113,9 +112,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
                 webSvgContent = await res.text();
                 if (webSvgContent.includes("<svg") || webSvgContent.includes("<SVG")) {
                   webSvgValidation = validateSVGTinyPS(webSvgContent);
-                  if (cert.logotypeSvg && webSvgContent) {
-                    const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
-                    svgMatch = normalize(cert.logotypeSvg) === normalize(webSvgContent);
+                  // Hash-based comparison: consistent with validate.ts SHA-256 approach
+                  if (cert.logotypeSvgHash && webSvgContent) {
+                    const webSvgHash = computeSvgHash(webSvgContent);
+                    svgMatch = cert.logotypeSvgHash === webSvgHash;
                   }
                 }
               }

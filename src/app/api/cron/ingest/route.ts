@@ -1,7 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-utils";
+import { apiError, verifyCronAuth } from "@/lib/api-utils";
 import { getSTH } from "@/lib/ct/gorgon";
 import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { db } from "@/lib/db";
@@ -14,24 +13,8 @@ export const maxDuration = 300;
 const MAX_BATCHES = 40;
 
 export async function GET(request: NextRequest) {
-  // Fail-closed: reject if CRON_SECRET is not configured
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 500 });
-  }
-
-  const authHeader = request.headers.get("authorization") ?? "";
-  const expected = `Bearer ${cronSecret}`;
-  // Constant-time comparison to prevent timing attacks.
-  // Pad the shorter value so both buffers are equal length (timingSafeEqual requires it).
-  const maxLen = Math.max(authHeader.length, expected.length);
-  const authBuf = Buffer.alloc(maxLen);
-  const expectedBuf = Buffer.alloc(maxLen);
-  authBuf.write(authHeader);
-  expectedBuf.write(expected);
-  if (authHeader.length !== expected.length || !timingSafeEqual(authBuf, expectedBuf)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
 
   try {
     const sth = await getSTH();

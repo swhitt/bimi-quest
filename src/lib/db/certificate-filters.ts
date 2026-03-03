@@ -6,6 +6,11 @@ function normalizeHex(input: string): string {
   return input.replace(/[:\-.\s]/g, "").toLowerCase();
 }
 
+/** Escape special characters for LIKE/ILIKE patterns so they match literally. */
+export function escapeLike(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 /**
  * Build filter conditions for the certificates list endpoint.
  * Delegates shared filters (type, mark, country, industry, from, to, expiresFrom,
@@ -47,11 +52,12 @@ export function buildCertificateConditions(params: URLSearchParams) {
   }
 
   if (search) {
+    const escaped = escapeLike(search);
     conditions.push(
       or(
-        ilike(certificates.subjectCn, `%${search}%`),
-        ilike(certificates.subjectOrg, `%${search}%`),
-        sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE s ILIKE ${`%${search}%`})`,
+        ilike(certificates.subjectCn, `%${escaped}%`),
+        ilike(certificates.subjectOrg, `%${escaped}%`),
+        sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE s ILIKE ${`%${escaped}%`})`,
       )!,
     );
   }

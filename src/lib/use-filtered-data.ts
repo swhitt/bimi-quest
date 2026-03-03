@@ -17,14 +17,21 @@ interface UseFilteredDataResult<T> {
  * @param url - The API route path (e.g. "/api/stats/top-orgs")
  * @param extract - Maps the raw JSON response to the desired data shape
  * @param fallback - Returned as `data` before the first successful fetch and on error
+ * @param initialData - Server-provided data to use initially, skipping the first fetch
  */
-export function useFilteredData<T>(url: string, extract: (json: unknown) => T, fallback: T): UseFilteredDataResult<T> {
+export function useFilteredData<T>(
+  url: string,
+  extract: (json: unknown) => T,
+  fallback: T,
+  initialData?: T,
+): UseFilteredDataResult<T> {
   const { buildApiParams } = useGlobalFilters();
   const filterParams = buildApiParams();
-  const [data, setData] = useState<T>(fallback);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<T>(initialData ?? fallback);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef<string | null>(null);
+  const hasInitialDataRef = useRef(!!initialData);
 
   // Sync caller-provided values into refs so the fetch effect can use them
   // without needing them as deps (they're inline at call sites and unstable)
@@ -58,6 +65,13 @@ export function useFilteredData<T>(url: string, extract: (json: unknown) => T, f
   );
 
   useEffect(() => {
+    // Skip the first fetch when server-provided initialData is available
+    if (hasInitialDataRef.current) {
+      hasInitialDataRef.current = false;
+      loadedRef.current = filterParams;
+      return;
+    }
+
     if (loadedRef.current === filterParams) return;
     const controller = new AbortController();
     setLoading(true);

@@ -72,7 +72,7 @@ describe("POST /api/validate", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("Domain is required");
+    expect(body.error).toBe("Invalid request body");
   });
 
   it("returns 400 when domain is an empty string", async () => {

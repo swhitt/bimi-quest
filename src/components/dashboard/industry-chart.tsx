@@ -10,7 +10,7 @@ import { useCertTypeColors } from "@/lib/chart-colors";
 import { useFilteredData } from "@/lib/use-filtered-data";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
-interface IndustryRow {
+export interface IndustryRow {
   industry: string | null;
   total: number;
   vmcCount: number;
@@ -47,14 +47,15 @@ function IndustryTooltip({
   return <ChartTooltipContent label={`${label} (${total.toLocaleString()} total)`} rows={rows} />;
 }
 
-export function IndustryChart() {
+export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) {
   const certColors = useCertTypeColors();
   const { buildApiParams } = useGlobalFilters();
   const filterParams = buildApiParams();
   const { data, loading } = useFilteredData<IndustryRow[]>(
     "/api/stats/industry-breakdown",
     (json: unknown) => (json as { data?: IndustryRow[] }).data ?? [],
-    [],
+    initialData ?? [],
+    initialData,
   );
 
   if (loading && data.length === 0) {

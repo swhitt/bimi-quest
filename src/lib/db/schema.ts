@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import type { ExtensionEntry } from "@/lib/ct/parser";
 
 export const certificates = pgTable(
   "certificates",
@@ -21,7 +22,7 @@ export const certificates = pgTable(
     rootCaOrg: text("root_ca_org"),
     sanList: text("san_list").array().notNull().default([]),
     markType: text("mark_type"),
-    certType: text("cert_type"),
+    certType: text("cert_type").$type<"VMC" | "CMC">(),
     logotypeSvgHash: text("logotype_svg_hash"),
     logotypeSvg: text("logotype_svg"),
     rawPem: text("raw_pem").notNull(),
@@ -29,7 +30,7 @@ export const certificates = pgTable(
     ctLogTimestamp: timestamp("ct_log_timestamp", { withTimezone: true }),
     ctLogIndex: bigint("ct_log_index", { mode: "number" }),
     ctLogName: text("ct_log_name").default("gorgon"),
-    extensionsJson: jsonb("extensions_json"),
+    extensionsJson: jsonb("extensions_json").$type<Record<string, ExtensionEntry>>(),
     crtshId: bigint("crtsh_id", { mode: "number" }),
     notabilityScore: integer("notability_score"),
     notabilityReason: text("notability_reason"),
@@ -62,6 +63,7 @@ export const certificates = pgTable(
     index("idx_certs_notafter_precert").on(table.notAfter, table.isPrecert),
     index("idx_certificates_san_list_gin").using("gin", table.sanList),
     index("idx_certificates_subject_org").on(table.subjectOrg),
+    index("idx_certificates_industry").on(table.industry),
     index("idx_certificates_svg_hash").on(table.logotypeSvgHash),
     index("idx_certificates_visual_hash").on(table.logotypeVisualHash),
     // Partial index: most queries filter out superseded certs

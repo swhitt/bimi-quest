@@ -12,7 +12,7 @@ import { CA_COLOR_INDEX, getCAColor, useChartColors } from "@/lib/chart-colors";
 import { useFilteredData } from "@/lib/use-filtered-data";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
-interface ExpiryRow {
+export interface ExpiryRow {
   month: string;
   ca: string | null;
   total: number;
@@ -58,14 +58,15 @@ function ExpiryTooltip({
   return <ChartTooltipContent label={`${formattedLabel} (${total.toLocaleString()} expiring)`} rows={rows} />;
 }
 
-export function ExpiryChart() {
+export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   const colors = useChartColors();
   const { buildApiParams } = useGlobalFilters();
   const filterParams = buildApiParams();
   const { data, loading } = useFilteredData<ExpiryRow[]>(
     "/api/stats/expiry-timeline",
     (json: unknown) => (json as { data?: ExpiryRow[] }).data ?? [],
-    [],
+    initialData ?? [],
+    initialData,
   );
 
   if (loading && data.length === 0) {

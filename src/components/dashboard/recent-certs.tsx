@@ -3,7 +3,7 @@
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,7 +11,7 @@ import { UtcTime } from "@/components/ui/utc-time";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
-interface RecentCert {
+export interface RecentCert {
   id: number;
   fingerprintSha256: string;
   subjectCn: string | null;
@@ -29,15 +29,23 @@ interface RecentCert {
 
 const PAGE_SIZE = 7;
 
-export function RecentCerts() {
+export function RecentCerts({
+  initialData,
+  initialTotalPages,
+}: {
+  initialData?: RecentCert[];
+  initialTotalPages?: number;
+}) {
   const { buildApiParams } = useGlobalFilters();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [certs, setCerts] = useState<RecentCert[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
+  const [certs, setCerts] = useState<RecentCert[]>(initialData ?? []);
+  const [totalPages, setTotalPages] = useState(initialTotalPages ?? 1);
   const [page, setPage] = useState(1);
+  // Mark as already loaded if server provided initial data
   const [loadedParams, setLoadedParams] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasInitialData = useRef(!!initialData);
 
   // Build "View all" link preserving current filters (CA in path, rest as search params)
   const caMatch = pathname.match(/\/ca\/([^/]+)/);
@@ -63,6 +71,13 @@ export function RecentCerts() {
   }, [baseFilterParams]);
 
   useEffect(() => {
+    // Skip the first fetch if the server provided initial data
+    if (hasInitialData.current) {
+      hasInitialData.current = false;
+      setLoadedParams(filterParams);
+      return;
+    }
+
     const controller = new AbortController();
     setError(null);
 

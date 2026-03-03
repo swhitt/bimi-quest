@@ -5,7 +5,9 @@ import { escapeCSV } from "@/lib/csv";
 import { db } from "@/lib/db";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 import { buildStatsConditions } from "@/lib/db/filters";
+import { cmcCount, vmcCount } from "@/lib/db/query-fragments";
 import { certificates } from "@/lib/db/schema";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 const VALID_DATASETS = new Set(["market-share", "trends", "industries", "cert-types", "expiry"]);
 
@@ -20,6 +22,10 @@ function csvResponse(csv: string, filename: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rl = await checkRateLimit(`export-dashboard:${ip}`, { windowMs: 60_000, max: 5 }, request);
+  if (!rl.allowed) return rateLimitResponse(rl.headers);
+
   const params = request.nextUrl.searchParams;
   const dataset = params.get("dataset");
 
@@ -39,8 +45,8 @@ export async function GET(request: NextRequest) {
         .select({
           ca: certificates.issuerOrg,
           total: count(),
-          vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
-          cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
+          vmcCount,
+          cmcCount,
         })
         .from(certificates)
         .where(baseWhere)
@@ -88,8 +94,8 @@ export async function GET(request: NextRequest) {
         .select({
           industry: certificates.industry,
           total: count(),
-          vmcCount: count(sql`CASE WHEN ${certificates.certType} = 'VMC' THEN 1 END`),
-          cmcCount: count(sql`CASE WHEN ${certificates.certType} = 'CMC' THEN 1 END`),
+          vmcCount,
+          cmcCount,
         })
         .from(certificates)
         .where(statsWhere)

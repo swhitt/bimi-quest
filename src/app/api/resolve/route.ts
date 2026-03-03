@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         fingerprintSha256: certificates.fingerprintSha256,
       })
       .from(certificates)
-      .where(sql`EXISTS (SELECT 1 FROM unnest(${certificates.sanList}) AS s WHERE lower(s) = ${domain.toLowerCase()})`)
+      .where(sql`${certificates.sanList} @> ARRAY[${domain.toLowerCase()}]::text[]`)
       .orderBy(desc(certificates.notBefore), asc(certificates.isPrecert))
       .limit(1);
 

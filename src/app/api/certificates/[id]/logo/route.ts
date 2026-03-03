@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
+import { resolveOrError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { resolveCertParam } from "@/lib/db/filters";
 import { certificates } from "@/lib/db/schema";
 
 const PNG_SIZE = 256;
@@ -11,9 +11,9 @@ const PNG_SIZE = 256;
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await params;
 
-  const { id: certId, error } = await resolveCertParam(rawId);
-  if (error) return NextResponse.json({ error: error.message }, { status: error.status });
-  if (!certId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const result = await resolveOrError(rawId);
+  if (result instanceof NextResponse) return result;
+  const certId = result;
 
   const [cert] = await db
     .select({ logotypeSvg: certificates.logotypeSvg })
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: {
         "Content-Type": "image/svg+xml",
         "Cache-Control": CACHE_PRESETS.IMMUTABLE,
-        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
         "X-Content-Type-Options": "nosniff",
       },
     });
