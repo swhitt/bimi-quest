@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
     const startIndex = cursor.length > 0 ? Number(cursor[0].lastIndex) : 0;
 
     if (startIndex >= treeSize) {
+      // Touch lastRun so the footer shows when we last checked Gorgon
+      await db
+        .update(ingestionCursors)
+        .set({ lastRun: new Date(), updatedAt: new Date() })
+        .where(eq(ingestionCursors.logName, "gorgon"));
+
       return NextResponse.json({
         status: "up-to-date",
         treeSize,

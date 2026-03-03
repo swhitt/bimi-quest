@@ -7,13 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // to whatever mockDbResult is set to for each test.
 let mockDbResult: unknown[] = [];
 
-const chainable = () => {
+const chainable = (result?: unknown) => {
   const chain: Record<string, unknown> = {};
-  for (const m of ["select", "from", "where", "limit"]) {
+  for (const m of ["select", "from", "where", "limit", "update", "set"]) {
     chain[m] = vi.fn(() => chain);
   }
-  // Terminal: the chain is also thenable (awaitable), resolving to mockDbResult
-  chain.then = (resolve: (v: unknown) => void) => resolve(mockDbResult);
+  // Terminal: the chain is also thenable (awaitable), resolving to the provided result
+  chain.then = (resolve: (v: unknown) => void) => resolve(result ?? mockDbResult);
   return chain;
 };
 
@@ -21,6 +21,7 @@ vi.mock("@/lib/db", () => {
   const dbProxy = new Proxy({} as Record<string, unknown>, {
     get(_, prop) {
       if (prop === "select") return () => chainable();
+      if (prop === "update") return () => chainable(undefined);
       return undefined;
     },
   });
