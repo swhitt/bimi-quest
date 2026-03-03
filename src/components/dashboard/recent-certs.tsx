@@ -128,14 +128,16 @@ export function RecentCerts() {
                     <tr key={cert.id} className="border-b last:border-0 hover:bg-secondary/50 transition-colors">
                       <td className="py-0 pr-2 w-10">
                         {cert.hasLogo && cert.logotypeSvgHash ? (
-                          <img
-                            src={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
-                            alt=""
-                            width={40}
-                            height={40}
-                            className="h-10 w-10 min-w-10 shrink-0 rounded-lg border object-contain"
-                            style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
-                          />
+                          <Link href={`/logo/${cert.fingerprintSha256.slice(0, 16)}`}>
+                            <img
+                              src={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 min-w-10 shrink-0 rounded-lg border object-contain"
+                              style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
+                            />
+                          </Link>
                         ) : (
                           <div className="h-10 w-10 shrink-0 rounded-lg border bg-muted" />
                         )}
@@ -143,8 +145,12 @@ export function RecentCerts() {
                       <td className="py-1.5 pr-2">
                         <div className="flex items-center gap-1.5">
                           <Link
-                            href={`/certificates/${cert.fingerprintSha256.slice(0, 12)}`}
-                            className="hover:underline font-medium"
+                            href={
+                              cert.subjectOrg
+                                ? `/orgs/${encodeURIComponent(cert.subjectOrg)}`
+                                : `/certificates/${cert.fingerprintSha256.slice(0, 12)}`
+                            }
+                            className="hover:underline font-medium truncate"
                           >
                             {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
                           </Link>
@@ -157,16 +163,28 @@ export function RecentCerts() {
                             />
                           )}
                         </div>
-                      </td>
-                      <td className="py-1.5 pr-2 hidden lg:table-cell text-muted-foreground text-xs max-w-[200px] truncate">
-                        {cert.sanList.length > 0 ? (
-                          <>
+                        {cert.sanList[0] && (
+                          <Link
+                            href={`/hosts/${encodeURIComponent(cert.sanList[0])}`}
+                            className="text-[11px] font-mono text-muted-foreground hover:text-foreground block truncate lg:hidden"
+                          >
                             {cert.sanList[0]}
+                          </Link>
+                        )}
+                      </td>
+                      <td className="py-1.5 pr-2 hidden lg:table-cell text-xs max-w-[200px]">
+                        {cert.sanList.length > 0 ? (
+                          <div className="min-w-0">
+                            <Link
+                              href={`/hosts/${encodeURIComponent(cert.sanList[0])}`}
+                              className="text-muted-foreground hover:text-foreground block truncate"
+                            >
+                              {cert.sanList[0]}
+                            </Link>
                             {cert.sanList.length > 1 && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="text-muted-foreground/60 cursor-help">
-                                    {" "}
                                     +{cert.sanList.length - 1} more
                                   </span>
                                 </TooltipTrigger>
@@ -174,16 +192,18 @@ export function RecentCerts() {
                                   <ul className="space-y-0.5">
                                     {cert.sanList.slice(1).map((san) => (
                                       <li key={san} className="font-mono text-xs">
-                                        {san}
+                                        <Link href={`/hosts/${encodeURIComponent(san)}`} className="hover:underline">
+                                          {san}
+                                        </Link>
                                       </li>
                                     ))}
                                   </ul>
                                 </TooltipContent>
                               </Tooltip>
                             )}
-                          </>
+                          </div>
                         ) : (
-                          "—"
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="py-1.5 pr-2 hidden sm:table-cell">

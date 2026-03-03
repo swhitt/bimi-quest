@@ -20,8 +20,8 @@ export default async function CertificatesPage(props: {
   const searchParams = await props.searchParams;
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="sm:space-y-8">
+      <div className="hidden sm:block">
         <h1 className="text-2xl font-semibold">Certificates</h1>
         <p className="text-sm text-muted-foreground">
           Browse and filter all BIMI certificates discovered from CT logs.

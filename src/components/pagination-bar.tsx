@@ -20,8 +20,8 @@ export function PaginationBar({
   noun?: string;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-      <p className="text-sm text-muted-foreground">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-sm text-muted-foreground whitespace-nowrap">
         {pagination.total.toLocaleString()} {noun}
       </p>
       <div className="flex items-center gap-1">

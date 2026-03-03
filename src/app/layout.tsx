@@ -84,7 +84,7 @@ export default function RootLayout({
           <TooltipProvider>
             <Nav />
             <GlobalFilterBar />
-            <main className="container mx-auto px-4 py-4 flex-1">{children}</main>
+            <main className="container mx-auto px-4 pt-2 pb-4 sm:py-4 flex-1">{children}</main>
             <Footer />
             <UpdateBanner />
             <OfflineBanner />
