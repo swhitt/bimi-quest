@@ -28,10 +28,10 @@ vi.mock("@/lib/logger", () => ({
   log: vi.fn(),
 }));
 
+import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
+import { checkRateLimit } from "@/lib/rate-limit";
 // Import route after all mocks are registered
 import { POST } from "./route";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 
 // ── Helpers ─────────────────────────────────────────────────────────
 

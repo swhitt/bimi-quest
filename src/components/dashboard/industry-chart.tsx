@@ -6,8 +6,8 @@ import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFilteredData } from "@/lib/use-filtered-data";
 import { useCertTypeColors } from "@/lib/chart-colors";
+import { useFilteredData } from "@/lib/use-filtered-data";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface IndustryRow {
