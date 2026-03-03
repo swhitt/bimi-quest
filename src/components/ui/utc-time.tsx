@@ -9,6 +9,8 @@ interface UtcTimeProps {
   showTime?: boolean;
   /** Show relative time ("3 months ago") below the date */
   relative?: boolean;
+  /** Show compact relative time only ("2d ago") — still has tooltip */
+  compact?: boolean;
   /** Apply destructive styling for expired dates */
   expired?: boolean;
 }
@@ -27,6 +29,20 @@ export function formatUtcFull(date: Date | string): string {
   return d.toISOString().slice(0, 19).replace("T", " ") + " UTC";
 }
 
+function compactTimeAgo(d: Date): string {
+  const ms = Date.now() - d.getTime();
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
+}
+
 function localStr(d: Date): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -34,7 +50,7 @@ function localStr(d: Date): string {
   }).format(d);
 }
 
-export function UtcTime({ date, showTime, relative, expired }: UtcTimeProps) {
+export function UtcTime({ date, showTime, relative, compact, expired }: UtcTimeProps) {
   const d = typeof date === "string" ? new Date(date) : date;
 
   return (
@@ -42,13 +58,24 @@ export function UtcTime({ date, showTime, relative, expired }: UtcTimeProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="inline-block">
-            <time dateTime={d.toISOString()} className={`text-sm tabular-nums ${expired ? "text-destructive" : ""}`}>
-              {showTime ? utcDateTime(d) : utcDate(d)}
-            </time>
-            {relative && (
-              <span className={`text-xs block ${expired ? "text-destructive" : "text-muted-foreground"}`}>
-                {formatDistanceToNow(d, { addSuffix: true })}
-              </span>
+            {compact ? (
+              <time dateTime={d.toISOString()} className="text-sm tabular-nums">
+                {compactTimeAgo(d)}
+              </time>
+            ) : (
+              <>
+                <time
+                  dateTime={d.toISOString()}
+                  className={`text-sm tabular-nums ${expired ? "text-destructive" : ""}`}
+                >
+                  {showTime ? utcDateTime(d) : utcDate(d)}
+                </time>
+                {relative && (
+                  <span className={`text-xs block ${expired ? "text-destructive" : "text-muted-foreground/60"}`}>
+                    {formatDistanceToNow(d, { addSuffix: true })}
+                  </span>
+                )}
+              </>
             )}
           </span>
         </TooltipTrigger>

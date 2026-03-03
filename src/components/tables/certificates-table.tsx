@@ -18,7 +18,6 @@ import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UtcTime } from "@/components/ui/utc-time";
@@ -75,19 +74,22 @@ function SortHeader({
     : `Sort by ${label}`;
   return (
     <button
-      className="flex items-center gap-1 hover:text-foreground transition-colors -ml-2 px-2 py-1.5 rounded"
+      className={cn(
+        "flex items-center gap-1 -ml-2 px-2 py-1.5 rounded transition-colors duration-150",
+        isActive ? "text-foreground" : "hover:text-foreground",
+      )}
       onClick={() => onSort(sortKey)}
       aria-label={ariaLabel}
     >
       {label}
       {isActive ? (
         currentDir === "asc" ? (
-          <ArrowUp className="size-3.5" />
+          <ArrowUp className="size-3.5 text-primary" />
         ) : (
-          <ArrowDown className="size-3.5" />
+          <ArrowDown className="size-3.5 text-primary" />
         )
       ) : (
-        <ArrowUpDown className="size-3.5 opacity-40" />
+        <ArrowUpDown className="size-3.5 opacity-30" />
       )}
     </button>
   );
@@ -160,53 +162,36 @@ export function CertificatesTable({
   const columns: ColumnDef<CertRow>[] = [
     {
       id: "logo",
-      meta: { className: "hidden sm:table-cell w-[56px]" },
+      meta: { className: "w-9 sm:w-14" },
       header: "",
       size: 56,
       cell: ({ row }) => {
         const hash = row.original.logotypeSvgHash;
         if (!hash || !row.original.hasLogo) {
-          return <div className="size-11 rounded-lg border bg-muted" />;
+          return <div className="size-8 sm:size-11 rounded-lg border border-border/30 bg-muted/50" />;
         }
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
-        const domain = row.original.sanList[0] || row.original.subjectCn;
         const svgUrl = `/api/logo/${hash}?format=svg`;
         const bg = row.original.logoBg;
+        const logoHref = `/logo/${row.original.fingerprintSha256.slice(0, 16)}`;
         return (
-          <HoverCard openDelay={300} closeDelay={100}>
-            <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <img
-                src={svgUrl}
-                alt={`${org} logo`}
-                loading="lazy"
-                width={44}
-                height={44}
-                className="size-11 min-w-11 rounded-lg border object-contain cursor-zoom-in"
-                style={bg ? { backgroundColor: bg } : undefined}
-              />
-            </HoverCardTrigger>
-            <HoverCardContent side="right" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
-              <div className="flex flex-col items-center gap-3">
-                <img
-                  src={svgUrl}
-                  alt={`${org} logo`}
-                  width={144}
-                  height={144}
-                  className="size-36 rounded-lg border p-2 object-contain"
-                  style={bg ? { backgroundColor: bg } : undefined}
-                />
-                <div className="text-center space-y-0.5">
-                  <div className="font-medium text-sm">{org}</div>
-                  {domain && <div className="text-xs text-muted-foreground">{domain}</div>}
-                </div>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
+          <Link href={logoHref} onClick={(e) => e.stopPropagation()} aria-label={`${org} logo`}>
+            <img
+              src={svgUrl}
+              alt={`${org} logo`}
+              loading="lazy"
+              width={44}
+              height={44}
+              className="size-8 sm:size-11 min-w-8 sm:min-w-11 rounded-lg border border-border/30 object-contain shadow-sm transition-transform duration-150 group-hover/row:scale-105"
+              style={bg ? { backgroundColor: bg } : undefined}
+            />
+          </Link>
         );
       },
     },
     {
       accessorKey: "subjectOrg",
+      meta: { className: "min-w-0 overflow-hidden" },
       header: () => (
         <SortHeader
           label="Organization"
@@ -218,37 +203,37 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
-        const score = row.original.notabilityScore;
+        const firstDomain = row.original.sanList[0] || row.original.subjectCn;
+        const orgHref = row.original.subjectOrg
+          ? `/orgs/${encodeURIComponent(row.original.subjectOrg)}`
+          : `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
         return (
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Link
-                href={`/certificates/${row.original.fingerprintSha256.slice(0, 12)}`}
-                className="font-medium hover:underline truncate"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {org}
-              </Link>
-              {score != null && score >= 5 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={`shrink-0 size-1.5 rounded-full cursor-help ${
-                        score >= 9 ? "bg-amber-500" : score >= 7 ? "bg-blue-500" : "bg-muted-foreground/40"
-                      }`}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-64">
-                    <p className="font-medium">Notability: {score}/10</p>
-                    {row.original.companyDescription && (
-                      <p className="text-foreground/70 mt-0.5">{row.original.companyDescription}</p>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
+            <Link
+              href={orgHref}
+              className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate block transition-colors duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {org}
+            </Link>
+            {firstDomain && (
+              <span className="text-[11px] md:hidden block truncate">
+                <Link
+                  href={`/hosts/${encodeURIComponent(firstDomain)}`}
+                  className="font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {firstDomain}
+                </Link>
+                {row.original.sanList.length > 1 && (
+                  <span className="text-muted-foreground/50"> +{row.original.sanList.length - 1}</span>
+                )}
+              </span>
+            )}
             {row.original.industry && (
-              <span className="text-[10px] text-muted-foreground/60 block truncate">{row.original.industry}</span>
+              <span className="text-[10px] text-muted-foreground/50 block truncate leading-tight">
+                {row.original.industry}
+              </span>
             )}
           </div>
         );
@@ -256,25 +241,35 @@ export function CertificatesTable({
     },
     {
       id: "sans",
-      meta: { className: "hidden md:table-cell" },
+      meta: { className: "hidden md:table-cell md:w-[140px] lg:w-[160px] xl:w-[200px]" },
       header: "Hostnames",
       cell: ({ row }) => {
         const sans = row.original.sanList;
-        if (sans.length === 0) return <span className="text-muted-foreground">—</span>;
+        if (sans.length === 0) return <span className="text-muted-foreground/40">—</span>;
         const extraSans = sans.slice(1);
         return (
           <div className="min-w-0">
-            <span className="text-xs font-mono block truncate">{sans[0]}</span>
+            <Link
+              href={`/hosts/${encodeURIComponent(sans[0])}`}
+              className="text-xs font-mono text-muted-foreground block truncate hover:text-foreground hover:underline transition-colors duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {sans[0]}
+            </Link>
             {extraSans.length > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <span className="text-[11px] text-muted-foreground/60 cursor-help">+{extraSans.length} more</span>
+                  <span className="text-[11px] text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors duration-150">
+                    +{extraSans.length} more
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-80">
                   <ul className="space-y-0.5">
                     {extraSans.map((san) => (
                       <li key={san} className="font-mono text-xs">
-                        {san}
+                        <Link href={`/hosts/${encodeURIComponent(san)}`} className="hover:underline">
+                          {san}
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -287,7 +282,7 @@ export function CertificatesTable({
     },
     {
       accessorKey: "certType",
-      meta: { className: "hidden sm:table-cell" },
+      meta: { className: "hidden sm:table-cell sm:w-[68px]" },
       header: "Type",
       cell: ({ row }) => {
         const certType = row.original.certType || "BIMI";
@@ -295,14 +290,18 @@ export function CertificatesTable({
         return (
           <div className="flex items-center gap-1">
             <abbr
-              className="text-xs font-medium no-underline"
-              title={
+              className={cn("text-xs font-medium no-underline", row.original.isPrecert && "opacity-50")}
+              title={[
                 certType === "VMC"
                   ? "Verified Mark Certificate"
                   : certType === "CMC"
                     ? "Common Mark Certificate"
-                    : undefined
-              }
+                    : certType,
+                mtInfo?.title,
+                row.original.isPrecert ? "Precertificate" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             >
               {certType}
             </abbr>
@@ -323,11 +322,6 @@ export function CertificatesTable({
                 </svg>
               </span>
             )}
-            {row.original.isPrecert && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400" title="Precertificate">
-                Pre
-              </span>
-            )}
           </div>
         );
       },
@@ -335,12 +329,12 @@ export function CertificatesTable({
     {
       // Notability score: not sortable via API (subjectCountry/notabilityScore not in VALID_SORT_COLUMNS)
       id: "notabilityScore",
-      meta: { className: "hidden sm:table-cell" },
+      meta: { className: "hidden sm:table-cell sm:w-[52px]" },
       header: "Score",
       cell: ({ row }) => {
         const score = row.original.notabilityScore;
         if (score == null || score < 5) {
-          return <span className="text-muted-foreground">—</span>;
+          return <span className="text-muted-foreground/40">—</span>;
         }
         const colorClass =
           score >= 9
@@ -354,17 +348,17 @@ export function CertificatesTable({
     {
       // Country: not sortable via API (subjectCountry not in VALID_SORT_COLUMNS)
       id: "subjectCountry",
-      meta: { className: "hidden lg:table-cell" },
+      meta: { className: "hidden xl:table-cell xl:w-[56px]" },
       header: "Country",
       cell: ({ row }) => {
         const country = row.original.subjectCountry;
-        if (!country) return <span className="text-muted-foreground">—</span>;
-        return <span className="text-xs font-mono text-muted-foreground">{country}</span>;
+        if (!country) return <span className="text-muted-foreground/40">—</span>;
+        return <span className="text-xs font-mono text-muted-foreground/60 tracking-wider">{country}</span>;
       },
     },
     {
       accessorKey: "issuerOrg",
-      meta: { className: "hidden lg:table-cell" },
+      meta: { className: "hidden lg:table-cell lg:w-[104px] xl:w-[116px]" },
       header: () => (
         <SortHeader
           label="CA"
@@ -377,7 +371,10 @@ export function CertificatesTable({
       cell: ({ row }) => {
         const issuer = displayIssuerOrg(row.original.issuerOrg);
         return (
-          <Badge variant="secondary" className="whitespace-nowrap">
+          <Badge
+            variant="outline"
+            className="whitespace-nowrap max-w-full truncate text-[11px] font-normal text-muted-foreground/70 border-border/50"
+          >
             {issuer}
           </Badge>
         );
@@ -385,6 +382,7 @@ export function CertificatesTable({
     },
     {
       accessorKey: "notBefore",
+      meta: { className: "w-[56px] sm:w-[96px] text-right sm:text-left" },
       header: () => (
         <SortHeader
           label="Issued"
@@ -396,13 +394,21 @@ export function CertificatesTable({
       ),
       cell: ({ row }) => {
         if (!row.original.notBefore) return "-";
-        return <UtcTime date={row.original.notBefore} relative />;
+        return (
+          <>
+            <span className="sm:hidden">
+              <UtcTime date={row.original.notBefore} compact />
+            </span>
+            <span className="hidden sm:inline-block">
+              <UtcTime date={row.original.notBefore} relative />
+            </span>
+          </>
+        );
       },
     },
     {
-      // Replaces the old notAfter column: combines expiry date with validity status badge
       accessorKey: "notAfter",
-      meta: { className: "hidden md:table-cell" },
+      meta: { className: "hidden md:table-cell md:w-[96px]" },
       header: () => (
         <SortHeader
           label="Expires"
@@ -415,29 +421,23 @@ export function CertificatesTable({
       cell: ({ row }) => {
         if (!row.original.notAfter) return "-";
         const status = getCertValidity(row.original.notAfter);
-        const badgeVariant = status === "active" ? "default" : status === "expiring-soon" ? "outline" : "secondary";
-        const badgeClass =
+        const colorClass =
           status === "active"
-            ? "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20"
+            ? "text-green-700 dark:text-emerald-400/80"
             : status === "expiring-soon"
-              ? "border-amber-500/40 text-amber-700 dark:text-amber-400"
-              : "text-muted-foreground";
-        const badgeLabel = status === "active" ? "Active" : status === "expiring-soon" ? "Expiring Soon" : "Expired";
-        const isExpired = status === "expired";
+              ? "text-amber-700 dark:text-amber-400/70"
+              : "text-muted-foreground/70 line-through decoration-muted-foreground/30";
         return (
-          <div className="flex flex-col gap-0.5">
-            <UtcTime date={row.original.notAfter} relative expired={isExpired} />
-            <Badge variant={badgeVariant} className={cn("text-[10px] px-1 py-0 h-auto w-fit", badgeClass)}>
-              {badgeLabel}
-            </Badge>
-          </div>
+          <span className={colorClass}>
+            <UtcTime date={row.original.notAfter} relative expired={status === "expired"} />
+          </span>
         );
       },
     },
     {
       // CT Log Timestamp: hidden by default, visible at xl breakpoint
       accessorKey: "ctLogTimestamp",
-      meta: { className: "hidden xl:table-cell" },
+      meta: { className: "hidden xl:table-cell xl:w-[108px]" },
       header: () => (
         <SortHeader
           label="CT Logged"
@@ -448,7 +448,7 @@ export function CertificatesTable({
         />
       ),
       cell: ({ row }) => {
-        if (!row.original.ctLogTimestamp) return <span className="text-muted-foreground">—</span>;
+        if (!row.original.ctLogTimestamp) return <span className="text-muted-foreground/40">—</span>;
         return <UtcTime date={row.original.ctLogTimestamp} relative />;
       },
     },
@@ -460,24 +460,29 @@ export function CertificatesTable({
   const [searchInput, setSearchInput] = useState(searchValue);
 
   return (
-    <div className="space-y-4">
-      {/* Search bar */}
+    <div className="space-y-2 sm:space-y-4">
+      {/* Search bar + mobile count */}
       {showSearch && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative sm:max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
-            <HostnameAutocomplete
-              value={searchInput}
-              onChange={setSearchInput}
-              onSelect={(val) => {
-                setSearchInput(val);
-                updateParams({ search: val, page: "1" });
-              }}
-              placeholder="Search domains, orgs..."
-              inputClassName="pl-9"
-            />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:contents">
+            <div className="relative flex-1 sm:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
+              <HostnameAutocomplete
+                value={searchInput}
+                onChange={setSearchInput}
+                onSelect={(val) => {
+                  setSearchInput(val);
+                  updateParams({ search: val, page: "1" });
+                }}
+                placeholder="Search domains, orgs..."
+                inputClassName="pl-9"
+              />
+            </div>
+            <span className="sm:hidden text-xs text-muted-foreground whitespace-nowrap shrink-0">
+              {pagination.total.toLocaleString()}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
@@ -533,18 +538,22 @@ export function CertificatesTable({
         </div>
       )}
 
-      <PaginationBar pagination={pagination} onPageChange={(page) => updateParams({ page: String(page) })} />
-
       {/* Table */}
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
+      <div className="rounded-lg border border-border/50 bg-card/30 overflow-clip sm:overflow-hidden">
+        <Table className="table-fixed" containerClassName="sm:overflow-x-auto">
+          <TableHeader className="sticky top-12 sm:static z-10">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-muted/50 hover:bg-muted/50">
+              <TableRow
+                key={headerGroup.id}
+                className="bg-background/80 backdrop-blur-xl backdrop-saturate-150 sm:backdrop-blur-none sm:backdrop-saturate-100 sm:bg-muted/30 hover:bg-transparent border-b border-border/50"
+              >
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={cn("text-xs uppercase tracking-wider xl:h-8", header.column.columnDef.meta?.className)}
+                    className={cn(
+                      "text-[11px] uppercase tracking-widest font-semibold h-9",
+                      header.column.columnDef.meta?.className,
+                    )}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
@@ -560,7 +569,7 @@ export function CertificatesTable({
                 return (
                   <TableRow
                     key={row.id}
-                    className="cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="cursor-pointer group/row hover:bg-muted/40 focus-visible:outline-none focus-visible:bg-muted/40 focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:ring-inset"
                     tabIndex={0}
                     role="link"
                     aria-label={org}
@@ -571,9 +580,19 @@ export function CertificatesTable({
                         router.push(certPath);
                       }
                     }}
+                    style={
+                      row.original.notabilityScore != null && row.original.notabilityScore >= 9
+                        ? { boxShadow: "inset 3px 0 0 0 oklch(0.8 0.15 85 / 0.5)" }
+                        : row.original.notabilityScore != null && row.original.notabilityScore >= 7
+                          ? { boxShadow: "inset 3px 0 0 0 oklch(0.6 0.15 240 / 0.4)" }
+                          : undefined
+                    }
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={cn("py-3 xl:py-1.5", cell.column.columnDef.meta?.className)}>
+                      <TableCell
+                        key={cell.id}
+                        className={cn("py-2 sm:py-3 xl:py-2", cell.column.columnDef.meta?.className)}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}

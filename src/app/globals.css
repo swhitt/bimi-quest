@@ -108,3 +108,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media (pointer: coarse) {
+  [data-slot="table-row"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
