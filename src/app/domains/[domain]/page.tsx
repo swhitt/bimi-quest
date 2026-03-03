@@ -8,9 +8,13 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain } = await params;
   const decoded = decodeURIComponent(domain);
+  const title = `${decoded} — BIMI Analysis`;
+  const description = `BIMI certificate status, DNS records, and email authentication analysis for ${decoded}.`;
   return {
-    title: `${decoded} — BIMI Analysis`,
-    description: `BIMI certificate status, DNS records, and email authentication analysis for ${decoded}.`,
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { card: "summary", title, description },
   };
 }
 

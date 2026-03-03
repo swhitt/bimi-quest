@@ -1,7 +1,10 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { decodeCTEntry } from "@/lib/ct/decode-entry";
+import { getEntries, getSTH } from "@/lib/ct/gorgon";
 import { CTLogContent } from "../ct-log-content";
 
 interface Props {
@@ -14,6 +17,18 @@ function parseEntryIndex(slug?: string[]): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+const fetchEntry = cache(async (index: number) => {
+  try {
+    const sth = await getSTH();
+    if (index >= sth.tree_size) return null;
+    const response = await getEntries(index, index);
+    if (!response.entries.length) return null;
+    return decodeCTEntry(response.entries[0], index);
+  } catch {
+    return null;
+  }
+});
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entryIndex = parseEntryIndex(slug);
@@ -22,16 +37,56 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "CT Log Entry Not Found" };
   }
 
+  // Entry permalink: fetch and decode for rich metadata
   if (entryIndex !== undefined) {
+    const entry = await fetchEntry(entryIndex);
+    if (!entry) {
+      return { title: "CT Log Entry Not Found" };
+    }
+
+    const subject = entry.cert?.subject || "Unknown Subject";
+    const issuer = entry.cert?.issuer || "Unknown Issuer";
+    const type = entry.leaf.entryType === "precert_entry" ? "Precert" : "X.509";
+    const bimi = entry.cert?.isBIMI ? " · BIMI" : "";
+    const ogImageUrl = `/api/og/ct-log/${entryIndex}`;
+
+    const title = `CT Entry #${entryIndex.toLocaleString()} — ${subject}`;
+    const description = `${type}${bimi} | Issued by ${issuer} | ${entry.leaf.timestampDate}`;
+
     return {
-      title: `CT Log Entry #${entryIndex.toLocaleString()}`,
-      description: `Certificate Transparency log entry at index ${entryIndex.toLocaleString()} from the Gorgon CT log.`,
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+      },
     };
   }
 
+  // List view: static metadata
+  const listDescription =
+    "Browse raw Certificate Transparency log entries from the Gorgon CT log with decoded certificates, annotated hex viewer, and chain analysis.";
   return {
     title: "CT Log Viewer",
-    description: "Browse and inspect raw Certificate Transparency log entries from Gorgon.",
+    description: listDescription,
+    openGraph: {
+      title: "CT Log Viewer — Gorgon Certificate Transparency",
+      description: listDescription,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "CT Log Viewer — Gorgon Certificate Transparency",
+      description: listDescription,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
   };
 }
 

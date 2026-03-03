@@ -5,6 +5,15 @@ import { Separator } from "@/components/ui/separator";
 export const metadata: Metadata = {
   title: "Privacy",
   description: "BIMI Quest privacy information. No tracking, no cookies, no accounts.",
+  openGraph: {
+    title: "Privacy — BIMI Quest",
+    description: "No tracking, no cookies, no accounts. All certificate data is sourced from public CT logs.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Privacy — BIMI Quest",
+    description: "No tracking, no cookies, no accounts. All certificate data is sourced from public CT logs.",
+  },
 };
 
 export default async function PrivacyPage() {
