@@ -1,6 +1,7 @@
 "use client";
 
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -109,6 +110,7 @@ function useCertTable(data: CertRow[], columns: ColumnDef<CertRow>[]) {
   // React Compiler pragma: disable auto-memoization for this hook
   // because TanStack Table manages its own internal memoization
   "use no memo";
+  // eslint-disable-next-line react-hooks/incompatible-library
   return useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 }
 
@@ -163,13 +165,13 @@ export function CertificatesTable({
     () => [
       {
         id: "logo",
-        meta: { className: "w-9 sm:w-14" },
+        meta: { className: "w-11 !py-0" },
         header: "",
         size: 56,
         cell: ({ row }) => {
           const hash = row.original.logotypeSvgHash;
           if (!hash || !row.original.hasLogo) {
-            return <div className="size-8 sm:size-11 rounded-lg border border-border/30 bg-muted/50" />;
+            return <div className="h-10 w-10 rounded-lg border border-border/30 bg-muted/50" />;
           }
           const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
           const svgUrl = `/api/logo/${hash}?format=svg`;
@@ -177,13 +179,14 @@ export function CertificatesTable({
           const logoHref = `/logo/${row.original.fingerprintSha256.slice(0, 16)}`;
           return (
             <Link href={logoHref} onClick={(e) => e.stopPropagation()} aria-label={`${org} logo`}>
-              <img
+              <Image
                 src={svgUrl}
                 alt={`${org} logo`}
                 loading="lazy"
-                width={44}
-                height={44}
-                className="size-8 sm:size-11 min-w-8 sm:min-w-11 rounded-lg border border-border/30 object-contain shadow-sm transition-transform duration-150 group-hover/row:scale-105"
+                width={40}
+                height={40}
+                unoptimized
+                className="h-10 w-10 min-w-10 rounded-lg border border-border/30 object-contain shadow-sm transition-transform duration-150 group-hover/row:scale-105"
                 style={bg ? { backgroundColor: bg } : undefined}
               />
             </Link>
@@ -212,7 +215,7 @@ export function CertificatesTable({
             <div className="min-w-0">
               <Link
                 href={orgHref}
-                className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate block transition-colors duration-150"
+                className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate max-w-full inline-block transition-colors duration-150"
                 onClick={(e) => e.stopPropagation()}
               >
                 {org}
@@ -592,10 +595,7 @@ export function CertificatesTable({
                     }
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={cn("py-2 sm:py-3 xl:py-2", cell.column.columnDef.meta?.className)}
-                      >
+                      <TableCell key={cell.id} className={cn("py-1.5", cell.column.columnDef.meta?.className)}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}

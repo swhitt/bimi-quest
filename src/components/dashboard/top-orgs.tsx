@@ -37,11 +37,11 @@ export function TopOrgs({ initialData }: { initialData?: OrgRow[] }) {
   const orgs15 = orgs.slice(0, 15);
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col overflow-hidden">
       <CardHeader>
         <CardTitle>Who&rsquo;s Adopting</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 overflow-auto">
         {orgs15.length > 0 ? (
           <ol className="space-y-2.5">
             {orgs15.map((org, i) => (
@@ -60,7 +60,7 @@ export function TopOrgs({ initialData }: { initialData?: OrgRow[] }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
-                  {org.industry && <span className="hidden sm:inline">{org.industry}</span>}
+                  {org.industry && <span className="hidden sm:inline truncate max-w-24">{org.industry}</span>}
                   {org.country && <span>{org.country}</span>}
                   <span className="tabular-nums font-medium text-foreground">{org.total}</span>
                 </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,15 +38,16 @@ export function RecentCerts({
   initialTotalPages?: number;
 }) {
   const { buildApiParams } = useGlobalFilters();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [certs, setCerts] = useState<RecentCert[]>(initialData ?? []);
   const [totalPages, setTotalPages] = useState(initialTotalPages ?? 1);
   const [page, setPage] = useState(1);
-  // Mark as already loaded if server provided initial data
   const [loadedParams, setLoadedParams] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const hasInitialData = useRef(!!initialData);
+  const [isInitialLoad, setIsInitialLoad] = useState(!!initialData);
+  const [prevBaseFilter, setPrevBaseFilter] = useState<string | null>(null);
 
   // Build "View all" link preserving current filters (CA in path, rest as search params)
   const caMatch = pathname.match(/\/ca\/([^/]+)/);
@@ -64,22 +66,32 @@ export function RecentCerts({
   });
   const loading = loadedParams !== filterParams;
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters change (adjust state during render)
   const baseFilterParams = buildApiParams();
-  useEffect(() => {
+  if (prevBaseFilter !== null && prevBaseFilter !== baseFilterParams) {
+    setPrevBaseFilter(baseFilterParams);
     setPage(1);
-  }, [baseFilterParams]);
+  }
+  if (prevBaseFilter === null) {
+    setPrevBaseFilter(baseFilterParams);
+  }
+
+  // Mark initial server data as already loaded (adjust state during render)
+  if (isInitialLoad) {
+    setIsInitialLoad(false);
+    setLoadedParams(filterParams);
+  }
+
+  // Clear stale error when a new fetch is about to start
+  if (loadedParams !== filterParams && error !== null) {
+    setError(null);
+  }
 
   useEffect(() => {
-    // Skip the first fetch if the server provided initial data
-    if (hasInitialData.current) {
-      hasInitialData.current = false;
-      setLoadedParams(filterParams);
-      return;
-    }
+    // Don't fetch if we already have data for these params
+    if (loadedParams === filterParams) return;
 
     const controller = new AbortController();
-    setError(null);
 
     fetch(`/api/certificates?${filterParams}`, { signal: controller.signal })
       .then((res) => {
@@ -99,10 +111,10 @@ export function RecentCerts({
       });
 
     return () => controller.abort();
-  }, [filterParams]);
+  }, [filterParams, loadedParams]);
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col overflow-hidden">
       <CardHeader>
         <CardTitle>Latest Issuances</CardTitle>
         <CardAction>
@@ -125,11 +137,20 @@ export function RecentCerts({
           </p>
         ) : certs.length > 0 ? (
           <div className="space-y-2">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-1 px-1">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col className="w-11" />
+                  <col />
+                  <col className="hidden lg:table-column w-[160px]" />
+                  <col className="hidden sm:table-column w-14" />
+                  <col className="hidden sm:table-column w-20" />
+                  <col className="hidden md:table-column w-14" />
+                  <col className="w-20" />
+                </colgroup>
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="pb-2 pr-2 font-medium w-10" />
+                    <th className="pb-2 pr-2 font-medium" />
                     <th className="pb-2 pr-2 font-medium">Organization</th>
                     <th className="pb-2 pr-2 font-medium hidden lg:table-cell">Hostnames</th>
                     <th className="pb-2 pr-2 font-medium hidden sm:table-cell">Type</th>
@@ -139,104 +160,126 @@ export function RecentCerts({
                   </tr>
                 </thead>
                 <tbody>
-                  {certs.map((cert) => (
-                    <tr key={cert.id} className="border-b last:border-0 hover:bg-secondary/50 transition-colors">
-                      <td className="py-0 pr-2 w-10">
-                        {cert.hasLogo && cert.logotypeSvgHash ? (
-                          <Link href={`/logo/${cert.fingerprintSha256.slice(0, 16)}`}>
-                            <img
-                              src={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
-                              alt=""
-                              width={40}
-                              height={40}
-                              className="h-10 w-10 min-w-10 shrink-0 rounded-lg border object-contain"
-                              style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
-                            />
-                          </Link>
-                        ) : (
-                          <div className="h-10 w-10 shrink-0 rounded-lg border bg-muted" />
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            href={
-                              cert.subjectOrg
-                                ? `/orgs/${encodeURIComponent(cert.subjectOrg)}`
-                                : `/certificates/${cert.fingerprintSha256.slice(0, 12)}`
-                            }
-                            className="hover:underline font-medium truncate"
-                          >
-                            {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
-                          </Link>
-                          {cert.notabilityScore != null && cert.notabilityScore >= 7 && (
-                            <span
-                              className={`size-1.5 rounded-full shrink-0 ${
-                                cert.notabilityScore >= 9 ? "bg-amber-500" : "bg-blue-500"
-                              }`}
-                              title={`Notability: ${cert.notabilityScore}`}
-                            />
+                  {certs.map((cert) => {
+                    const certPath = `/certificates/${cert.fingerprintSha256.slice(0, 12)}`;
+                    return (
+                      <tr
+                        key={cert.id}
+                        className="border-b last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer"
+                        onClick={() => router.push(certPath)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(certPath);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="link"
+                      >
+                        <td className="py-0 pr-2 w-10">
+                          {cert.hasLogo && cert.logotypeSvgHash ? (
+                            <Link
+                              href={`/logo/${cert.fingerprintSha256.slice(0, 16)}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Image
+                                src={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
+                                alt=""
+                                width={40}
+                                height={40}
+                                unoptimized
+                                className="h-10 w-10 min-w-10 shrink-0 rounded-lg border object-contain"
+                                style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
+                              />
+                            </Link>
+                          ) : (
+                            <div className="h-10 w-10 shrink-0 rounded-lg border bg-muted" />
                           )}
-                        </div>
-                        {cert.sanList[0] && (
-                          <Link
-                            href={`/hosts/${encodeURIComponent(cert.sanList[0])}`}
-                            className="text-[11px] font-mono text-muted-foreground hover:text-foreground block truncate lg:hidden"
-                          >
-                            {cert.sanList[0]}
-                          </Link>
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-2 hidden lg:table-cell text-xs max-w-[200px]">
-                        {cert.sanList.length > 0 ? (
-                          <div className="min-w-0">
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={cert.subjectOrg ? `/orgs/${encodeURIComponent(cert.subjectOrg)}` : certPath}
+                              className="hover:underline font-medium truncate"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
+                            </Link>
+                            {cert.notabilityScore != null && cert.notabilityScore >= 7 && (
+                              <span
+                                className={`size-1.5 rounded-full shrink-0 ${
+                                  cert.notabilityScore >= 9 ? "bg-amber-500" : "bg-blue-500"
+                                }`}
+                                title={`Notability: ${cert.notabilityScore}`}
+                              />
+                            )}
+                          </div>
+                          {cert.sanList[0] && (
                             <Link
                               href={`/hosts/${encodeURIComponent(cert.sanList[0])}`}
-                              className="text-muted-foreground hover:text-foreground block truncate"
+                              className="text-[11px] font-mono text-muted-foreground hover:text-foreground block truncate lg:hidden"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {cert.sanList[0]}
                             </Link>
-                            {cert.sanList.length > 1 && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-muted-foreground/60 cursor-help">
-                                    +{cert.sanList.length - 1} more
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-80">
-                                  <ul className="space-y-0.5">
-                                    {cert.sanList.slice(1).map((san) => (
-                                      <li key={san} className="font-mono text-xs">
-                                        <Link href={`/hosts/${encodeURIComponent(san)}`} className="hover:underline">
-                                          {san}
-                                        </Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-2 hidden sm:table-cell">
-                        <Badge variant="outline" className="text-[11px] px-1.5 py-0">
-                          {cert.certType || "BIMI"}
-                        </Badge>
-                      </td>
-                      <td className="py-1.5 pr-2 hidden sm:table-cell text-muted-foreground">
-                        {displayIssuerOrg(cert.issuerOrg)}
-                      </td>
-                      <td className="py-1.5 pr-2 hidden md:table-cell text-muted-foreground">
-                        {cert.subjectCountry || "—"}
-                      </td>
-                      <td className="py-1.5 text-right text-muted-foreground whitespace-nowrap">
-                        <UtcTime date={cert.notBefore} relative />
-                      </td>
-                    </tr>
-                  ))}
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-2 hidden lg:table-cell text-xs max-w-[200px]">
+                          {cert.sanList.length > 0 ? (
+                            <div className="min-w-0">
+                              <Link
+                                href={`/hosts/${encodeURIComponent(cert.sanList[0])}`}
+                                className="text-muted-foreground hover:text-foreground block truncate"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {cert.sanList[0]}
+                              </Link>
+                              {cert.sanList.length > 1 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <span className="text-muted-foreground/60 cursor-help">
+                                      +{cert.sanList.length - 1} more
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-80">
+                                    <ul className="space-y-0.5">
+                                      {cert.sanList.slice(1).map((san) => (
+                                        <li key={san} className="font-mono text-xs">
+                                          <Link
+                                            href={`/hosts/${encodeURIComponent(san)}`}
+                                            className="hover:underline"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {san}
+                                          </Link>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-2 hidden sm:table-cell">
+                          <Badge variant="outline" className="text-[11px] px-1.5 py-0">
+                            {cert.certType || "BIMI"}
+                          </Badge>
+                        </td>
+                        <td className="py-1.5 pr-2 hidden sm:table-cell text-muted-foreground truncate">
+                          {displayIssuerOrg(cert.issuerOrg)}
+                        </td>
+                        <td className="py-1.5 pr-2 hidden md:table-cell text-muted-foreground">
+                          {cert.subjectCountry || "—"}
+                        </td>
+                        <td className="py-1.5 text-right text-muted-foreground whitespace-nowrap">
+                          <UtcTime date={cert.notBefore} relative />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

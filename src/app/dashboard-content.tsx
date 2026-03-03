@@ -119,10 +119,10 @@ export async function DashboardContent({
       </div>
 
       <div className="grid gap-4 md:grid-cols-5 items-stretch">
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 min-w-0">
           <TopOrgs initialData={topOrgsRes?.data ?? undefined} />
         </div>
-        <div className="md:col-span-3">
+        <div className="md:col-span-3 min-w-0">
           <RecentCerts
             initialData={recentCertsRes?.data ?? undefined}
             initialTotalPages={recentCertsRes?.pagination?.totalPages ?? undefined}
