@@ -43,11 +43,11 @@ export interface BIMICertData {
   extensionsJson: Record<string, ExtensionEntry>;
 }
 
-function base64ToBuffer(b64: string): Uint8Array {
+export function base64ToBuffer(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
-function derToPem(der: Uint8Array): string {
+export function derToPem(der: Uint8Array): string {
   const b64 = Buffer.from(der).toString("base64");
   const lines = b64.match(/.{1,64}/g) || [];
   return `-----BEGIN CERTIFICATE-----\n${lines.join("\n")}\n-----END CERTIFICATE-----`;
@@ -59,12 +59,12 @@ async function sha256(data: Uint8Array): Promise<string> {
 }
 
 /** Read a 3-byte big-endian length from a buffer */
-function readUint24(buf: Uint8Array, offset: number): number {
+export function readUint24(buf: Uint8Array, offset: number): number {
   return buf[offset] * 65536 + (buf[offset + 1] << 8) + buf[offset + 2];
 }
 
 /** Read an 8-byte big-endian timestamp */
-function readUint64(buf: Uint8Array, offset: number): number {
+export function readUint64(buf: Uint8Array, offset: number): number {
   // JS can safely handle timestamps up to 2^53, so this is fine
   let val = 0;
   for (let i = 0; i < 8; i++) {
