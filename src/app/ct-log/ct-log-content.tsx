@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EntryDetail } from "@/components/ct-log/entry-detail";
 import { EntryList } from "@/components/ct-log/entry-list";
@@ -12,14 +12,28 @@ import type { DecodedCTEntry } from "@/lib/ct/decode-entry";
 const DEFAULT_PAGE_SIZE = 100;
 const STH_POLL_INTERVAL = 60_000;
 
+function buildListUrl(start: number, count: number): string {
+  const params = new URLSearchParams();
+  params.set("start", String(start));
+  if (count !== DEFAULT_PAGE_SIZE) params.set("count", String(count));
+  return `/ct-log?${params}`;
+}
+
+/** Update browser URL without triggering Next.js navigation or component remount */
+function replaceUrl(url: string) {
+  window.history.replaceState(window.history.state, "", url);
+}
+
 interface EntriesResponse {
   entries: DecodedCTEntry[];
   range: { start: number; end: number; treeSize: number };
 }
 
-export function CTLogContent() {
-  const router = useRouter();
-  const pathname = usePathname();
+interface CTLogContentProps {
+  permalinkedIndex?: number;
+}
+
+export function CTLogContent({ permalinkedIndex }: CTLogContentProps) {
   const searchParams = useSearchParams();
 
   const [sth, setSTH] = useState<STHResponse | null>(null);
@@ -27,6 +41,9 @@ export function CTLogContent() {
   const [entries, setEntries] = useState<DecodedCTEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [startIndex, setStartIndex] = useState<number | null>(() => {
+    if (permalinkedIndex !== undefined) {
+      return Math.max(0, permalinkedIndex - Math.floor(DEFAULT_PAGE_SIZE / 2));
+    }
     const s = searchParams.get("start");
     if (!s) return null;
     const parsed = parseInt(s, 10);
@@ -37,12 +54,20 @@ export function CTLogContent() {
     const parsed = c ? parseInt(c, 10) : DEFAULT_PAGE_SIZE;
     return [50, 100, 200].includes(parsed) ? parsed : DEFAULT_PAGE_SIZE;
   });
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(permalinkedIndex ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const detailRef = useRef<HTMLDivElement>(null);
   const jumpInputRef = useRef<HTMLInputElement>(null);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Refs for stable callbacks (avoids re-creating on every state change)
+  const selectedRef = useRef<number | null>(selectedIndex);
+  const startRef = useRef<number | null>(startIndex);
+  const pageSizeRef = useRef(pageSize);
+  selectedRef.current = selectedIndex;
+  startRef.current = startIndex;
+  pageSizeRef.current = pageSize;
 
   // Cmd/Ctrl+G focuses jump-to-index input
   useEffect(() => {
@@ -95,13 +120,12 @@ export function CTLogContent() {
     }
   }, []);
 
-  // Initial load: fetch STH, then jump to latest entries (unless URL has start)
+  // Initial load: fetch STH, then jump to latest entries (unless URL has start or permalink)
   useEffect(() => {
     fetchSTH().then((data) => {
       if (data && startIndex === null) {
         const start = Math.max(0, data.tree_size - pageSize);
         setStartIndex(start);
-        updateUrl(start, pageSize);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
@@ -119,48 +143,62 @@ export function CTLogContent() {
     fetchEntries(startIndex, pageSize);
   }, [startIndex, pageSize, fetchEntries]);
 
-  // Sync URL with state
-  const updateUrl = useCallback(
-    (start: number, count: number) => {
-      const params = new URLSearchParams();
-      params.set("start", String(start));
-      if (count !== DEFAULT_PAGE_SIZE) params.set("count", String(count));
-      router.replace(`${pathname}?${params}`, { scroll: false });
-    },
-    [router, pathname],
-  );
+  // Auto-scroll entry row to center of viewport when a permalinked entry loads
+  useEffect(() => {
+    if (permalinkedIndex === undefined) return;
+    if (selectedIndex !== permalinkedIndex) return;
+    if (!entries.some((e) => e.index === permalinkedIndex)) return;
+    const row = document.querySelector(`[data-entry-index="${permalinkedIndex}"]`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [permalinkedIndex, selectedIndex, entries]);
 
-  // Navigate to a new start index
-  const handleNavigate = useCallback(
-    (newStart: number) => {
-      setStartIndex(newStart);
-      setSelectedIndex(null);
-      updateUrl(newStart, pageSize);
-    },
-    [updateUrl, pageSize],
-  );
+  // Cleanup scroll timer on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    };
+  }, []);
 
-  // Change page size, keeping current start index stable
-  const handlePageSizeChange = useCallback(
-    (size: number) => {
-      setPageSize(size);
-      if (startIndex !== null) updateUrl(startIndex, size);
-    },
-    [updateUrl, startIndex],
-  );
+  // Navigate to a new start index (clears selection, updates URL)
+  const handleNavigate = useCallback((newStart: number) => {
+    setStartIndex(newStart);
+    setSelectedIndex(null);
+    replaceUrl(buildListUrl(newStart, pageSizeRef.current));
+  }, []);
 
-  // Select an entry and scroll detail into view on mobile
+  // Change page size
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+    const si = startRef.current;
+    if (selectedRef.current !== null) return;
+    if (si !== null) {
+      replaceUrl(buildListUrl(si, size));
+    }
+  }, []);
+
+  // Select/deselect an entry (updates URL to entry permalink or list view)
   const handleSelect = useCallback((index: number) => {
-    setSelectedIndex((prev) => {
-      const next = index === prev ? null : index;
-      if (next !== null && detailRef.current) {
+    const prev = selectedRef.current;
+    const next = index === prev ? null : index;
+    setSelectedIndex(next);
+
+    if (next !== null) {
+      replaceUrl(`/ct-log/${next}`);
+      if (detailRef.current) {
         if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
         scrollTimerRef.current = setTimeout(() => {
           detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 50);
       }
-      return next;
-    });
+    } else {
+      const si = startRef.current;
+      const ps = pageSizeRef.current;
+      if (si !== null) {
+        replaceUrl(buildListUrl(si, ps));
+      } else {
+        replaceUrl("/ct-log");
+      }
+    }
   }, []);
 
   const selectedEntry = useMemo(() => entries.find((e) => e.index === selectedIndex) ?? null, [entries, selectedIndex]);

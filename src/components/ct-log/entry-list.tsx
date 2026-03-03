@@ -73,6 +73,7 @@ export const EntryList = memo(function EntryList({ entries, selectedIndex, onSel
               return (
                 <tr
                   key={entry.index}
+                  data-entry-index={entry.index}
                   tabIndex={0}
                   role="button"
                   aria-pressed={isSelected}
