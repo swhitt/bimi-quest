@@ -1,4 +1,24 @@
-import DOMPurify from "isomorphic-dompurify";
+/**
+ * Lazy-load DOMPurify only in browser environments.
+ * isomorphic-dompurify requires jsdom which is ESM-only and crashes on
+ * Vercel serverless (ERR_REQUIRE_ESM). Using dompurify directly avoids
+ * jsdom entirely since it uses the browser's native DOM.
+ */
+let _purify: { sanitize: (dirty: string, cfg: Record<string, unknown>) => string } | null = null;
+let _tried = false;
+
+function getPurify() {
+  if (_purify) return _purify;
+  if (_tried) return null;
+  _tried = true;
+  if (typeof window !== "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("dompurify");
+    _purify = mod.default || mod;
+    return _purify;
+  }
+  return null;
+}
 
 const ALLOWED_TAGS = [
   "svg",
@@ -109,16 +129,38 @@ function stripBrowserDropped(svg: string): string {
   );
 }
 
+/** Server-side fallback: strip dangerous content without DOMPurify/jsdom.
+ *  SVG content from our DB was already sanitized during ingestion, so this
+ *  is defense-in-depth for the SSR pass. */
+function stripDangerousElements(svg: string): string {
+  return svg
+    .replace(/<script[\s>][\s\S]*?<\/script>/gi, "")
+    .replace(/<foreignObject[\s>][\s\S]*?<\/foreignObject>/gi, "")
+    .replace(/<iframe[\s>][\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object[\s>][\s\S]*?<\/object>/gi, "")
+    .replace(/<embed[\s>][^>]*/gi, "")
+    .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+    .replace(/href\s*=\s*"javascript:[^"]*"/gi, "")
+    .replace(/href\s*=\s*'javascript:[^']*'/gi, "");
+}
+
 /** Sanitize SVG markup, stripping scripts and event handlers */
 export function sanitizeSvg(raw: string): string {
   // Strip XML declaration and leading whitespace so server and client produce
   // identical output (DOMPurify strips it client-side, causing hydration mismatch)
   const stripped = raw.replace(/^\s*<\?xml[^?]*\?>\s*/i, "");
   const normalized = ensureViewBox(stripBrowserDropped(stripped));
-  return DOMPurify.sanitize(normalized, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    ALLOWED_TAGS,
-    ALLOWED_ATTR: ALLOWED_ATTRS,
-    ADD_TAGS: ["solidColor"],
-  });
+
+  const purify = getPurify();
+  if (purify) {
+    return purify.sanitize(normalized, {
+      USE_PROFILES: { svg: true, svgFilters: true },
+      ALLOWED_TAGS,
+      ALLOWED_ATTR: ALLOWED_ATTRS,
+      ADD_TAGS: ["solidColor"],
+    });
+  }
+
+  // Server-side: regex fallback (content was already sanitized at ingestion time)
+  return stripDangerousElements(normalized);
 }
