@@ -49,16 +49,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       if (!getCachedEntry(i)) uncachedIndices.push(i);
     }
 
-    // Fetch uncached entries from Gorgon in a single batch
+    // Fetch uncached entries from Gorgon, looping since CT logs may return
+    // fewer entries than requested per the RFC 6962 spec
     if (uncachedIndices.length > 0) {
-      const fetchStart = uncachedIndices[0];
+      let cursor = uncachedIndices[0];
       const fetchEnd = uncachedIndices[uncachedIndices.length - 1];
-      const response = await getEntries(fetchStart, fetchEnd);
+      const MAX_ROUNDS = 5;
+      for (let round = 0; round < MAX_ROUNDS && cursor <= fetchEnd; round++) {
+        const response = await getEntries(cursor, fetchEnd);
+        if (response.entries.length === 0) break;
 
-      const decoded = await Promise.all(response.entries.map((raw, i) => decodeCTEntry(raw, fetchStart + i)));
+        const decoded = await Promise.all(response.entries.map((raw, i) => decodeCTEntry(raw, cursor + i)));
 
-      for (const entry of decoded) {
-        setCachedEntry(entry.index, entry);
+        for (const entry of decoded) {
+          setCachedEntry(entry.index, entry);
+        }
+        cursor += response.entries.length;
       }
     }
 
