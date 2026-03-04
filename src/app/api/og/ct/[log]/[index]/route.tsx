@@ -6,8 +6,15 @@ import { getOgFonts } from "@/lib/og/fonts";
 
 export const runtime = "nodejs";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ index: string }> }) {
-  const { index: indexStr } = await params;
+const KNOWN_LOGS = new Set(["gorgon"]);
+
+export async function GET(_request: Request, { params }: { params: Promise<{ log: string; index: string }> }) {
+  const { log, index: indexStr } = await params;
+
+  if (!KNOWN_LOGS.has(log)) {
+    return new Response("Unknown CT log", { status: 404 });
+  }
+
   const index = parseInt(indexStr, 10);
   if (!Number.isFinite(index) || index < 0) {
     return new Response("Invalid index", { status: 400 });

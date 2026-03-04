@@ -7,8 +7,11 @@ import { decodeCTEntry } from "@/lib/ct/decode-entry";
 import { getEntries, getSTH } from "@/lib/ct/gorgon";
 import { CTLogContent } from "../ct-log-content";
 
+/** Known CT log slugs — add new logs here as they launch. */
+const KNOWN_LOGS = new Set(["gorgon"]);
+
 interface Props {
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ log: string; slug?: string[] }>;
 }
 
 function parseEntryIndex(slug?: string[]): number | undefined {
@@ -30,7 +33,10 @@ const fetchEntry = cache(async (index: number) => {
 });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { log, slug } = await params;
+
+  if (!KNOWN_LOGS.has(log)) return { title: "CT Log Not Found" };
+
   const entryIndex = parseEntryIndex(slug);
 
   if (slug?.length && entryIndex === undefined) {
@@ -48,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const issuer = entry.cert?.issuer || "Unknown Issuer";
     const type = entry.leaf.entryType === "precert_entry" ? "Precert" : "X.509";
     const bimi = entry.cert?.isBIMI ? " · BIMI" : "";
-    const ogImageUrl = `/api/og/ct-log/${entryIndex}`;
+    const ogImageUrl = `/api/og/ct/${log}/${entryIndex}`;
 
     const title = `CT Entry #${entryIndex.toLocaleString()} — ${subject}`;
     const description = `${type}${bimi} | Issued by ${issuer} | ${entry.leaf.timestampDate}`;
@@ -91,7 +97,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CTLogPage({ params }: Props) {
-  const { slug } = await params;
+  const { log, slug } = await params;
+
+  if (!KNOWN_LOGS.has(log)) notFound();
+
   const entryIndex = parseEntryIndex(slug);
 
   if (slug?.length && entryIndex === undefined) notFound();
@@ -99,7 +108,7 @@ export default async function CTLogPage({ params }: Props) {
   await connection();
   return (
     <Suspense>
-      <CTLogContent permalinkedIndex={entryIndex} />
+      <CTLogContent logSlug={log} permalinkedIndex={entryIndex} />
     </Suspense>
   );
 }

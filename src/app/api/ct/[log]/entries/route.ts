@@ -6,12 +6,19 @@ import { decodeCTEntry } from "@/lib/ct/decode-entry";
 import { getCachedEntry, setCachedEntry } from "@/lib/ct/entry-cache";
 import { getEntries, getSTH } from "@/lib/ct/gorgon";
 
+const KNOWN_LOGS = new Set(["gorgon"]);
+
 const querySchema = z.object({
   start: z.coerce.number().int().min(0),
   count: z.coerce.number().int().min(1).max(200).default(100),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ log: string }> }) {
+  const { log } = await params;
+  if (!KNOWN_LOGS.has(log)) {
+    return NextResponse.json({ error: "Unknown CT log" }, { status: 404 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
 
   const parsed = querySchema.safeParse({
@@ -73,6 +80,6 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (error) {
-    return apiError(error, "ct-log.entries.failed", "/api/ct-log/entries", "Failed to fetch CT log entries");
+    return apiError(error, "ct.entries.failed", `/api/ct/${log}/entries`, "Failed to fetch CT log entries");
   }
 }

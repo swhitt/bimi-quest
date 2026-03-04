@@ -12,13 +12,6 @@ import type { DecodedCTEntry } from "@/lib/ct/decode-entry";
 const DEFAULT_PAGE_SIZE = 100;
 const STH_POLL_INTERVAL = 60_000;
 
-function buildListUrl(start: number, count: number): string {
-  const params = new URLSearchParams();
-  params.set("start", String(start));
-  if (count !== DEFAULT_PAGE_SIZE) params.set("count", String(count));
-  return `/ct-log?${params}`;
-}
-
 /** Update browser URL without triggering Next.js navigation or component remount */
 function replaceUrl(url: string) {
   window.history.replaceState(window.history.state, "", url);
@@ -30,11 +23,25 @@ interface EntriesResponse {
 }
 
 interface CTLogContentProps {
+  logSlug: string;
   permalinkedIndex?: number;
 }
 
-export function CTLogContent({ permalinkedIndex }: CTLogContentProps) {
+export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
   const searchParams = useSearchParams();
+
+  const basePath = `/ct/${logSlug}`;
+  const apiBase = `/api/ct/${logSlug}`;
+
+  const buildListUrl = useCallback(
+    (start: number, count: number): string => {
+      const params = new URLSearchParams();
+      params.set("start", String(start));
+      if (count !== DEFAULT_PAGE_SIZE) params.set("count", String(count));
+      return `${basePath}?${params}`;
+    },
+    [basePath],
+  );
 
   const [sth, setSTH] = useState<STHResponse | null>(null);
   const [sthLoading, setSTHLoading] = useState(true);
@@ -84,7 +91,7 @@ export function CTLogContent({ permalinkedIndex }: CTLogContentProps) {
   // Fetch STH
   const fetchSTH = useCallback(async () => {
     try {
-      const res = await fetch("/api/ct-log/sth");
+      const res = await fetch(`${apiBase}/sth`);
       if (!res.ok) throw new Error("Failed to fetch STH");
       const data: STHResponse = await res.json();
       setSTH(data);
@@ -95,30 +102,33 @@ export function CTLogContent({ permalinkedIndex }: CTLogContentProps) {
     } finally {
       setSTHLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   const abortRef = useRef<AbortController | null>(null);
 
   // Fetch entries for a given start index
-  const fetchEntries = useCallback(async (start: number, size: number) => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/ct-log/entries?start=${start}&count=${size}`, { signal: controller.signal });
-      if (!res.ok) throw new Error("Failed to fetch entries");
-      const data: EntriesResponse = await res.json();
-      setEntries(data.entries);
-    } catch (e) {
-      if ((e as Error).name === "AbortError") return;
-      setError("Failed to fetch CT log entries");
-      setEntries([]);
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, []);
+  const fetchEntries = useCallback(
+    async (start: number, size: number) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${apiBase}/entries?start=${start}&count=${size}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Failed to fetch entries");
+        const data: EntriesResponse = await res.json();
+        setEntries(data.entries);
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        setError("Failed to fetch CT log entries");
+        setEntries([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    },
+    [apiBase],
+  );
 
   // Initial load: fetch STH, then jump to latest entries (unless URL has start or permalink)
   useEffect(() => {
@@ -160,46 +170,55 @@ export function CTLogContent({ permalinkedIndex }: CTLogContentProps) {
   }, []);
 
   // Navigate to a new start index (clears selection, updates URL)
-  const handleNavigate = useCallback((newStart: number) => {
-    setStartIndex(newStart);
-    setSelectedIndex(null);
-    replaceUrl(buildListUrl(newStart, pageSizeRef.current));
-  }, []);
+  const handleNavigate = useCallback(
+    (newStart: number) => {
+      setStartIndex(newStart);
+      setSelectedIndex(null);
+      replaceUrl(buildListUrl(newStart, pageSizeRef.current));
+    },
+    [buildListUrl],
+  );
 
   // Change page size
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    const si = startRef.current;
-    if (selectedRef.current !== null) return;
-    if (si !== null) {
-      replaceUrl(buildListUrl(si, size));
-    }
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      const si = startRef.current;
+      if (selectedRef.current !== null) return;
+      if (si !== null) {
+        replaceUrl(buildListUrl(si, size));
+      }
+    },
+    [buildListUrl],
+  );
 
   // Select/deselect an entry (updates URL to entry permalink or list view)
-  const handleSelect = useCallback((index: number) => {
-    const prev = selectedRef.current;
-    const next = index === prev ? null : index;
-    setSelectedIndex(next);
+  const handleSelect = useCallback(
+    (index: number) => {
+      const prev = selectedRef.current;
+      const next = index === prev ? null : index;
+      setSelectedIndex(next);
 
-    if (next !== null) {
-      replaceUrl(`/ct-log/${next}`);
-      if (detailRef.current) {
-        if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-        scrollTimerRef.current = setTimeout(() => {
-          detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }, 50);
-      }
-    } else {
-      const si = startRef.current;
-      const ps = pageSizeRef.current;
-      if (si !== null) {
-        replaceUrl(buildListUrl(si, ps));
+      if (next !== null) {
+        replaceUrl(`${basePath}/${next}`);
+        if (detailRef.current) {
+          if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+          scrollTimerRef.current = setTimeout(() => {
+            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }, 50);
+        }
       } else {
-        replaceUrl("/ct-log");
+        const si = startRef.current;
+        const ps = pageSizeRef.current;
+        if (si !== null) {
+          replaceUrl(buildListUrl(si, ps));
+        } else {
+          replaceUrl(basePath);
+        }
       }
-    }
-  }, []);
+    },
+    [basePath, buildListUrl],
+  );
 
   const selectedEntry = useMemo(() => entries.find((e) => e.index === selectedIndex) ?? null, [entries, selectedIndex]);
   const treeSize = sth?.tree_size ?? 0;

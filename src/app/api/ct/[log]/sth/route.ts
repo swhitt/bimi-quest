@@ -5,7 +5,14 @@ import { getSTH } from "@/lib/ct/gorgon";
 import { db } from "@/lib/db";
 import { ingestionCursors } from "@/lib/db/schema";
 
-export async function GET() {
+const KNOWN_LOGS = new Set(["gorgon"]);
+
+export async function GET(_request: Request, { params }: { params: Promise<{ log: string }> }) {
+  const { log } = await params;
+  if (!KNOWN_LOGS.has(log)) {
+    return NextResponse.json({ error: "Unknown CT log" }, { status: 404 });
+  }
+
   try {
     const [sth, lastRunRow] = await Promise.all([
       getSTH(),

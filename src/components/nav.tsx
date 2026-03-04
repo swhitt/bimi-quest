@@ -15,7 +15,7 @@ import { UniversalSearch } from "./universal-search";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/certificates", label: "Certificates" },
-  { href: "/ct-log", label: "Log" },
+  { href: "/ct/gorgon", label: "Log" },
   { href: "/logos", label: "Logos" },
   { href: "/validate", label: "Validate" },
   { href: "/map", label: "Map" },
