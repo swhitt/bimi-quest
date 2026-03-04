@@ -7,7 +7,7 @@ export interface DiscordCertPayload {
   org: string;
   issuer: string;
   rootCa: string;
-  certType: "VMC" | "CMC";
+  certType: "VMC" | "CMC" | null;
   country: string | null;
   certId: number;
   fingerprintSha256: string;
@@ -47,15 +47,17 @@ export async function sendDiscordNotification(payload: DiscordCertPayload): Prom
     issuerDisplay !== rootDisplay ||
     alwaysShowRoot.some((ca) => payload.rootCa.includes(ca) || payload.issuer.includes(ca));
 
+  const certTypeDisplay = payload.certType ?? "Unknown";
+
   const embed = {
-    title: `New ${payload.certType} Certificate`,
-    description: `**${payload.org || payload.domain}** obtained a BIMI ${payload.certType} from **${issuerDisplay}**`,
+    title: `New ${certTypeDisplay} Certificate`,
+    description: `**${payload.org || payload.domain}** obtained a BIMI ${certTypeDisplay} from **${issuerDisplay}**`,
     color,
     fields: [
       { name: "Domain", value: payload.domain, inline: true },
       { name: "Issuer", value: issuerDisplay, inline: true },
       ...(showRootCa ? [{ name: "Root CA", value: rootDisplay, inline: true }] : []),
-      { name: "Type", value: payload.certType, inline: true },
+      { name: "Type", value: certTypeDisplay, inline: true },
       ...(payload.country ? [{ name: "Country", value: payload.country, inline: true }] : []),
       ...(payload.notabilityScore && payload.notabilityScore >= NOTABILITY_NOTIFICATION_THRESHOLD
         ? [

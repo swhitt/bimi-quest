@@ -7,7 +7,7 @@ export interface NewCertEvent {
   org: string;
   issuer: string;
   rootCa: string;
-  certType: "VMC" | "CMC";
+  certType: "VMC" | "CMC" | null;
   country: string | null;
   notabilityScore?: number | null;
   notabilityReason?: string | null;

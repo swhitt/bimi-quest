@@ -10,9 +10,8 @@ import {
   parseChainCert,
   parseCTLogEntry,
 } from "@/lib/ct/parser";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { certificateChainLinks, certificates, chainCerts, ingestionCursors } from "@/lib/db/schema";
-import { computeVisualHash } from "@/lib/dhash";
 import { type BrandInput, scoreNotabilityBatch } from "@/lib/notability";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { computeColorRichness } from "@/lib/svg-color-richness";
@@ -53,6 +52,8 @@ export interface IngestBatchResult {
 
 /** Batch-score pending certs with Haiku, update DB, and send notifications for notable ones. */
 async function flushScores(batch: PendingCert[], notify: boolean): Promise<void> {
+  const db = getDb();
+
   const brands: BrandInput[] = batch
     .filter((c) => c.org)
     .map((c) => ({
@@ -81,7 +82,8 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
     });
 
   if (updateQueries.length > 0) {
-    await (db as any).batch(updateQueries);
+    // Type-safe batch call: getDb() returns NeonHttpDatabase which has a typed batch() method
+    await db.batch(updateQueries as [(typeof updateQueries)[0], ...typeof updateQueries]);
   }
 
   // Dispatch notifications for notable certs (separate from DB update)
@@ -96,7 +98,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
         org: cert.org || "unknown",
         issuer: cert.issuer,
         rootCa: cert.rootCa,
-        certType: cert.certType ?? "VMC",
+        certType: cert.certType,
         country: cert.country,
         notabilityScore: notability?.score,
         notabilityReason: notability?.reason,
@@ -114,6 +116,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
  */
 export async function processIngestBatch(options: IngestBatchOptions): Promise<IngestBatchResult> {
   const { startIndex, endIndex, maxBatches = 0, notify = false, onProgress } = options;
+  const db = getDb();
 
   const SCORE_BATCH_SIZE = 10;
 
@@ -148,7 +151,11 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       continue;
     }
 
+    // Track which entries succeeded vs. failed for cursor advancement.
+    // The cursor should only advance past entries that were actually processed
+    // successfully, so that transient failures can be retried on the next run.
     let lastSuccessIndex = i - 1;
+    let hadDbError = false;
 
     for (let j = 0; j < response.entries.length; j++) {
       const entry = response.entries[j];
@@ -157,10 +164,16 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       try {
         const parsed = parseCTLogEntry(entry);
         if (!parsed) {
+          // Parse failures are permanent (malformed entry) — safe to skip
           parseFailed++;
+          lastSuccessIndex = entryIndex;
           continue;
         }
-        if (!hasBIMIOID(parsed.cert)) continue;
+        if (!hasBIMIOID(parsed.cert)) {
+          // Non-BIMI entry — safe to skip
+          lastSuccessIndex = entryIndex;
+          continue;
+        }
 
         const bimiData = await extractBIMIData(parsed.cert, parsed.certDer);
         onProgress?.(
@@ -205,7 +218,9 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             logotypeSvgHash: bimiData.logotypeSvgHash,
             logotypeSvg: bimiData.logotypeSvg,
             logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
-            logotypeVisualHash: bimiData.logotypeSvg ? await computeVisualHash(bimiData.logotypeSvg) : null,
+            // Visual hash is deferred to the backfillVisualHash worker to keep
+            // the ingestion hot path fast (sharp render is 50-200ms per cert)
+            logotypeVisualHash: null,
             rawPem: bimiData.rawPem,
             isPrecert,
             ctLogTimestamp: new Date(parsed.timestamp),
@@ -325,12 +340,28 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
         lastSuccessIndex = entryIndex;
       } catch (err) {
         const msg = errorMessage(err);
+        // Distinguish transient DB errors from parse errors: if the error
+        // message suggests a database/network issue, stop the batch to avoid
+        // silently skipping entries that could succeed on retry.
+        const isTransient =
+          msg.includes("fetch failed") ||
+          msg.includes("CONNECT_TIMEOUT") ||
+          msg.includes("connection") ||
+          msg.includes("too many clients");
+        if (isTransient) {
+          onProgress?.(`Transient error at entry ${entryIndex}, stopping batch: ${msg.slice(0, 200)}`);
+          hadDbError = true;
+          break;
+        }
+        // Non-transient errors (parse/extraction bugs) — log but advance past them
         onProgress?.(`Error processing entry ${entryIndex}: ${msg.slice(0, 200)}`);
+        lastSuccessIndex = entryIndex;
         continue;
       }
     }
 
-    // Update cursor once per Gorgon batch instead of per-entry
+    // Update cursor once per Gorgon batch instead of per-entry.
+    // Only advance to the last successfully processed entry.
     const newCursor = lastSuccessIndex + 1;
     if (newCursor > i) {
       const now = new Date();
@@ -356,6 +387,9 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       onProgress?.(`Batch starting at ${i} failed entirely, stopping.`);
       break;
     }
+
+    // If we hit a transient DB error mid-batch, stop processing to allow retry
+    if (hadDbError) break;
 
     batchesRun++;
 

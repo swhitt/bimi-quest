@@ -2,6 +2,7 @@ import { SubjectAlternativeNameExtension, X509Certificate } from "@peculiar/x509
 import { BIMI_MARK_TYPE_OID } from "@/lib/bimi/oids";
 import { bytesToHex } from "@/lib/hex";
 import { decompressIfGzipped, pemToDer, sha256Hex, toArrayBuffer } from "@/lib/pem";
+import { extractSubjectAttribute } from "@/lib/x509/asn1";
 import type { CTLogEntry } from "./gorgon";
 
 // BIMI-relevant OIDs
@@ -260,20 +261,40 @@ export function extractSANs(cert: X509Certificate): string[] {
   }
 }
 
-/** Extract BIMI mark type from the subject DN field (OID 1.3.6.1.4.1.53087.1.13) */
+/**
+ * Extract BIMI mark type from the subject DN by OID 1.3.6.1.4.1.53087.1.13.
+ *
+ * Uses DER-based ASN.1 parsing of the Subject Name for correctness — the string
+ * representation can be lossy for non-standard OIDs. Falls back to regex on the
+ * string DN if ASN.1 parsing fails (e.g. unusual certificate encoding).
+ */
 function extractMarkType(cert: X509Certificate): string | null {
+  try {
+    const result = extractSubjectAttribute(cert, BIMI_MARK_TYPE_OID);
+    if (result) return result;
+  } catch {
+    // Fall through to string-based extraction
+  }
   return extractDnField(cert.subject, BIMI_MARK_TYPE_OID);
 }
 
-/** Derive cert type (VMC or CMC) from mark type */
+/**
+ * Known CMC (Common Mark Certificate) mark type values.
+ * Uses exact matching via Set.has() to prevent future mark type values
+ * from being misclassified by substring matching.
+ */
+const CMC_MARK_TYPES = new Set(["Prior Use Mark", "Modified Registered Mark", "Pending Registration Mark"]);
+
+/**
+ * Known VMC (Verified Mark Certificate) mark type values.
+ */
+const VMC_MARK_TYPES = new Set(["Registered Mark", "Government Mark"]);
+
+/** Derive cert type (VMC or CMC) from mark type using exact matching */
 export function deriveCertType(markType: string | null): "VMC" | "CMC" | null {
   if (!markType) return null;
-  // CMC types checked first — "Modified Registered Mark" contains "Registered Mark"
-  // so CMC-specific types must match before the broader VMC check
-  const cmcTypes = ["Prior Use Mark", "Modified Registered Mark", "Pending Registration Mark"];
-  if (cmcTypes.some((t) => markType.includes(t))) return "CMC";
-  const vmcTypes = ["Registered Mark", "Government Mark"];
-  if (vmcTypes.some((t) => markType.includes(t))) return "VMC";
+  if (CMC_MARK_TYPES.has(markType)) return "CMC";
+  if (VMC_MARK_TYPES.has(markType)) return "VMC";
   return null;
 }
 
