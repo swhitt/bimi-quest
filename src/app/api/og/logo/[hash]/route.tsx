@@ -19,6 +19,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
       issuerOrg: certificates.issuerOrg,
       sanList: certificates.sanList,
       logotypeSvg: certificates.logotypeSvg,
+      industry: certificates.industry,
     })
     .from(certificates)
     .where(and(eq(certificates.logotypeSvgHash, hash), isNotNull(certificates.logotypeSvg)))
@@ -36,7 +37,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
 
   let logoDataUri: string | null = null;
   try {
-    logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 300, 300);
+    logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 280, 280);
   } catch {
     // SVG rendering failure
   }
@@ -71,7 +72,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
         }}
       >
         {logoDataUri ? (
-          <img src={logoDataUri} width={260} height={260} style={{ objectFit: "contain" }} />
+          <img src={logoDataUri} width={280} height={280} style={{ objectFit: "contain" }} />
         ) : (
           <div
             style={{
@@ -108,6 +109,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
       >
         {subtitle}
       </div>
+
+      {cert.industry && (
+        <div
+          style={{
+            display: "flex",
+            background: colors.border,
+            color: colors.textPrimary,
+            padding: "4px 14px",
+            borderRadius: 20,
+            fontSize: 16,
+          }}
+        >
+          {cert.industry}
+        </div>
+      )}
 
       {/* Watermark */}
       <div

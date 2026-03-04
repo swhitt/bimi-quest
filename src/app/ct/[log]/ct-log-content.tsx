@@ -6,8 +6,10 @@ import { EntryList } from "@/components/ct-log/entry-list";
 import { EntryNavigator } from "@/components/ct-log/entry-navigator";
 import { STHPanel, type STHResponse } from "@/components/ct-log/sth-panel";
 import { Card, CardContent } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import type { DecodedCTEntry } from "@/lib/ct/decode-entry";
-import { DEFAULT_PAGE_SIZE, toPageNumber } from "./constants";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { DEFAULT_PAGE_SIZE } from "./constants";
 const STH_POLL_INTERVAL = 15_000;
 
 /** Update browser URL without triggering Next.js navigation or component remount */
@@ -30,14 +32,14 @@ interface CTLogContentProps {
 export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialPageSize }: CTLogContentProps) {
   const basePath = `/ct/${logSlug}`;
   const apiBase = `/api/ct/${logSlug}`;
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const buildListUrl = useCallback(
     (start: number, count: number): string => {
-      const pageNum = toPageNumber(start, count);
       const params = new URLSearchParams();
       params.set("start", String(start));
       if (count !== DEFAULT_PAGE_SIZE) params.set("count", String(count));
-      return `${basePath}/page/${pageNum}?${params}`;
+      return `${basePath}?${params}`;
     },
     [basePath],
   );
@@ -268,13 +270,30 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
 
       if (next !== null) {
         replaceUrl(`${basePath}/${next}`);
-        if (detailRef.current) {
+        if (isDesktop && detailRef.current) {
           if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
           scrollTimerRef.current = setTimeout(() => {
             detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 50);
         }
       } else {
+        const si = startRef.current;
+        const ps = pageSizeRef.current;
+        if (si !== null) {
+          replaceUrl(buildListUrl(si, ps));
+        } else {
+          replaceUrl(basePath);
+        }
+      }
+    },
+    [basePath, buildListUrl, isDesktop],
+  );
+
+  // Handle sheet close on mobile
+  const handleSheetOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setSelectedIndex(null);
         const si = startRef.current;
         const ps = pageSizeRef.current;
         if (si !== null) {
@@ -299,6 +318,7 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
           startIndex={startIndex}
           pageSize={pageSize}
           treeSize={treeSize}
+          entryCount={entries.length}
           onNavigate={handleNavigate}
           onPageSizeChange={handlePageSizeChange}
           jumpInputRef={jumpInputRef}
@@ -321,27 +341,45 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
           onJumpToLive={handleJumpToLive}
         />
 
-        <div
-          ref={detailRef}
-          className="lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto"
-        >
-          {selectedEntry ? (
-            <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={setActiveTab} />
-          ) : (
-            <Card className="h-fit">
-              <CardContent>
-                <p className="text-sm text-muted-foreground text-center py-8">Select an entry to view details</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {isDesktop && (
+          <div
+            ref={detailRef}
+            className="lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto"
+          >
+            {selectedEntry ? (
+              <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={setActiveTab} />
+            ) : (
+              <Card className="h-fit">
+                <CardContent>
+                  <p className="text-sm text-muted-foreground text-center py-8">Select an entry to view details</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Mobile detail sheet */}
+      <Sheet open={selectedEntry !== null && !isDesktop} onOpenChange={handleSheetOpenChange}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Entry #{selectedEntry?.index.toLocaleString()}</SheetTitle>
+            <SheetDescription>{selectedEntry?.cert?.subject ?? ""}</SheetDescription>
+          </SheetHeader>
+          {selectedEntry && (
+            <div className="px-4 pb-4">
+              <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={setActiveTab} />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {startIndex !== null && (
         <EntryNavigator
           startIndex={startIndex}
           pageSize={pageSize}
           treeSize={treeSize}
+          entryCount={entries.length}
           onNavigate={handleNavigate}
           onPageSizeChange={handlePageSizeChange}
         />

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Free BIMI Validator — Check Any Domain",
     description:
       "Instantly check any domain's BIMI readiness: DNS records, DMARC policy, SVG logo compliance, and VMC/CMC certificate status.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
 };
 

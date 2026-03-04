@@ -38,13 +38,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "BIMI Quest",
     url: "/",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "BIMI Quest - Certificate Market Intelligence",
     description: "Track VMC and CMC certificate issuances across all Certificate Authorities.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
   robots: {
     index: true,

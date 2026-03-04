@@ -34,6 +34,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       sanList: certificates.sanList,
       logotypeSvg: certificates.logotypeSvg,
       logotypeSvgHash: certificates.logotypeSvgHash,
+      industry: certificates.industry,
+      notabilityScore: certificates.notabilityScore,
     })
     .from(certificates)
     .where(sql`${certificates.fingerprintSha256} LIKE ${id + "%"}`)
@@ -58,7 +60,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   let logoDataUri: string | null = null;
   if (cert.logotypeSvg) {
     try {
-      logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 200, 200);
+      logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 240, 240);
     } catch {
       // SVG rendering can fail for malformed logos
     }
@@ -100,7 +102,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           }}
         >
           {logoDataUri ? (
-            <img src={logoDataUri} width={200} height={200} style={{ objectFit: "contain" }} />
+            <img src={logoDataUri} width={240} height={240} style={{ objectFit: "contain" }} />
           ) : (
             <div
               style={{
@@ -152,6 +154,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
             >
               {certType}
             </div>
+            {cert.industry && (
+              <div
+                style={{
+                  display: "flex",
+                  background: colors.border,
+                  color: colors.textPrimary,
+                  padding: "4px 14px",
+                  borderRadius: 8,
+                  fontSize: 16,
+                }}
+              >
+                {cert.industry}
+              </div>
+            )}
           </div>
 
           {/* Primary domain */}

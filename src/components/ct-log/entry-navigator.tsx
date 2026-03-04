@@ -6,12 +6,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PAGE_SIZES, toPageNumber } from "@/app/ct/[log]/constants";
+import { PAGE_SIZES } from "@/app/ct/[log]/constants";
 
 interface EntryNavigatorProps {
   startIndex: number;
   pageSize: number;
   treeSize: number;
+  /** Actual number of entries returned (may be less than pageSize at the live edge) */
+  entryCount?: number;
   onNavigate: (newStart: number) => void;
   onPageSizeChange: (size: number) => void;
   jumpInputRef?: React.RefObject<HTMLInputElement | null>;
@@ -21,6 +23,7 @@ export function EntryNavigator({
   startIndex,
   pageSize,
   treeSize,
+  entryCount,
   onNavigate,
   onPageSizeChange,
   jumpInputRef,
@@ -74,21 +77,22 @@ export function EntryNavigator({
         </Button>
       </form>
 
-      {/* Newer / Older — default view starts at newest, so "next page" = older = lower indices */}
+      {/* Newer / Older */}
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="icon-sm" onClick={handleNext} disabled={atEnd} aria-label="Newer entries">
+        <Button variant="outline" size="sm" onClick={handleNext} disabled={atEnd} aria-label="Newer entries">
           <ChevronLeft className="size-4" />
+          Newer
         </Button>
-        <Button variant="outline" size="icon-sm" onClick={handlePrev} disabled={atStart} aria-label="Older entries">
+        <Button variant="outline" size="sm" onClick={handlePrev} disabled={atStart} aria-label="Older entries">
+          Older
           <ChevronRight className="size-4" />
         </Button>
       </div>
 
       {/* Range indicator */}
       <span className="text-xs text-muted-foreground tabular-nums">
-        Page {toPageNumber(startIndex, pageSize)}
-        {" · "}
-        {startIndex.toLocaleString()}&ndash;{Math.min(startIndex + pageSize - 1, treeSize - 1).toLocaleString()}
+        {startIndex.toLocaleString()}&ndash;
+        {Math.min(startIndex + (entryCount ?? pageSize) - 1, treeSize - 1).toLocaleString()}
         {" of "}
         {treeSize.toLocaleString()}
         {!atEnd && (

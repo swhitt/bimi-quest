@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: "BIMI Certificate Database — All VMC & CMC Certificates",
     description:
       "Browse and search every BIMI VMC and CMC certificate discovered from Certificate Transparency logs. Filter by issuer, industry, country, and more.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
 };
 

@@ -9,14 +9,14 @@ export const metadata: Metadata = {
     title: "BIMI Quest — Certificate Market Intelligence Dashboard",
     description:
       "Track VMC and CMC certificate issuances across all Certificate Authorities. Real-time market intelligence from Certificate Transparency logs.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "BIMI Quest — Certificate Market Intelligence Dashboard",
     description:
       "Track VMC and CMC certificate issuances across all Certificate Authorities. Real-time market intelligence from Certificate Transparency logs.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
 };
 

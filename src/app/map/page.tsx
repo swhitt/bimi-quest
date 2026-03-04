@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: "Geographic BIMI Distribution — Who's Adopting BIMI Worldwide",
     description:
       "Explore the global adoption of BIMI certificates by country. Interactive map of VMC and CMC issuances from CT logs.",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
 };
 

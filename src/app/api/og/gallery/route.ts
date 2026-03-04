@@ -28,5 +28,5 @@ export async function GET(request: Request) {
   }
 
   // Fallback to static default
-  return NextResponse.redirect(new URL("/og-default.png", request.url), 302);
+  return NextResponse.redirect(new URL("/api/og/default", request.url), 302);
 }

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { decodeCTEntry } from "@/lib/ct/decode-entry";
@@ -89,20 +89,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // List / page view: static metadata
   const listDescription =
     "Browse raw Certificate Transparency log entries from the Gorgon CT log with decoded certificates, annotated hex viewer, and chain analysis.";
-  const pageSuffix = pageNumber !== undefined ? ` — Page ${pageNumber}` : "";
   return {
-    title: `CT Log Viewer${pageSuffix}`,
+    title: "CT Log Viewer",
     description: listDescription,
     openGraph: {
-      title: `CT Log Viewer — Gorgon Certificate Transparency${pageSuffix}`,
+      title: "CT Log Viewer — Gorgon Certificate Transparency",
       description: listDescription,
-      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+      images: [{ url: "/api/og/default", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `CT Log Viewer — Gorgon Certificate Transparency${pageSuffix}`,
+      title: "CT Log Viewer — Gorgon Certificate Transparency",
       description: listDescription,
-      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+      images: [{ url: "/api/og/default", width: 1200, height: 630 }],
     },
   };
 }
@@ -117,17 +116,24 @@ export default async function CTLogPage({ params, searchParams }: Props) {
 
   if (slug?.length && entryIndex === undefined && pageNumber === undefined) notFound();
 
-  // Compute initialStart from page number or query param
-  let initialStart: number | undefined;
   const queryStart = query.start ? parseInt(query.start, 10) : undefined;
   const queryCount = query.count ? parseInt(query.count, 10) : undefined;
   const pageSize =
     queryCount && (PAGE_SIZES as readonly number[]).includes(queryCount) ? queryCount : DEFAULT_PAGE_SIZE;
 
+  // Backward compat: redirect /page/N to query-param URLs
+  if (pageNumber !== undefined && queryStart === undefined) {
+    const redirectStart = (pageNumber - 1) * pageSize;
+    const params = new URLSearchParams();
+    params.set("start", String(redirectStart));
+    if (pageSize !== DEFAULT_PAGE_SIZE) params.set("count", String(pageSize));
+    redirect(`/ct/${log}?${params}`);
+  }
+
+  // Compute initialStart from query param
+  let initialStart: number | undefined;
   if (queryStart !== undefined && Number.isFinite(queryStart)) {
     initialStart = Math.max(0, queryStart);
-  } else if (pageNumber !== undefined) {
-    initialStart = (pageNumber - 1) * pageSize;
   }
 
   await connection();

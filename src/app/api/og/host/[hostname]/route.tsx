@@ -32,7 +32,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ hos
   let logoDataUri: string | null = null;
   if (firstWithLogo?.logotypeSvg) {
     try {
-      logoDataUri = await renderLogoToPngDataUri(firstWithLogo.logotypeSvg, 200, 200);
+      logoDataUri = await renderLogoToPngDataUri(firstWithLogo.logotypeSvg, 160, 160);
     } catch {
       // SVG rendering failure
     }
@@ -66,7 +66,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ hos
             border: `2px solid ${colors.border}`,
           }}
         >
-          <img src={logoDataUri} width={140} height={140} style={{ objectFit: "contain" }} />
+          <img src={logoDataUri} width={160} height={160} style={{ objectFit: "contain" }} />
         </div>
       )}
 

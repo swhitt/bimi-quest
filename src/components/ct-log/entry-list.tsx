@@ -29,6 +29,7 @@ function SkeletonRows() {
           <td className="px-2 py-1.5">
             <div className="space-y-1">
               <div className="animate-pulse rounded bg-muted h-3.5 w-40" />
+              <div className="animate-pulse rounded bg-muted h-3 w-32" />
               <div className="animate-pulse rounded bg-muted h-3 w-28" />
             </div>
           </td>
@@ -120,6 +121,8 @@ export const EntryList = memo(function EntryList({
               // For BIMI certs, show org as primary; for others, show subject CN
               const primaryName = isBIMI ? (entry.cert?.organization ?? entry.cert?.subject) : entry.cert?.subject;
               const issuer = entry.cert?.issuer;
+              const firstSan = entry.cert?.sans[0];
+              const showSan = firstSan && (isBIMI || firstSan !== primaryName);
 
               return (
                 <tr
@@ -189,6 +192,13 @@ export const EntryList = memo(function EntryList({
                         {isPrecert ? "Pre" : "X.509"}
                       </Badge>
                     </div>
+
+                    {/* SAN line */}
+                    {showSan && (
+                      <div className="truncate text-[11px] text-muted-foreground/80 font-mono leading-snug mt-0.5">
+                        {firstSan}
+                      </div>
+                    )}
 
                     {/* Issuer line */}
                     <div className="truncate text-[11px] text-muted-foreground/60 leading-snug mt-0.5">
