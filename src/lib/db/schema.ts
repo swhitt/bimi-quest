@@ -146,6 +146,18 @@ export const ogCache = pgTable("og_cache", {
   generatedAt: timestamp("generated_at", { withTimezone: true }).defaultNow(),
 });
 
+export const ctLogEntries = pgTable(
+  "ct_log_entries",
+  {
+    index: bigint("index", { mode: "number" }).primaryKey(),
+    logName: text("log_name").notNull().default("gorgon"),
+    leafInput: text("leaf_input").notNull(),
+    extraData: text("extra_data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index("idx_ct_entries_log_index").on(table.logName, table.index)],
+);
+
 export const ingestionCursors = pgTable("ingestion_cursors", {
   id: serial("id").primaryKey(),
   logName: text("log_name").unique().notNull(),

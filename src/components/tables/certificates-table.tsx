@@ -544,6 +544,8 @@ export function CertificatesTable({
         </div>
       )}
 
+      <PaginationBar pagination={pagination} onPageChange={(page) => updateParams({ page: String(page) })} />
+
       {/* Table */}
       <div className="rounded-lg border border-border/50 bg-card/30 overflow-clip sm:overflow-hidden">
         <Table className="table-fixed" containerClassName="sm:overflow-x-auto">
