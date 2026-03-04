@@ -4,6 +4,8 @@
 // No external OCSP/CRL libraries are used.
 
 import { createHash } from "crypto";
+import type { ExtensionEntry } from "@/lib/ct/parser";
+import type { ExtensionJsonValue } from "@/lib/db/schema";
 import { bytesToHex as sharedBytesToHex, hexToBytes as sharedHexToBytes } from "@/lib/hex";
 import { pemToDer } from "@/lib/pem";
 
@@ -485,24 +487,24 @@ function normalizeSerialHex(hex: string): string {
 
 // ── AIA / CDP extraction from extensionsJson ────────────────────────
 
-/** Get the hex value from an extension entry, handling both old (string) and new ({ v, c }) formats */
-function getExtHex(entry: unknown): string | null {
+/** Get the hex value from an extension entry, handling both legacy (string) and current ({ v, c }) formats */
+function getExtHex(entry: ExtensionEntry | string | undefined): string | null {
   if (typeof entry === "string") return entry;
-  if (entry && typeof entry === "object" && "v" in entry && typeof (entry as Record<string, unknown>).v === "string") {
-    return (entry as Record<string, unknown>).v as string;
+  if (entry && typeof entry === "object" && typeof entry.v === "string") {
+    return entry.v;
   }
   return null;
 }
 
 /** Extract OCSP responder URL from AIA extension (OID 1.3.6.1.5.5.7.1.1) */
-export function extractOcspUrl(extensionsJson: Record<string, unknown>): string | null {
+export function extractOcspUrl(extensionsJson: ExtensionJsonValue): string | null {
   const aiaHex = getExtHex(extensionsJson["1.3.6.1.5.5.7.1.1"]);
   if (!aiaHex) return null;
   return extractUrlFromAia(aiaHex, "1.3.6.1.5.5.7.48.1");
 }
 
 /** Extract CRL Distribution Point URL from extension (OID 2.5.29.31) */
-export function extractCrlUrl(extensionsJson: Record<string, unknown>): string | null {
+export function extractCrlUrl(extensionsJson: ExtensionJsonValue): string | null {
   const cdpHex = getExtHex(extensionsJson["2.5.29.31"]);
   if (!cdpHex) return null;
   return extractUrlsFromCdp(cdpHex);

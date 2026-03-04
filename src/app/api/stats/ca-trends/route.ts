@@ -16,10 +16,13 @@ export async function GET(request: NextRequest) {
   try {
     const where = buildStatsConditions(params);
 
+    const monthTrunc = sql`date_trunc('month', ${certificates.notBefore})`;
+    const monthLabel = sql<string>`to_char(date_trunc('month', ${certificates.notBefore}), 'YYYY-MM')`;
+
     const [trends, topCAs] = await Promise.all([
       db
         .select({
-          month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
+          month: monthLabel.as("month"),
           ca: certificates.rootCaOrg,
           total: count(),
           vmcCount,
@@ -27,8 +30,8 @@ export async function GET(request: NextRequest) {
         })
         .from(certificates)
         .where(and(where, gte(certificates.notBefore, cutoff)))
-        .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.rootCaOrg)
-        .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
+        .groupBy(monthTrunc, certificates.rootCaOrg)
+        .orderBy(monthTrunc),
 
       // Top CAs by volume (grouped by root)
       db

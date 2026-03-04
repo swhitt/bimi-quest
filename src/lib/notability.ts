@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import { errorMessage } from "@/lib/utils";
 
 export const INDUSTRIES = [
@@ -103,6 +104,32 @@ const BATCH_TOOL: Anthropic.Messages.Tool = {
   },
 };
 
+// Zod schemas for validating LLM tool responses
+
+const NotabilityResultSchema = z.object({
+  score: z.number(),
+  reason: z.string(),
+  description: z.string(),
+  industry: z.string().optional(),
+});
+
+const NotabilityBatchResultSchema = z.object({
+  results: z.array(
+    NotabilityResultSchema.extend({
+      id: z.string(),
+    }),
+  ),
+});
+
+const IndustryBatchResultSchema = z.object({
+  results: z.array(
+    z.object({
+      id: z.string(),
+      industry: z.string(),
+    }),
+  ),
+});
+
 let client: Anthropic | null = null;
 
 function getClient(): Anthropic | null {
@@ -138,9 +165,15 @@ export async function scoreNotability(
     });
 
     const toolBlock = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
-    if (!toolBlock || !isNotabilityInput(toolBlock.input)) return null;
+    if (!toolBlock) return null;
 
-    return normalizeResult(toolBlock.input);
+    const parsed = NotabilityResultSchema.safeParse(toolBlock.input);
+    if (!parsed.success) {
+      console.warn("scoreNotability: malformed LLM response:", parsed.error.message);
+      return null;
+    }
+
+    return normalizeResult(parsed.data);
   } catch (err) {
     console.warn("scoreNotability failed:", errorMessage(err));
     return null;
@@ -183,11 +216,13 @@ export async function scoreNotabilityBatch(brands: BrandInput[]): Promise<Map<st
     const toolBlock = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (!toolBlock) return results;
 
-    const input = toolBlock.input as Record<string, unknown>;
-    const items = Array.isArray(input.results) ? input.results : [];
+    const parsed = NotabilityBatchResultSchema.safeParse(toolBlock.input);
+    if (!parsed.success) {
+      console.warn("scoreNotabilityBatch: malformed LLM response:", parsed.error.message);
+      return results;
+    }
 
-    for (const r of items) {
-      if (!isNotabilityInput(r) || typeof r.id !== "string") continue;
+    for (const r of parsed.data.results) {
       const normalized = normalizeResult(r);
       if (normalized) results.set(r.id, normalized);
     }
@@ -249,29 +284,20 @@ export async function classifyIndustryBatch(brands: BrandInput[]): Promise<Map<s
     const toolBlock = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (!toolBlock) return results;
 
-    const input = toolBlock.input as Record<string, unknown>;
-    const items = Array.isArray(input.results) ? input.results : [];
+    const parsed = IndustryBatchResultSchema.safeParse(toolBlock.input);
+    if (!parsed.success) {
+      console.warn("classifyIndustryBatch: malformed LLM response:", parsed.error.message);
+      return results;
+    }
 
-    for (const r of items) {
-      if (typeof r !== "object" || r === null) continue;
-      const item = r as { id?: string; industry?: string };
-      if (typeof item.id === "string") {
-        results.set(item.id, normalizeIndustry(item.industry));
-      }
+    for (const item of parsed.data.results) {
+      results.set(item.id, normalizeIndustry(item.industry));
     }
   } catch (err) {
     console.warn("classifyIndustryBatch failed:", errorMessage(err));
   }
 
   return results;
-}
-
-function isNotabilityInput(
-  v: unknown,
-): v is { score: number; reason: string; description: string; industry?: string; [key: string]: unknown } {
-  if (typeof v !== "object" || v === null) return false;
-  const obj = v as Record<string, unknown>;
-  return typeof obj.score === "number" && typeof obj.reason === "string" && typeof obj.description === "string";
 }
 
 function normalizeIndustry(raw: unknown): Industry {

@@ -2,6 +2,14 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import type { ExtensionEntry } from "@/lib/ct/parser";
 
+/**
+ * Extension values in the JSON column may be either:
+ * - The current `ExtensionEntry` format: `{ v: string; c: boolean }`
+ * - The legacy string format: a plain hex string (from early ingestion runs)
+ * Consumers must handle both via type narrowing (see `getExtHex` in revocation.ts).
+ */
+export type ExtensionJsonValue = Record<string, ExtensionEntry | string>;
+
 export const certificates = pgTable(
   "certificates",
   {
@@ -30,7 +38,7 @@ export const certificates = pgTable(
     ctLogTimestamp: timestamp("ct_log_timestamp", { withTimezone: true }),
     ctLogIndex: bigint("ct_log_index", { mode: "number" }),
     ctLogName: text("ct_log_name").default("gorgon"),
-    extensionsJson: jsonb("extensions_json").$type<Record<string, ExtensionEntry>>(),
+    extensionsJson: jsonb("extensions_json").$type<ExtensionJsonValue>(),
     crtshId: bigint("crtsh_id", { mode: "number" }),
     notabilityScore: integer("notability_score"),
     notabilityReason: text("notability_reason"),
@@ -48,6 +56,8 @@ export const certificates = pgTable(
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
     discoverySource: text("discovery_source").default("ct-gorgon"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    // TODO: Drizzle ORM (pg) does not support $onUpdate; callers must include
+    // `updatedAt: sql`now()`` in .set({}) calls, or a DB trigger should be added.
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
@@ -68,6 +78,9 @@ export const certificates = pgTable(
     index("idx_certificates_visual_hash").on(table.logotypeVisualHash),
     // Partial index: most queries filter out superseded certs
     index("idx_certs_active_notbefore").on(table.notBefore).where(sql`${table.isSuperseded} = false`),
+    index("idx_certs_notability_score").on(table.notabilityScore),
+    // Partial index: backfill queries that find un-scored certs
+    index("idx_certs_notability_null").on(table.id).where(sql`${table.notabilityScore} IS NULL`),
   ],
 );
 
@@ -122,6 +135,8 @@ export const domainBimiState = pgTable("domain_bimi_state", {
   bimiGrade: text("bimi_grade"),
   lastChecked: timestamp("last_checked", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  // TODO: Drizzle ORM (pg) does not support $onUpdate; callers must include
+  // `updatedAt: sql`now()`` in .set({}) calls, or a DB trigger should be added.
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 

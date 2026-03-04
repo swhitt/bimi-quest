@@ -92,16 +92,21 @@ export async function GET(request: NextRequest) {
           .orderBy(desc(count())),
 
         // Monthly trend (last 12 months, grouped by issuing CA)
-        db
-          .select({
-            month: sql<string>`to_char(${certificates.notBefore}, 'YYYY-MM')`,
-            ca: certificates.issuerOrg,
-            count: count(),
-          })
-          .from(certificates)
-          .where(and(...trendConditions))
-          .groupBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`, certificates.issuerOrg)
-          .orderBy(sql`to_char(${certificates.notBefore}, 'YYYY-MM')`),
+        // Use date_trunc for GROUP BY (index-friendly) and to_char in SELECT for formatting
+        (() => {
+          const monthTrunc = sql`date_trunc('month', ${certificates.notBefore})`;
+          const monthLabel = sql<string>`to_char(date_trunc('month', ${certificates.notBefore}), 'YYYY-MM')`;
+          return db
+            .select({
+              month: monthLabel.as("month"),
+              ca: certificates.issuerOrg,
+              count: count(),
+            })
+            .from(certificates)
+            .where(and(...trendConditions))
+            .groupBy(monthTrunc, certificates.issuerOrg)
+            .orderBy(monthTrunc);
+        })(),
 
         // Mark type breakdown (base filters)
         db

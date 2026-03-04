@@ -61,7 +61,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       .where(eq(certificateChainLinks.leafCertId, certId))
       .orderBy(certificateChainLinks.chainPosition);
 
-    const extensionsJson = (cert.extensionsJson ?? {}) as Record<string, unknown>;
+    const extensionsJson = cert.extensionsJson ?? {};
     const ocspUrl = extractOcspUrl(extensionsJson);
     const crlUrl = extractCrlUrl(extensionsJson);
 

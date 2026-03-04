@@ -20,16 +20,19 @@ export async function GET(request: NextRequest) {
       lte(certificates.notAfter, twelveMonthsFromNow),
     );
 
+    const monthTrunc = sql`date_trunc('month', ${certificates.notAfter})`;
+    const monthLabel = sql<string>`to_char(date_trunc('month', ${certificates.notAfter}), 'YYYY-MM')`;
+
     const data = await db
       .select({
-        month: sql<string>`to_char(${certificates.notAfter}, 'YYYY-MM')`,
+        month: monthLabel.as("month"),
         ca: certificates.issuerOrg,
         total: count(),
       })
       .from(certificates)
       .where(where)
-      .groupBy(sql`to_char(${certificates.notAfter}, 'YYYY-MM')`, certificates.issuerOrg)
-      .orderBy(sql`to_char(${certificates.notAfter}, 'YYYY-MM')`, desc(count()));
+      .groupBy(monthTrunc, certificates.issuerOrg)
+      .orderBy(monthTrunc, desc(count()));
 
     return NextResponse.json(
       { data },
