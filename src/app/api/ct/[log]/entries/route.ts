@@ -55,8 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const fetchEnd = uncachedIndices[uncachedIndices.length - 1];
       const response = await getEntries(fetchStart, fetchEnd);
 
-      const decodePromises = response.entries.map((raw, i) => decodeCTEntry(raw, fetchStart + i));
-      const decoded = await Promise.all(decodePromises);
+      const decoded = await Promise.all(response.entries.map((raw, i) => decodeCTEntry(raw, fetchStart + i)));
 
       for (const entry of decoded) {
         setCachedEntry(entry.index, entry);
@@ -70,13 +69,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       if (entry) entries.push(entry);
     }
 
+    // Historical pages are immutable (CT logs are append-only); live edge needs fresh data
+    const isLiveEdge = end >= treeSize - 1;
+    const cacheHeader = isLiveEdge ? "no-store" : CACHE_PRESETS.LONG;
+
     return NextResponse.json(
       {
         entries,
         range: { start, end, treeSize },
       },
       {
-        headers: { "Cache-Control": CACHE_PRESETS.SHORT },
+        headers: { "Cache-Control": cacheHeader },
       },
     );
   } catch (error) {

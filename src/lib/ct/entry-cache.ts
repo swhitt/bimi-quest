@@ -22,7 +22,3 @@ export function setCachedEntry(index: number, entry: DecodedCTEntry): void {
   }
   cache.set(index, entry);
 }
-
-export function getCacheStats() {
-  return { size: cache.size, maxSize: MAX_SIZE };
-}

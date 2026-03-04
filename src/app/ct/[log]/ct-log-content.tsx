@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { DecodedCTEntry } from "@/lib/ct/decode-entry";
 
 const DEFAULT_PAGE_SIZE = 100;
-const STH_POLL_INTERVAL = 60_000;
+const STH_POLL_INTERVAL = 15_000;
 
 /** Update browser URL without triggering Next.js navigation or component remount */
 function replaceUrl(url: string) {
@@ -45,6 +45,7 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
 
   const [sth, setSTH] = useState<STHResponse | null>(null);
   const [sthLoading, setSTHLoading] = useState(true);
+  const [lastPolled, setLastPolled] = useState<number | null>(null);
   const [entries, setEntries] = useState<DecodedCTEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [startIndex, setStartIndex] = useState<number | null>(() => {
@@ -63,38 +64,94 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
   });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(permalinkedIndex ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [newEntryCount, setNewEntryCount] = useState(0);
 
   const detailRef = useRef<HTMLDivElement>(null);
   const jumpInputRef = useRef<HTMLInputElement>(null);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Refs for stable callbacks (avoids re-creating on every state change)
+  // Refs for stable callbacks
   const selectedRef = useRef<number | null>(selectedIndex);
   const startRef = useRef<number | null>(startIndex);
   const pageSizeRef = useRef(pageSize);
+  const prevTreeSizeRef = useRef(0);
+  const isAtLiveEdgeRef = useRef(permalinkedIndex === undefined && !searchParams.get("start"));
   selectedRef.current = selectedIndex;
   startRef.current = startIndex;
   pageSizeRef.current = pageSize;
 
-  // Cmd/Ctrl+G focuses jump-to-index input
+  // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
       if ((e.metaKey || e.ctrlKey) && e.key === "g") {
         e.preventDefault();
         jumpInputRef.current?.focus();
+        return;
+      }
+
+      if (isInput) return;
+
+      // Page navigation shortcuts
+      if (e.key === "[" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const si = startRef.current;
+        if (si !== null && si > 0) {
+          handleNavigate(Math.max(0, si - pageSizeRef.current));
+        }
+      } else if (e.key === "]" || e.key === "ArrowRight") {
+        e.preventDefault();
+        const si = startRef.current;
+        const ts = prevTreeSizeRef.current;
+        if (si !== null && si + pageSizeRef.current < ts) {
+          handleNavigate(Math.min(si + pageSizeRef.current, Math.max(0, ts - pageSizeRef.current)));
+        }
+      } else if (e.key === "Escape" && selectedRef.current !== null) {
+        setSelectedIndex(null);
+        const si = startRef.current;
+        const ps = pageSizeRef.current;
+        if (si !== null) replaceUrl(buildListUrl(si, ps));
+        else replaceUrl(basePath);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch STH
+  const fetchGenRef = useRef(0);
+
   const fetchSTH = useCallback(async () => {
     try {
       const res = await fetch(`${apiBase}/sth`);
       if (!res.ok) throw new Error("Failed to fetch STH");
       const data: STHResponse = await res.json();
       setSTH(data);
+      setLastPolled(Date.now());
+
+      // Auto-advance if at live edge
+      const prev = prevTreeSizeRef.current;
+      prevTreeSizeRef.current = data.tree_size;
+
+      if (prev > 0 && data.tree_size > prev && isAtLiveEdgeRef.current) {
+        const si = startRef.current;
+        const ps = pageSizeRef.current;
+        if (si !== null && si + ps >= prev) {
+          // At the live edge — auto-advance
+          const newStart = Math.max(0, data.tree_size - ps);
+          setStartIndex(newStart);
+          startRef.current = newStart;
+          replaceUrl(buildListUrl(newStart, ps));
+        } else {
+          // User has scrolled away — show banner instead
+          setNewEntryCount((n) => n + (data.tree_size - prev));
+        }
+      }
+
       return data;
     } catch {
       setError("Failed to fetch Signed Tree Head");
@@ -102,29 +159,32 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
     } finally {
       setSTHLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, buildListUrl]);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // Fetch entries for a given start index
+  // Fetch entries with generation counter to prevent stale updates
   const fetchEntries = useCallback(
     async (start: number, size: number) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      const gen = ++fetchGenRef.current;
       setLoading(true);
       setError(null);
       try {
         const res = await fetch(`${apiBase}/entries?start=${start}&count=${size}`, { signal: controller.signal });
         if (!res.ok) throw new Error("Failed to fetch entries");
         const data: EntriesResponse = await res.json();
+        if (gen !== fetchGenRef.current) return;
         setEntries(data.entries);
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
+        if (gen !== fetchGenRef.current) return;
         setError("Failed to fetch CT log entries");
         setEntries([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (gen === fetchGenRef.current) setLoading(false);
       }
     },
     [apiBase],
@@ -136,6 +196,7 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
       if (data && startIndex === null) {
         const start = Math.max(0, data.tree_size - pageSize);
         setStartIndex(start);
+        isAtLiveEdgeRef.current = true;
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
@@ -151,6 +212,9 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
   useEffect(() => {
     if (startIndex === null) return;
     fetchEntries(startIndex, pageSize);
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [startIndex, pageSize, fetchEntries]);
 
   // Auto-scroll entry row to center of viewport when a permalinked entry loads
@@ -162,22 +226,31 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [permalinkedIndex, selectedIndex, entries]);
 
-  // Cleanup scroll timer on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    };
-  }, []);
-
   // Navigate to a new start index (clears selection, updates URL)
   const handleNavigate = useCallback(
     (newStart: number) => {
       setStartIndex(newStart);
       setSelectedIndex(null);
+      setNewEntryCount(0);
+      // Track if we're at the live edge
+      const ts = prevTreeSizeRef.current;
+      isAtLiveEdgeRef.current = ts > 0 && newStart + pageSizeRef.current >= ts;
       replaceUrl(buildListUrl(newStart, pageSizeRef.current));
     },
     [buildListUrl],
   );
+
+  // Jump to live edge
+  const handleJumpToLive = useCallback(() => {
+    const ts = prevTreeSizeRef.current;
+    if (ts <= 0) return;
+    const newStart = Math.max(0, ts - pageSizeRef.current);
+    setStartIndex(newStart);
+    setSelectedIndex(null);
+    setNewEntryCount(0);
+    isAtLiveEdgeRef.current = true;
+    replaceUrl(buildListUrl(newStart, pageSizeRef.current));
+  }, [buildListUrl]);
 
   // Change page size
   const handlePageSizeChange = useCallback(
@@ -204,7 +277,7 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
         if (detailRef.current) {
           if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
           scrollTimerRef.current = setTimeout(() => {
-            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 50);
         }
       } else {
@@ -225,14 +298,7 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">CT Log Viewer</h1>
-        <p className="text-sm text-muted-foreground">
-          Browse raw Certificate Transparency log entries from the Gorgon CT log.
-        </p>
-      </div>
-
-      <STHPanel sth={sth} loading={sthLoading} />
+      <STHPanel sth={sth} loading={sthLoading} lastPolled={lastPolled} />
 
       {startIndex !== null && (
         <EntryNavigator
@@ -252,14 +318,21 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <EntryList entries={entries} selectedIndex={selectedIndex} onSelect={handleSelect} loading={loading} />
+        <EntryList
+          entries={entries}
+          selectedIndex={selectedIndex}
+          onSelect={handleSelect}
+          loading={loading}
+          newEntryCount={newEntryCount}
+          onJumpToLive={handleJumpToLive}
+        />
 
         <div
           ref={detailRef}
           className="lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto"
         >
           {selectedEntry ? (
-            <EntryDetail entry={selectedEntry} />
+            <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={setActiveTab} />
           ) : (
             <Card className="h-fit">
               <CardContent>

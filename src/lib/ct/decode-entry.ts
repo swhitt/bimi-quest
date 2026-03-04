@@ -4,6 +4,8 @@ import { toArrayBuffer } from "@/lib/pem";
 import type { CTLogEntry } from "./gorgon";
 import {
   base64ToBuffer,
+  deriveCertType,
+  derToPem,
   extractDnField,
   extractLogotypeSvg,
   extractSANs,
@@ -60,6 +62,7 @@ export interface DecodedLeaf {
 
 export interface DecodedCert {
   subject: string;
+  organization: string | null;
   issuer: string;
   serial: string;
   notBefore: string;
@@ -70,13 +73,23 @@ export interface DecodedCert {
   publicKeyAlg: string;
   keySize: number | null;
   isBIMI: boolean;
-  extensionOIDs: string[];
+  certType: "VMC" | "CMC" | null;
+  markType: string | null;
+  keyUsage: string[];
+  extKeyUsage: string[];
+  extensions: Array<{ oid: string; name: string | null; critical: boolean }>;
   logotypeSvg: string | null;
+  certPem: string;
 }
 
 export interface DecodedChainCert {
   subject: string;
   issuer: string;
+  notBefore: string;
+  notAfter: string;
+  fingerprint: string;
+  isCA: boolean;
+  isSelfSigned: boolean;
 }
 
 export interface DecodedCTEntry {
@@ -107,13 +120,126 @@ function getKeySize(cert: X509Certificate): number | null {
   }
 }
 
+// Well-known OID -> friendly name mapping for extensions
+const OID_NAMES: Record<string, string> = {
+  "2.5.29.15": "Key Usage",
+  "2.5.29.37": "Extended Key Usage",
+  "2.5.29.19": "Basic Constraints",
+  "2.5.29.14": "Subject Key Identifier",
+  "2.5.29.35": "Authority Key Identifier",
+  "2.5.29.17": "Subject Alternative Name",
+  "2.5.29.31": "CRL Distribution Points",
+  "2.5.29.32": "Certificate Policies",
+  "1.3.6.1.5.5.7.1.1": "Authority Info Access",
+  "1.3.6.1.5.5.7.1.12": "Logotype (BIMI)",
+  "1.3.6.1.4.1.11129.2.4.2": "CT Precert SCTs",
+  "1.3.6.1.4.1.11129.2.4.3": "CT Poison",
+  "1.3.6.1.4.1.11129.2.4.5": "CT Precert Signing Cert",
+};
+
+// Well-known EKU OID -> friendly name
+const EKU_NAMES: Record<string, string> = {
+  "1.3.6.1.5.5.7.3.1": "serverAuth",
+  "1.3.6.1.5.5.7.3.2": "clientAuth",
+  "1.3.6.1.5.5.7.3.3": "codeSigning",
+  "1.3.6.1.5.5.7.3.4": "emailProtection",
+  "1.3.6.1.5.5.7.3.8": "timeStamping",
+  "1.3.6.1.5.5.7.3.9": "OCSPSigning",
+};
+
+// Key Usage bit names (RFC 5280 §4.2.1.3)
+const KU_BITS = [
+  "digitalSignature",
+  "contentCommitment",
+  "keyEncipherment",
+  "dataEncipherment",
+  "keyAgreement",
+  "keyCertSign",
+  "cRLSign",
+  "encipherOnly",
+  "decipherOnly",
+];
+
+function parseKeyUsage(cert: X509Certificate): string[] {
+  try {
+    const ext = cert.extensions.find((e) => e.type === "2.5.29.15");
+    if (!ext) return [];
+    const bytes = new Uint8Array(ext.value);
+    // Key Usage is a BIT STRING: tag 03, length, padding-bits, then the bits
+    if (bytes.length < 4 || bytes[0] !== 0x03) return [];
+    const padding = bytes[2];
+    const bits = bytes[3];
+    const result: string[] = [];
+    for (let i = 0; i < 8 - padding; i++) {
+      if (bits & (0x80 >> i)) result.push(KU_BITS[i]);
+    }
+    // Second byte of bits if present
+    if (bytes.length > 4) {
+      const bits2 = bytes[4];
+      for (let i = 0; i < 8; i++) {
+        if (bits2 & (0x80 >> i)) {
+          const idx = 8 + i;
+          if (idx < KU_BITS.length) result.push(KU_BITS[idx]);
+        }
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+function parseExtKeyUsage(cert: X509Certificate): string[] {
+  try {
+    const ext = cert.extensions.find((e) => e.type === "2.5.29.37");
+    if (!ext) return [];
+    // EKU is a SEQUENCE of OIDs. Parse the DER manually.
+    const bytes = new Uint8Array(ext.value);
+    if (bytes.length < 2 || bytes[0] !== 0x30) return [];
+    const oids: string[] = [];
+    let offset = 2;
+    // Handle multi-byte length
+    if (bytes[1] & 0x80) offset = 2 + (bytes[1] & 0x7f);
+    while (offset < bytes.length) {
+      if (bytes[offset] !== 0x06) break; // OID tag
+      const len = bytes[offset + 1];
+      offset += 2;
+      const oidBytes = bytes.slice(offset, offset + len);
+      offset += len;
+      // Decode OID from DER
+      const oid = derOidToString(oidBytes);
+      oids.push(EKU_NAMES[oid] ?? oid);
+    }
+    return oids;
+  } catch {
+    return [];
+  }
+}
+
+function derOidToString(bytes: Uint8Array): string {
+  if (bytes.length === 0) return "";
+  const parts: number[] = [Math.floor(bytes[0] / 40), bytes[0] % 40];
+  let val = 0;
+  for (let i = 1; i < bytes.length; i++) {
+    val = (val << 7) | (bytes[i] & 0x7f);
+    if (!(bytes[i] & 0x80)) {
+      parts.push(val);
+      val = 0;
+    }
+  }
+  return parts.join(".");
+}
+
 async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | null> {
   try {
     const cert = new X509Certificate(toArrayBuffer(certDer));
     const fingerprint = await sha256(certDer);
+    const isBIMI = hasBIMIOID(cert);
+    const markType = isBIMI ? extractDnField(cert.subject, "1.3.6.1.4.1.53087.1.13") : null;
 
     return {
       subject: extractDnField(cert.subject, "CN") ?? cert.subject,
+      organization: extractDnField(cert.subject, "O"),
       issuer: extractDnField(cert.issuer, "CN") ?? cert.issuer,
       serial: cert.serialNumber,
       notBefore: cert.notBefore.toISOString(),
@@ -123,30 +249,55 @@ async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | nul
       signatureAlg: cert.signatureAlgorithm.name ?? "Unknown",
       publicKeyAlg: cert.publicKey.algorithm.name ?? "Unknown",
       keySize: getKeySize(cert),
-      isBIMI: hasBIMIOID(cert),
-      extensionOIDs: cert.extensions.map((ext) => ext.type),
+      isBIMI,
+      certType: deriveCertType(markType),
+      markType,
+      keyUsage: parseKeyUsage(cert),
+      extKeyUsage: parseExtKeyUsage(cert),
+      extensions: cert.extensions.map((ext) => ({
+        oid: ext.type,
+        name: OID_NAMES[ext.type] ?? null,
+        critical: ext.critical,
+      })),
       logotypeSvg: extractLogotypeSvg(cert).svgContent,
+      certPem: derToPem(certDer),
     };
   } catch {
     return null;
   }
 }
 
-function parseChainCerts(extraBuf: Uint8Array, entryType: number): DecodedChainCert[] {
+function pemToBytes(pem: string): Uint8Array {
+  const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  return base64ToBuffer(b64);
+}
+
+async function parseChainCerts(extraBuf: Uint8Array, entryType: number): Promise<DecodedChainCert[]> {
   const pems = parseChainFromExtraData(extraBuf, entryType);
   const certs: DecodedChainCert[] = [];
   for (const pem of pems) {
     try {
-      const der = base64ToBuffer(
-        pem
-          .replace(/-----BEGIN CERTIFICATE-----/g, "")
-          .replace(/-----END CERTIFICATE-----/g, "")
-          .replace(/\s+/g, ""),
-      );
+      const der = pemToBytes(pem);
       const cert = new X509Certificate(toArrayBuffer(der));
+      const fingerprint = await sha256(der);
+      const isCA = cert.extensions.some((ext) => {
+        if (ext.type !== "2.5.29.19") return false;
+        // Basic Constraints: SEQUENCE { BOOLEAN (cA) ... }
+        const bytes = new Uint8Array(ext.value);
+        // Look for TRUE (0x01 0x01 0xFF) inside the SEQUENCE
+        for (let i = 0; i < bytes.length - 2; i++) {
+          if (bytes[i] === 0x01 && bytes[i + 1] === 0x01 && bytes[i + 2] === 0xff) return true;
+        }
+        return false;
+      });
       certs.push({
         subject: extractDnField(cert.subject, "CN") ?? cert.subject,
         issuer: extractDnField(cert.issuer, "CN") ?? cert.issuer,
+        notBefore: cert.notBefore.toISOString(),
+        notAfter: cert.notAfter.toISOString(),
+        fingerprint,
+        isCA,
+        isSelfSigned: cert.subject === cert.issuer,
       });
     } catch {
       // Best-effort chain parsing
@@ -283,10 +434,7 @@ export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<D
     certDer = extraBuf.slice(3, 3 + preCertLen);
   }
 
-  const [cert, chain] = await Promise.all([
-    parseCertMetadata(certDer),
-    Promise.resolve(parseChainCerts(extraBuf, entryTypeRaw)),
-  ]);
+  const [cert, chain] = await Promise.all([parseCertMetadata(certDer), parseChainCerts(extraBuf, entryTypeRaw)]);
 
   const leaf: DecodedLeaf = {
     version,

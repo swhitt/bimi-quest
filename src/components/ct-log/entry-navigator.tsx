@@ -43,7 +43,7 @@ export function EntryNavigator({
   }
 
   function handleNext() {
-    onNavigate(startIndex + pageSize);
+    onNavigate(Math.min(startIndex + pageSize, Math.max(0, treeSize - pageSize)));
   }
 
   function handleLatest() {
@@ -90,6 +90,9 @@ export function EntryNavigator({
         {startIndex.toLocaleString()}&ndash;{Math.min(startIndex + pageSize - 1, treeSize - 1).toLocaleString()}
         {" of "}
         {treeSize.toLocaleString()}
+        {!atEnd && (
+          <span className="ml-1 text-amber-500">({(treeSize - startIndex - pageSize).toLocaleString()} behind)</span>
+        )}
       </span>
 
       {/* Page size */}

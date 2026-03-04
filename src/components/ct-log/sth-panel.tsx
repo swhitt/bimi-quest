@@ -1,48 +1,39 @@
 "use client";
 
 import { Copy, Check } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { UtcTime } from "@/components/ui/utc-time";
 
 export interface STHResponse {
   tree_size: number;
   timestamp: number;
   sha256_root_hash: string;
   tree_head_signature: string;
-  lastChecked: string | null;
 }
 
 interface STHPanelProps {
   sth: STHResponse | null;
   loading: boolean;
+  lastPolled: number | null;
 }
 
 const numberFmt = new Intl.NumberFormat("en-US");
 
-function formatAbsoluteTime(ts: number): string {
-  return new Date(ts).toISOString().slice(0, 19).replace("T", " ") + " UTC";
-}
-
-function formatRelativeTime(ts: number): string {
-  const diff = Date.now() - ts;
-  const secs = Math.floor(diff / 1000);
-  if (secs < 60) return `${Math.max(1, secs)}s ago`;
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
 function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded bg-muted", className)} />;
+  return <div className={`animate-pulse rounded bg-muted ${className ?? ""}`} />;
 }
 
-export function STHPanel({ sth, loading }: STHPanelProps) {
+export function STHPanel({ sth, loading, lastPolled }: STHPanelProps) {
   const [copied, setCopied] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Tick every 10s so relative times stay fresh
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   const copyHash = useCallback(() => {
     if (!sth) return;
@@ -53,39 +44,49 @@ export function STHPanel({ sth, loading }: STHPanelProps) {
 
   return (
     <Card>
-      <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3">
+      <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {/* Log name */}
+        <div className="space-y-0">
+          <p className="text-sm font-semibold">Gorgon CT Log</p>
+          <p className="text-[10px] text-muted-foreground">DigiCert</p>
+        </div>
+
+        <div className="h-6 w-px bg-border hidden sm:block" />
+
         {/* Tree Size */}
-        <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Tree Size</p>
+        <div className="space-y-0">
+          <p className="text-[10px] text-muted-foreground">Tree Size</p>
           {loading || !sth ? (
-            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-4 w-20" />
           ) : (
             <p className="text-sm font-semibold tabular-nums">{numberFmt.format(sth.tree_size)}</p>
           )}
         </div>
 
-        {/* Timestamp */}
-        <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Timestamp</p>
+        {/* STH Timestamp */}
+        <div className="space-y-0">
+          <p className="text-[10px] text-muted-foreground">STH Timestamp</p>
           {loading || !sth ? (
-            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-4 w-16" />
           ) : (
             <Tooltip>
               <TooltipTrigger asChild>
-                <p className="text-sm font-semibold tabular-nums cursor-help">{formatRelativeTime(sth.timestamp)}</p>
+                <p className="text-sm font-semibold tabular-nums cursor-help">
+                  <UtcTime date={new Date(sth.timestamp)} compact />
+                </p>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="font-mono">{formatAbsoluteTime(sth.timestamp)}</p>
+                <p className="font-mono">{new Date(sth.timestamp).toISOString().slice(0, 19).replace("T", " ")} UTC</p>
               </TooltipContent>
             </Tooltip>
           )}
         </div>
 
         {/* Root Hash */}
-        <div className="space-y-0.5 min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">Root Hash</p>
+        <div className="space-y-0 min-w-0 flex-1">
+          <p className="text-[10px] text-muted-foreground">Root Hash</p>
           {loading || !sth ? (
-            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-48" />
           ) : (
             <div className="flex items-center gap-1.5">
               <Tooltip>
@@ -108,22 +109,15 @@ export function STHPanel({ sth, loading }: STHPanelProps) {
           )}
         </div>
 
-        {/* Last Checked */}
-        <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Last Checked</p>
-          {loading || !sth?.lastChecked ? (
-            <Skeleton className="h-5 w-16" />
+        {/* Polled (client-side freshness) */}
+        <div className="space-y-0">
+          <p className="text-[10px] text-muted-foreground">Polled</p>
+          {lastPolled ? (
+            <p className="text-sm font-semibold tabular-nums">
+              <UtcTime date={new Date(lastPolled)} compact />
+            </p>
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="text-sm font-semibold tabular-nums cursor-help">
-                  {formatRelativeTime(new Date(sth.lastChecked).getTime())}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="font-mono">{formatAbsoluteTime(new Date(sth.lastChecked).getTime())}</p>
-              </TooltipContent>
-            </Tooltip>
+            <Skeleton className="h-4 w-12" />
           )}
         </div>
       </CardContent>

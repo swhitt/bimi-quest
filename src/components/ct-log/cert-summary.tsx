@@ -14,7 +14,7 @@ interface CertSummaryProps {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10);
+  return iso.slice(0, 19).replace("T", " ") + " UTC";
 }
 
 function ValidityBar({ notBefore, notAfter, now }: { notBefore: string; notAfter: string; now: number }) {
@@ -71,6 +71,11 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
         <Field label="Subject">
           <span className="truncate block">{cert.subject}</span>
         </Field>
+        {cert.organization != null && (
+          <Field label="Organization">
+            <span className="truncate block">{cert.organization}</span>
+          </Field>
+        )}
         <Field label="Issuer">
           <span className="truncate block">{cert.issuer}</span>
         </Field>
@@ -135,8 +140,42 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
         <Field label="Public Key">
           <span>{keyDesc}</span>
         </Field>
+        {cert.keyUsage.length > 0 && (
+          <Field label="Key Usage">
+            <div className="flex flex-wrap gap-1">
+              {cert.keyUsage.map((ku) => (
+                <Badge key={ku} variant="secondary" className="text-[10px] px-1.5">
+                  {ku}
+                </Badge>
+              ))}
+            </div>
+          </Field>
+        )}
+        {cert.extKeyUsage.length > 0 && (
+          <Field label="Ext Key Usage">
+            <span className="text-xs">{cert.extKeyUsage.join(", ")}</span>
+          </Field>
+        )}
         <Field label="Extensions">
-          <span className="tabular-nums">{cert.extensionOIDs.length}</span>
+          <details className="group">
+            <summary className="cursor-pointer list-none text-xs text-muted-foreground hover:text-foreground select-none">
+              {cert.extensions.length} extension{cert.extensions.length !== 1 ? "s" : ""}
+              <span className="ml-1 group-open:hidden">▸</span>
+              <span className="ml-1 hidden group-open:inline">▾</span>
+            </summary>
+            <ul className="mt-1 space-y-0.5">
+              {cert.extensions.map((ext) => (
+                <li key={ext.oid} className="flex items-center gap-1.5 text-xs">
+                  <span className="font-mono text-[10px] text-muted-foreground">{ext.name ?? ext.oid}</span>
+                  {ext.critical && (
+                    <Badge variant="destructive" className="text-[9px] px-1 py-0 leading-tight">
+                      critical
+                    </Badge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
         </Field>
         <Field label="Timestamp">
           <span className="tabular-nums">{leaf.timestampDate}</span>
@@ -153,7 +192,8 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
               className="inline-flex items-center gap-1 text-emerald-500 font-medium hover:underline"
             >
               <Shield className="size-3.5" />
-              VMC/CMC
+              {cert.certType ?? "BIMI"}
+              {cert.markType != null && <span className="text-xs text-muted-foreground">({cert.markType})</span>}
               <ExternalLink className="size-3" />
             </Link>
           </Field>

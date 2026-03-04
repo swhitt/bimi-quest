@@ -11,16 +11,18 @@ import { RawDataPanel } from "./raw-data-panel";
 
 interface EntryDetailProps {
   entry: DecodedCTEntry;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-export function EntryDetail({ entry }: EntryDetailProps) {
+export function EntryDetail({ entry, activeTab = "overview", onTabChange }: EntryDetailProps) {
   return (
     <Card className="h-fit">
       <CardContent>
         <div className="space-y-2">
           <p className="text-sm font-medium">Entry #{entry.index.toLocaleString()}</p>
 
-          <Tabs defaultValue="overview">
+          <Tabs value={activeTab} onValueChange={onTabChange}>
             <TabsList className="w-full">
               <TabsTrigger value="overview" className="text-xs">
                 Overview
@@ -60,7 +62,7 @@ export function EntryDetail({ entry }: EntryDetailProps) {
             </TabsContent>
 
             <TabsContent value="raw" className="min-h-0 mt-2">
-              <RawDataPanel raw={entry.raw} />
+              <RawDataPanel raw={entry.raw} certPem={entry.cert?.certPem ?? null} />
             </TabsContent>
           </Tabs>
         </div>
