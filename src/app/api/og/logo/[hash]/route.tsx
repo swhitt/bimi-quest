@@ -37,12 +37,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
 
   let logoDataUri: string | null = null;
   try {
-    logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 280, 280);
+    logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 440, 440);
   } catch {
     // SVG rendering failure
   }
-
-  const subtitle = [primaryDomain, certType, issuer].filter(Boolean).join(" · ");
 
   return new ImageResponse(
     <div
@@ -51,79 +49,76 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
         height: OG_HEIGHT,
         background: `linear-gradient(145deg, ${colors.bg} 0%, #0F1A2E 100%)`,
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "IBM Plex Sans",
-        gap: 24,
+        gap: 40,
       }}
     >
-      {/* Logo */}
+      {/* Logo - big and centered */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 300,
-          height: 300,
-          borderRadius: 24,
+          width: 460,
+          height: 460,
+          borderRadius: 32,
           background: colors.cardBg,
           border: `2px solid ${colors.border}`,
+          flexShrink: 0,
         }}
       >
         {logoDataUri ? (
-          <img src={logoDataUri} width={280} height={280} style={{ objectFit: "contain" }} />
+          <img src={logoDataUri} width={440} height={440} style={{ objectFit: "contain" }} />
         ) : (
-          <div
-            style={{
-              display: "flex",
-              color: colors.mono,
-              fontSize: 18,
-            }}
-          >
-            No Logo
-          </div>
+          <div style={{ display: "flex", color: colors.mono, fontSize: 24 }}>No Logo</div>
         )}
       </div>
 
-      {/* Org name */}
+      {/* Text block to the right */}
       <div
         style={{
-          fontSize: 40,
-          fontWeight: 700,
-          color: colors.textPrimary,
-          maxWidth: 900,
-          textAlign: "center",
-          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          maxWidth: 560,
+          justifyContent: "center",
         }}
       >
-        {org.length > 40 ? org.slice(0, 38) + "…" : org}
-      </div>
-
-      {/* Subtitle */}
-      <div
-        style={{
-          fontSize: 22,
-          color: colors.textSecondary,
-        }}
-      >
-        {subtitle}
-      </div>
-
-      {cert.industry && (
         <div
           style={{
-            display: "flex",
-            background: colors.border,
+            fontSize: 44,
+            fontWeight: 700,
             color: colors.textPrimary,
-            padding: "4px 14px",
-            borderRadius: 20,
-            fontSize: 16,
+            lineClamp: 2,
+            overflow: "hidden",
           }}
         >
-          {cert.industry}
+          {org.length > 30 ? org.slice(0, 28) + "…" : org}
         </div>
-      )}
+
+        {primaryDomain && <div style={{ fontSize: 26, color: colors.textSecondary }}>{primaryDomain}</div>}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              background: colors.badgeBg,
+              color: colors.badgeText,
+              padding: "6px 16px",
+              borderRadius: 8,
+              fontSize: 20,
+              fontWeight: 700,
+            }}
+          >
+            {certType}
+          </div>
+          <div style={{ fontSize: 20, color: colors.mono }}>{issuer}</div>
+        </div>
+
+        {cert.industry && <div style={{ fontSize: 18, color: colors.mono, opacity: 0.7 }}>{cert.industry}</div>}
+      </div>
 
       {/* Watermark */}
       <div
