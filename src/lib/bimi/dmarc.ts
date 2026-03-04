@@ -1,5 +1,6 @@
 import { promises as dns } from "dns";
 import { getDomain } from "tldts";
+import { errorMessage } from "@/lib/utils";
 import { parseTxtTagList } from "./txt-tags";
 
 export interface DMARCRecord {
@@ -54,8 +55,10 @@ async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
       }
     }
     return null;
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOTFOUND" || code === "ENODATA") return null;
+    throw new Error(`DNS lookup failed for _dmarc.${domain}: ${code ?? errorMessage(err)}`);
   }
 }
 

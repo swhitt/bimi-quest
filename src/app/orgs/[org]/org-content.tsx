@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { errorMessage } from "@/lib/utils";
 
 interface OrgContentProps {
   org: string;
@@ -44,7 +45,7 @@ export function OrgContent({ org }: OrgContentProps) {
         return res.json();
       })
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
+      .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [apiQuery]);
 

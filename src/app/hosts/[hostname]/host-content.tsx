@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { useGlobalFilters } from "@/lib/use-global-filters";
+import { errorMessage } from "@/lib/utils";
 
 interface HostContentProps {
   hostname: string;
@@ -43,7 +44,7 @@ export function HostContent({ hostname }: HostContentProps) {
         return res.json();
       })
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
+      .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [apiQuery]);
 

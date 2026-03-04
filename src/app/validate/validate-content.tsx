@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
+import { errorMessage } from "@/lib/utils";
 
 interface ChainValidation {
   chainValid: boolean;
@@ -112,7 +113,7 @@ export function ValidateContent() {
         setResult(data);
         window.history.replaceState(null, "", `/validate?domain=${encodeURIComponent(target)}`);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Validation failed");
+        setError(errorMessage(err));
       } finally {
         setLoading(false);
       }

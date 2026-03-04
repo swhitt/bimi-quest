@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { apiError, resolveOrError } from "@/lib/api-utils";
+import { errorMessage } from "@/lib/utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { certificateChainLinks, certificates, chainCerts } from "@/lib/db/schema";
@@ -147,7 +148,7 @@ async function checkOcsp(
       nextUpdate: result.nextUpdate,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const message = errorMessage(err);
     return { url: ocspUrl, status: "error", errorMessage: message };
   }
 }
@@ -211,7 +212,7 @@ async function checkCrl(crlUrl: string | null, serialNumberHex: string): Promise
       nextUpdate: result.nextUpdate,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const message = errorMessage(err);
     return { url: crlUrl, status: "error", errorMessage: message };
   }
 }

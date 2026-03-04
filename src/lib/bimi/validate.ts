@@ -3,6 +3,7 @@ import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { parseCertBasicInfo, pemToDer } from "@/lib/ct/parser";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { toArrayBuffer } from "@/lib/pem";
+import { errorMessage } from "@/lib/utils";
 import { type DMARCRecord, getDMARCBIMIReason, isDMARCValidForBIMI, lookupDMARC } from "./dmarc";
 import { type BIMIRecord, lookupBIMIRecord } from "./dns";
 import { computeGrade } from "./grade";
@@ -88,15 +89,28 @@ export async function validateDomain(domain: string, selector: string = "default
   const signal = AbortSignal.timeout(25_000);
 
   // 1 & 2. BIMI + DMARC DNS lookups (independent, run in parallel)
-  const [bimiRecord, dmarcLookup] = await Promise.all([lookupBIMIRecord(domain, selector), lookupDMARC(domain)]);
-  if (!bimiRecord) {
+  // Each lookup may throw on resolver errors (SERVFAIL, timeouts, etc.) while
+  // returning null for genuine "record not found" (ENOTFOUND/ENODATA).
+  const [bimiResult, dmarcResult] = await Promise.all([
+    lookupBIMIRecord(domain, selector).catch((err: unknown) => err as Error),
+    lookupDMARC(domain).catch((err: unknown) => err as Error),
+  ]);
+
+  const bimiRecord = bimiResult instanceof Error ? null : bimiResult;
+  if (bimiResult instanceof Error) {
+    errors.push(`BIMI DNS lookup failed (resolver error): ${errorMessage(bimiResult)}`);
+  } else if (!bimiRecord) {
     errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
   }
+
+  const dmarcLookup = dmarcResult instanceof Error ? null : dmarcResult;
   const dmarcRecord = dmarcLookup?.record ?? null;
   const isSubdomain = dmarcLookup?.isSubdomain ?? false;
   let dmarcValid = false;
   let dmarcReason: string | null = null;
-  if (!dmarcRecord) {
+  if (dmarcResult instanceof Error) {
+    errors.push(`DMARC DNS lookup failed (resolver error): ${errorMessage(dmarcResult)}`);
+  } else if (!dmarcRecord) {
     errors.push(`No DMARC record found at _dmarc.${domain}`);
   } else {
     dmarcValid = isDMARCValidForBIMI(dmarcRecord, isSubdomain);
@@ -143,7 +157,7 @@ export async function validateDomain(domain: string, selector: string = "default
         errors.push(`Failed to fetch SVG logo: HTTP ${res.status} from ${bimiRecord.logoUrl}`);
       }
     } catch (err) {
-      errors.push(`Failed to fetch SVG logo: ${err instanceof Error ? err.message : "unknown error"}`);
+      errors.push(`Failed to fetch SVG logo: ${errorMessage(err)}`);
     }
   }
 
@@ -224,7 +238,7 @@ export async function validateDomain(domain: string, selector: string = "default
         errors.push(`Failed to fetch authority certificate: HTTP ${res.status}`);
       }
     } catch (err) {
-      errors.push(`Failed to fetch authority certificate: ${err instanceof Error ? err.message : "unknown error"}`);
+      errors.push(`Failed to fetch authority certificate: ${errorMessage(err)}`);
     }
   }
 
@@ -844,7 +858,11 @@ async function validateCertificateChain(pem: string): Promise<ChainValidationRes
       chainErrors,
       chainLength: certs.length,
     };
-  } catch {
-    return null;
+  } catch (err) {
+    return {
+      chainValid: false,
+      chainErrors: [`Chain parsing failed: ${errorMessage(err)}`],
+      chainLength: 0,
+    };
   }
 }

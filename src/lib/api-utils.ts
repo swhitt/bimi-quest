@@ -8,7 +8,8 @@ import { log } from "@/lib/logger";
  * Logs the error with a structured key and route, then returns a JSON error response.
  */
 export function apiError(error: unknown, logKey: string, route: string, message = "Operation failed", status = 500) {
-  log("error", logKey, { error: String(error), route });
+  const errorStr = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+  log("error", logKey, { error: errorStr, route });
   return NextResponse.json({ error: message }, { status });
 }
 

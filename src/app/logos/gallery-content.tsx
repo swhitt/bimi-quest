@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { domainSlug } from "@/lib/domain-slug";
+import { errorMessage } from "@/lib/utils";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 import { useGlobalFilters } from "@/lib/use-global-filters";
@@ -384,7 +385,7 @@ export function GalleryContent({ initialLogos, initialTotal }: { initialLogos?: 
           const qs = urlParams.toString();
           window.history.replaceState(null, "", `${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
         })
-        .catch((err) => setError(err instanceof Error ? err.message : "Failed to load gallery"))
+        .catch((err) => setError(errorMessage(err)))
         .finally(() => {
           setLoading(false);
           setLoadingMore(false);

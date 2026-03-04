@@ -1,4 +1,5 @@
 import { promises as dns } from "dns";
+import { errorMessage } from "@/lib/utils";
 import { getOrgDomain } from "./dmarc";
 import { parseTxtTagList } from "./txt-tags";
 
@@ -45,8 +46,10 @@ async function lookupBIMIRecordAt(domain: string, selector: string): Promise<BIM
       }
     }
     return null;
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOTFOUND" || code === "ENODATA") return null;
+    throw new Error(`DNS lookup failed for ${selector}._bimi.${domain}: ${code ?? errorMessage(err)}`);
   }
 }
 

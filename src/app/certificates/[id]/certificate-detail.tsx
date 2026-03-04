@@ -13,6 +13,7 @@ import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { errorMessage } from "@/lib/utils";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 
 // Extension entry: new format has { v, c }, old format is a plain hex string
@@ -153,7 +154,7 @@ export function CertificateDetail({ id }: { id: string }) {
         return res.json();
       })
       .then(setBimiCheck)
-      .catch((err) => setBimiError(err instanceof Error ? err.message : "Failed to run BIMI check"))
+      .catch((err) => setBimiError(errorMessage(err)))
       .finally(() => setBimiLoading(false));
   }, [id]);
 
@@ -166,7 +167,7 @@ export function CertificateDetail({ id }: { id: string }) {
         return res.json();
       })
       .then(setRevocation)
-      .catch((err) => setRevocationError(err instanceof Error ? err.message : "Failed to check revocation status"))
+      .catch((err) => setRevocationError(errorMessage(err)))
       .finally(() => setRevocationLoading(false));
   }, [id]);
 
