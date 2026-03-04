@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PAGE_SIZES, toPageNumber } from "@/app/ct/[log]/constants";
 
 interface EntryNavigatorProps {
   startIndex: number;
@@ -15,8 +16,6 @@ interface EntryNavigatorProps {
   onPageSizeChange: (size: number) => void;
   jumpInputRef?: React.RefObject<HTMLInputElement | null>;
 }
-
-const PAGE_SIZES = [50, 100, 200];
 
 export function EntryNavigator({
   startIndex,
@@ -75,18 +74,20 @@ export function EntryNavigator({
         </Button>
       </form>
 
-      {/* Prev / Next */}
+      {/* Newer / Older — default view starts at newest, so "next page" = older = lower indices */}
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="icon-sm" onClick={handlePrev} disabled={atStart} aria-label="Previous page">
+        <Button variant="outline" size="icon-sm" onClick={handleNext} disabled={atEnd} aria-label="Newer entries">
           <ChevronLeft className="size-4" />
         </Button>
-        <Button variant="outline" size="icon-sm" onClick={handleNext} disabled={atEnd} aria-label="Next page">
+        <Button variant="outline" size="icon-sm" onClick={handlePrev} disabled={atStart} aria-label="Older entries">
           <ChevronRight className="size-4" />
         </Button>
       </div>
 
       {/* Range indicator */}
       <span className="text-xs text-muted-foreground tabular-nums">
+        Page {toPageNumber(startIndex, pageSize)}
+        {" · "}
         {startIndex.toLocaleString()}&ndash;{Math.min(startIndex + pageSize - 1, treeSize - 1).toLocaleString()}
         {" of "}
         {treeSize.toLocaleString()}

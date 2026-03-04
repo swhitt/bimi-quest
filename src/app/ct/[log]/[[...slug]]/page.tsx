@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { decodeCTEntry } from "@/lib/ct/decode-entry";
 import { getEntries, getSTH } from "@/lib/ct/gorgon";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from "../constants";
 import { CTLogContent } from "../ct-log-content";
 
 /** Known CT log slugs — add new logs here as they launch. */
@@ -12,12 +13,21 @@ const KNOWN_LOGS = new Set(["gorgon"]);
 
 interface Props {
   params: Promise<{ log: string; slug?: string[] }>;
+  searchParams: Promise<{ start?: string; count?: string }>;
 }
 
-function parseEntryIndex(slug?: string[]): number | undefined {
-  if (!slug?.length) return undefined;
+function parseSlug(slug?: string[]): { entryIndex?: number; pageNumber?: number } {
+  if (!slug?.length) return {};
+  // /ct/gorgon/page/N → page number
+  if (slug[0] === "page" && slug.length === 2) {
+    const parsed = parseInt(slug[1], 10);
+    if (Number.isFinite(parsed) && parsed >= 1) return { pageNumber: parsed };
+    return {};
+  }
+  // /ct/gorgon/12345 → entry permalink
   const parsed = parseInt(slug[0], 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  if (Number.isFinite(parsed) && parsed >= 0) return { entryIndex: parsed };
+  return {};
 }
 
 const fetchEntry = cache(async (index: number) => {
@@ -37,9 +47,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!KNOWN_LOGS.has(log)) return { title: "CT Log Not Found" };
 
-  const entryIndex = parseEntryIndex(slug);
+  const { entryIndex, pageNumber } = parseSlug(slug);
 
-  if (slug?.length && entryIndex === undefined) {
+  if (slug?.length && entryIndex === undefined && pageNumber === undefined) {
     return { title: "CT Log Entry Not Found" };
   }
 
@@ -76,39 +86,59 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  // List view: static metadata
+  // List / page view: static metadata
   const listDescription =
     "Browse raw Certificate Transparency log entries from the Gorgon CT log with decoded certificates, annotated hex viewer, and chain analysis.";
+  const pageSuffix = pageNumber !== undefined ? ` — Page ${pageNumber}` : "";
   return {
-    title: "CT Log Viewer",
+    title: `CT Log Viewer${pageSuffix}`,
     description: listDescription,
     openGraph: {
-      title: "CT Log Viewer — Gorgon Certificate Transparency",
+      title: `CT Log Viewer — Gorgon Certificate Transparency${pageSuffix}`,
       description: listDescription,
       images: [{ url: "/og-default.png", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "CT Log Viewer — Gorgon Certificate Transparency",
+      title: `CT Log Viewer — Gorgon Certificate Transparency${pageSuffix}`,
       description: listDescription,
       images: [{ url: "/og-default.png", width: 1200, height: 630 }],
     },
   };
 }
 
-export default async function CTLogPage({ params }: Props) {
+export default async function CTLogPage({ params, searchParams }: Props) {
   const { log, slug } = await params;
+  const query = await searchParams;
 
   if (!KNOWN_LOGS.has(log)) notFound();
 
-  const entryIndex = parseEntryIndex(slug);
+  const { entryIndex, pageNumber } = parseSlug(slug);
 
-  if (slug?.length && entryIndex === undefined) notFound();
+  if (slug?.length && entryIndex === undefined && pageNumber === undefined) notFound();
+
+  // Compute initialStart from page number or query param
+  let initialStart: number | undefined;
+  const queryStart = query.start ? parseInt(query.start, 10) : undefined;
+  const queryCount = query.count ? parseInt(query.count, 10) : undefined;
+  const pageSize =
+    queryCount && (PAGE_SIZES as readonly number[]).includes(queryCount) ? queryCount : DEFAULT_PAGE_SIZE;
+
+  if (queryStart !== undefined && Number.isFinite(queryStart)) {
+    initialStart = Math.max(0, queryStart);
+  } else if (pageNumber !== undefined) {
+    initialStart = (pageNumber - 1) * pageSize;
+  }
 
   await connection();
   return (
     <Suspense>
-      <CTLogContent logSlug={log} permalinkedIndex={entryIndex} />
+      <CTLogContent
+        logSlug={log}
+        permalinkedIndex={entryIndex}
+        initialStart={initialStart}
+        initialPageSize={pageSize !== DEFAULT_PAGE_SIZE ? pageSize : undefined}
+      />
     </Suspense>
   );
 }

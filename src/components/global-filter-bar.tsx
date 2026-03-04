@@ -544,7 +544,16 @@ function SecondaryFilters({
   );
 }
 
+/** Gate component: skip rendering (and all hooks/fetches) on pages where filters don't apply. */
 function FilterBarInner() {
+  const pathname = usePathname();
+
+  if (pathname === "/validate" || pathname === "/privacy" || pathname.startsWith("/ct/")) return null;
+
+  return <FilterBarContent />;
+}
+
+function FilterBarContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -622,9 +631,6 @@ function FilterBarInner() {
   const clearFilters = useCallback(() => {
     router.push(getBasePath(pathname));
   }, [pathname, router]);
-
-  // Don't show on validate or about pages
-  if (pathname === "/validate" || pathname === "/privacy") return null;
 
   const rootCa = searchParams.get("root") ?? "all";
   const type = searchParams.get("type") ?? "all";

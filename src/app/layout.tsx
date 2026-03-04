@@ -79,6 +79,7 @@ export default function RootLayout({
     <html lang="en" className="dark" style={{ colorScheme: "dark" }} suppressHydrationWarning>
       <body
         className={`${plexSans.variable} ${plexMono.variable} antialiased min-h-screen flex flex-col overflow-x-hidden`}
+        suppressHydrationWarning
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>

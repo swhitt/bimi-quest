@@ -1,6 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EntryDetail } from "@/components/ct-log/entry-detail";
 import { EntryList } from "@/components/ct-log/entry-list";
@@ -8,8 +7,7 @@ import { EntryNavigator } from "@/components/ct-log/entry-navigator";
 import { STHPanel, type STHResponse } from "@/components/ct-log/sth-panel";
 import { Card, CardContent } from "@/components/ui/card";
 import type { DecodedCTEntry } from "@/lib/ct/decode-entry";
-
-const DEFAULT_PAGE_SIZE = 100;
+import { DEFAULT_PAGE_SIZE, toPageNumber } from "./constants";
 const STH_POLL_INTERVAL = 15_000;
 
 /** Update browser URL without triggering Next.js navigation or component remount */
@@ -25,20 +23,21 @@ interface EntriesResponse {
 interface CTLogContentProps {
   logSlug: string;
   permalinkedIndex?: number;
+  initialStart?: number;
+  initialPageSize?: number;
 }
 
-export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
-  const searchParams = useSearchParams();
-
+export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialPageSize }: CTLogContentProps) {
   const basePath = `/ct/${logSlug}`;
   const apiBase = `/api/ct/${logSlug}`;
 
   const buildListUrl = useCallback(
     (start: number, count: number): string => {
+      const pageNum = toPageNumber(start, count);
       const params = new URLSearchParams();
       params.set("start", String(start));
       if (count !== DEFAULT_PAGE_SIZE) params.set("count", String(count));
-      return `${basePath}?${params}`;
+      return `${basePath}/page/${pageNum}?${params}`;
     },
     [basePath],
   );
@@ -52,15 +51,10 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
     if (permalinkedIndex !== undefined) {
       return Math.max(0, permalinkedIndex - Math.floor(DEFAULT_PAGE_SIZE / 2));
     }
-    const s = searchParams.get("start");
-    if (!s) return null;
-    const parsed = parseInt(s, 10);
-    return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+    return initialStart ?? null;
   });
   const [pageSize, setPageSize] = useState(() => {
-    const c = searchParams.get("count");
-    const parsed = c ? parseInt(c, 10) : DEFAULT_PAGE_SIZE;
-    return [50, 100, 200].includes(parsed) ? parsed : DEFAULT_PAGE_SIZE;
+    return initialPageSize ?? DEFAULT_PAGE_SIZE;
   });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(permalinkedIndex ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +70,7 @@ export function CTLogContent({ logSlug, permalinkedIndex }: CTLogContentProps) {
   const startRef = useRef<number | null>(startIndex);
   const pageSizeRef = useRef(pageSize);
   const prevTreeSizeRef = useRef(0);
-  const isAtLiveEdgeRef = useRef(permalinkedIndex === undefined && !searchParams.get("start"));
+  const isAtLiveEdgeRef = useRef(permalinkedIndex === undefined && initialStart === undefined);
   selectedRef.current = selectedIndex;
   startRef.current = startIndex;
   pageSizeRef.current = pageSize;

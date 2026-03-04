@@ -15,8 +15,8 @@ import { UniversalSearch } from "./universal-search";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/certificates", label: "Certificates" },
-  { href: "/ct/gorgon", label: "Log" },
   { href: "/logos", label: "Logos" },
+  { href: "/ct/gorgon", label: "Log" },
   { href: "/validate", label: "Validate" },
   { href: "/map", label: "Map" },
 ];
@@ -137,17 +137,7 @@ export function Nav() {
 
         {/* Desktop nav links - hidden on mobile */}
         <div data-testid="main-nav" className="hidden md:flex">
-          <Suspense
-            fallback={
-              <nav className="flex items-center gap-1 text-sm">
-                {navItems.map((i) => (
-                  <span key={i.href} className="px-2 py-1 text-muted-foreground">
-                    {i.label}
-                  </span>
-                ))}
-              </nav>
-            }
-          >
+          <Suspense fallback={null}>
             <NavLinks />
           </Suspense>
         </div>
@@ -169,17 +159,7 @@ export function Nav() {
               </div>
 
               {/* Nav links */}
-              <Suspense
-                fallback={
-                  <nav className="flex flex-col">
-                    {navItems.map((i) => (
-                      <span key={i.href} className="py-3 px-4 text-base text-muted-foreground">
-                        {i.label}
-                      </span>
-                    ))}
-                  </nav>
-                }
-              >
+              <Suspense fallback={null}>
                 <MobileNavLinks onNavigate={() => setSheetOpen(false)} />
               </Suspense>
 
