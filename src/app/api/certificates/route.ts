@@ -1,4 +1,4 @@
-import { type AnyColumn, asc, count, desc } from "drizzle-orm";
+import { type AnyColumn, asc, desc, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError } from "@/lib/api-utils";
@@ -6,7 +6,6 @@ import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
 import { certificates } from "@/lib/db/schema";
-import { stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 
 const VALID_SORT_COLUMNS = ["notBefore", "notAfter", "ctLogTimestamp", "subjectCn", "issuerOrg", "subjectOrg"] as const;
 
@@ -48,47 +47,47 @@ export async function GET(request: NextRequest) {
     const sortCol = sortColumns[sortBy];
     const orderFn = sortDir === "asc" ? asc : desc;
 
-    const [rows, [totalRow]] = await Promise.all([
-      db
-        .select({
-          id: certificates.id,
-          serialNumber: certificates.serialNumber,
-          fingerprintSha256: certificates.fingerprintSha256,
-          subjectCn: certificates.subjectCn,
-          subjectOrg: certificates.subjectOrg,
-          subjectCountry: certificates.subjectCountry,
-          issuerOrg: certificates.issuerOrg,
-          rootCaOrg: certificates.rootCaOrg,
-          certType: certificates.certType,
-          markType: certificates.markType,
-          notBefore: certificates.notBefore,
-          notAfter: certificates.notAfter,
-          sanList: certificates.sanList,
-          ctLogTimestamp: certificates.ctLogTimestamp,
-          logotypeSvgHash: certificates.logotypeSvgHash,
-          logotypeSvg: certificates.logotypeSvg,
-          isPrecert: certificates.isPrecert,
-          notabilityScore: certificates.notabilityScore,
-          companyDescription: certificates.companyDescription,
-          industry: certificates.industry,
-          createdAt: certificates.createdAt,
-        })
-        .from(certificates)
-        .where(where)
-        .orderBy(orderFn(sortCol))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: count() }).from(certificates).where(where),
-    ]);
+    // Single query with count(*) OVER() window function to avoid a separate
+    // count round-trip. hasLogo is derived from logotype_svg_hash presence
+    // instead of fetching the full SVG body (5-100KB per row).
+    const rows = await db
+      .select({
+        id: certificates.id,
+        serialNumber: certificates.serialNumber,
+        fingerprintSha256: certificates.fingerprintSha256,
+        subjectCn: certificates.subjectCn,
+        subjectOrg: certificates.subjectOrg,
+        subjectCountry: certificates.subjectCountry,
+        issuerOrg: certificates.issuerOrg,
+        rootCaOrg: certificates.rootCaOrg,
+        certType: certificates.certType,
+        markType: certificates.markType,
+        notBefore: certificates.notBefore,
+        notAfter: certificates.notAfter,
+        sanList: certificates.sanList,
+        ctLogTimestamp: certificates.ctLogTimestamp,
+        logotypeSvgHash: certificates.logotypeSvgHash,
+        hasLogo: sql<boolean>`${certificates.logotypeSvg} IS NOT NULL`.as("has_logo"),
+        isPrecert: certificates.isPrecert,
+        notabilityScore: certificates.notabilityScore,
+        companyDescription: certificates.companyDescription,
+        industry: certificates.industry,
+        createdAt: certificates.createdAt,
+        _total: sql<number>`count(*) OVER()`.as("_total"),
+      })
+      .from(certificates)
+      .where(where)
+      .orderBy(orderFn(sortCol))
+      .limit(limit)
+      .offset(offset);
 
-    const total = totalRow?.count || 0;
+    const total = rows.length > 0 ? rows[0]._total : 0;
 
-    const data = rows.map(({ logotypeSvg, ...rest }) => {
-      const hasLogo = logotypeSvg != null;
-      const stripped = logotypeSvg ? stripWhiteSvgBg(logotypeSvg) : null;
-      const logoBg = stripped ? tileBgForSvg(stripped) : null;
-      return { ...rest, hasLogo, logoBg };
-    });
+    // logoBg was previously computed from the full SVG body. Since we no
+    // longer fetch the SVG, we return null and let the client use its own
+    // default. A precomputed logo_bg column could be added to the schema
+    // for a per-row value without the query cost.
+    const data = rows.map(({ _total: _, ...rest }) => ({ ...rest, logoBg: null as string | null }));
 
     return NextResponse.json(
       {

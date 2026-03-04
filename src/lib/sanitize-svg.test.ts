@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeSvg } from "./sanitize-svg";
+import { sanitizeSvg, sanitizeSvgForProxy } from "./sanitize-svg";
 
 describe("sanitizeSvg", () => {
   describe("script tag stripping", () => {
@@ -15,6 +15,16 @@ describe("sanitizeSvg", () => {
       const result = sanitizeSvg(input);
       expect(result).not.toContain("<script");
       expect(result).not.toContain("evil.com");
+    });
+
+    it("removes self-closing script tags", () => {
+      // HTML/SVG parsers don't support self-closing <script/> -- the content
+      // up to </script> or end of parent becomes the script body. DOMPurify
+      // removes the script element; orphaned text nodes remain as harmless
+      // visible text (not executable code) in the SVG.
+      const input = "<svg><script/>alert(1)</script><rect/></svg>";
+      const result = sanitizeSvg(input);
+      expect(result).not.toContain("<script");
     });
   });
 
@@ -230,13 +240,17 @@ describe("sanitizeSvg", () => {
     });
 
     it("removes animate elements", () => {
-      // animate is not in ALLOWED_TAGS; DOMPurify strips it client-side.
-      // Server-side regex fallback focuses on security-critical elements only,
-      // so animate (non-dangerous) may pass through during SSR.
       const input = '<svg><rect/><animate attributeName="x" from="0" to="100"/></svg>';
       const result = sanitizeSvg(input);
-      // At minimum, verify the output is valid SVG (contains rect)
       expect(result).toContain("rect");
+      // DOMPurify strips animate since it's not in ALLOWED_TAGS
+      expect(result).not.toContain("animate");
+    });
+
+    it("strips xlink:href with javascript: URI", () => {
+      const input = '<svg><use xlink:href="javascript:alert(1)"/></svg>';
+      const result = sanitizeSvg(input);
+      expect(result).not.toContain("javascript:");
     });
   });
 
@@ -278,5 +292,59 @@ describe("sanitizeSvg", () => {
       expect(result).toContain("circle");
       expect(result).toContain("rect");
     });
+  });
+});
+
+describe("sanitizeSvgForProxy", () => {
+  it("strips script tags", () => {
+    const input = "<svg><script>alert(1)</script><rect/></svg>";
+    const result = sanitizeSvgForProxy(input);
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("rect");
+  });
+
+  it("strips self-closing script tags", () => {
+    // Self-closing <script/> followed by a closing </script> is handled
+    // by the HTML parser and DOMPurify strips the element entirely.
+    const input = "<svg><script/>alert(1)</script><rect/></svg>";
+    const result = sanitizeSvgForProxy(input);
+    expect(result).not.toContain("<script");
+  });
+
+  it("strips animate elements that could trigger JS", () => {
+    const input = '<svg><animate onbegin="alert(1)"/><rect/></svg>';
+    const result = sanitizeSvgForProxy(input);
+    expect(result).not.toContain("animate");
+    expect(result).not.toContain("alert");
+  });
+
+  it("strips xlink:href with javascript: URI", () => {
+    const input = '<svg><use xlink:href="javascript:alert(1)"/></svg>';
+    const result = sanitizeSvgForProxy(input);
+    expect(result).not.toContain("javascript:");
+  });
+
+  it("strips foreignObject elements", () => {
+    const input = "<svg><foreignObject><body><script>evil()</script></body></foreignObject><rect/></svg>";
+    const result = sanitizeSvgForProxy(input);
+    expect(result).not.toContain("foreignObject");
+    expect(result).not.toContain("evil");
+  });
+
+  it("strips event handlers", () => {
+    const input = '<svg onload="evil()"><rect onclick="steal()"/></svg>';
+    const result = sanitizeSvgForProxy(input);
+    expect(result).not.toContain("onload");
+    expect(result).not.toContain("onclick");
+    expect(result).not.toContain("evil");
+    expect(result).not.toContain("steal");
+  });
+
+  it("preserves valid SVG content", () => {
+    const input = '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="blue" width="100" height="100"/></svg>';
+    const result = sanitizeSvgForProxy(input);
+    expect(result).toContain("rect");
+    expect(result).toContain('fill="blue"');
   });
 });

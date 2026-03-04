@@ -72,7 +72,6 @@ export async function GET(request: NextRequest) {
             "fingerprint",
           ),
           svgHash: sql<string>`(array_agg(${certificates.logotypeSvgHash} ORDER BY ${pickOrder}))[1]`.as("svg_hash"),
-          svg: sql<string>`(array_agg(${certificates.logotypeSvg} ORDER BY ${pickOrder}))[1]`.as("svg"),
           org: sql<string>`(array_agg(${certificates.subjectOrg} ORDER BY ${pickOrder}))[1]`.as("org"),
           domain: sql<string>`(array_agg(${certificates.sanList}[1] ORDER BY ${pickOrder}))[1]`.as("domain"),
           certType: sql<string>`(array_agg(${certificates.certType} ORDER BY ${pickOrder}))[1]`.as("cert_type"),

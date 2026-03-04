@@ -37,6 +37,33 @@ describe("safeFetch", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
   });
 
+  it("pins connection to the resolved IP", async () => {
+    mockResolve4.mockResolvedValue(["93.184.216.34"]);
+    mockResolve6.mockRejectedValue(new Error("no AAAA"));
+
+    await safeFetch("https://example.com/test");
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("93.184.216.34");
+  });
+
+  it("sets Host header to original hostname for pinned requests", async () => {
+    mockResolve4.mockResolvedValue(["93.184.216.34"]);
+    mockResolve6.mockRejectedValue(new Error("no AAAA"));
+
+    await safeFetch("https://example.com/test");
+    const calledInit = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(calledInit.headers).toHaveProperty("Host", "example.com");
+  });
+
+  it("uses redirect: error to prevent redirect-based SSRF", async () => {
+    mockResolve4.mockResolvedValue(["93.184.216.34"]);
+    mockResolve6.mockRejectedValue(new Error("no AAAA"));
+
+    await safeFetch("https://example.com/test");
+    const calledInit = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(calledInit.redirect).toBe("error");
+  });
+
   it("blocks fetch when DNS resolves to private IPv4", async () => {
     mockResolve4.mockResolvedValue(["127.0.0.1"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
@@ -96,5 +123,22 @@ describe("safeFetch", () => {
     await expect(safeFetch("https://metadata-stealer.com")).rejects.toThrow(
       /DNS rebinding blocked.*169\.254\.169\.254/,
     );
+  });
+
+  it("preserves caller-provided headers alongside Host", async () => {
+    mockResolve4.mockResolvedValue(["93.184.216.34"]);
+    mockResolve6.mockRejectedValue(new Error("no AAAA"));
+
+    await safeFetch("https://example.com/test", {
+      headers: { "User-Agent": "test-agent", Accept: "text/html" },
+    });
+    const calledInit = mockFetch.mock.calls[0][1] as RequestInit;
+    const headers = calledInit.headers as Record<string, string>;
+    // Headers API normalizes keys to lowercase
+    expect(headers["user-agent"]).toBe("test-agent");
+    expect(headers.accept).toBe("text/html");
+    // Host is set explicitly with capital H, but it's overwritten after
+    // the spread so it appears with whatever case we set it to
+    expect(headers.Host).toBe("example.com");
   });
 });

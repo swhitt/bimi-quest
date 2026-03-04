@@ -1,23 +1,46 @@
 /**
- * Lazy-load DOMPurify only in browser environments.
- * isomorphic-dompurify requires jsdom which is ESM-only and crashes on
- * Vercel serverless (ERR_REQUIRE_ESM). Using dompurify directly avoids
- * jsdom entirely since it uses the browser's native DOM.
+ * SVG sanitizer using DOMPurify for both client and server.
+ *
+ * Client: uses the browser's native DOM via dompurify directly.
+ * Server: uses dompurify + jsdom (jsdom provides the DOM implementation).
+ *
+ * The old regex-based server fallback was bypassable (e.g. self-closing
+ * <script/>, xlink:href="javascript:..."). DOMPurify handles these correctly.
  */
-let _purify: { sanitize: (dirty: string, cfg: Record<string, unknown>) => string } | null = null;
+
+type PurifyInstance = { sanitize: (dirty: string, cfg: Record<string, unknown>) => string };
+
+let _purify: PurifyInstance | null = null;
 let _tried = false;
 
-function getPurify() {
+function getPurify(): PurifyInstance | null {
   if (_purify) return _purify;
   if (_tried) return null;
   _tried = true;
+
   if (typeof window !== "undefined") {
+    // Browser: dompurify uses the native DOM directly
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require("dompurify");
     _purify = mod.default || mod;
     return _purify;
   }
-  return null;
+
+  // Server: dompurify needs a DOM implementation; jsdom provides one.
+  // jsdom is available as a transitive dependency. Using dompurify(window)
+  // factory pattern avoids the isomorphic-dompurify ESM crash on Vercel.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { JSDOM } = require("jsdom");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const createDOMPurify = require("dompurify");
+    const dom = new JSDOM("");
+    _purify = createDOMPurify(dom.window) as PurifyInstance;
+    return _purify;
+  } catch {
+    // jsdom not available (e.g. edge runtime); fall through to null
+    return null;
+  }
 }
 
 const ALLOWED_TAGS = [
@@ -107,6 +130,14 @@ const ALLOWED_ATTRS = [
   "color",
 ];
 
+/** DOMPurify config shared by all sanitization calls */
+const PURIFY_CONFIG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  ALLOWED_TAGS,
+  ALLOWED_ATTR: ALLOWED_ATTRS,
+  ADD_TAGS: ["solidColor"],
+};
+
 /** Add viewBox from width/height if missing, so SVGs scale properly */
 function ensureViewBox(svg: string): string {
   if (/viewBox\s*=/i.test(svg)) return svg;
@@ -129,22 +160,8 @@ function stripBrowserDropped(svg: string): string {
   );
 }
 
-/** Server-side fallback: strip dangerous content without DOMPurify/jsdom.
- *  SVG content from our DB was already sanitized during ingestion, so this
- *  is defense-in-depth for the SSR pass. */
-function stripDangerousElements(svg: string): string {
-  return svg
-    .replace(/<script[\s>][\s\S]*?<\/script>/gi, "")
-    .replace(/<foreignObject[\s>][\s\S]*?<\/foreignObject>/gi, "")
-    .replace(/<iframe[\s>][\s\S]*?<\/iframe>/gi, "")
-    .replace(/<object[\s>][\s\S]*?<\/object>/gi, "")
-    .replace(/<embed[\s>][^>]*/gi, "")
-    .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, "")
-    .replace(/href\s*=\s*"javascript:[^"]*"/gi, "")
-    .replace(/href\s*=\s*'javascript:[^']*'/gi, "");
-}
-
-/** Sanitize SVG markup, stripping scripts and event handlers */
+/** Sanitize SVG markup, stripping scripts and event handlers.
+ *  Uses DOMPurify on both client and server for proper DOM-based sanitization. */
 export function sanitizeSvg(raw: string): string {
   // Strip XML declaration and leading whitespace so server and client produce
   // identical output (DOMPurify strips it client-side, causing hydration mismatch)
@@ -153,14 +170,24 @@ export function sanitizeSvg(raw: string): string {
 
   const purify = getPurify();
   if (purify) {
-    return purify.sanitize(normalized, {
-      USE_PROFILES: { svg: true, svgFilters: true },
-      ALLOWED_TAGS,
-      ALLOWED_ATTR: ALLOWED_ATTRS,
-      ADD_TAGS: ["solidColor"],
-    });
+    return purify.sanitize(normalized, PURIFY_CONFIG);
   }
 
-  // Server-side: regex fallback (content was already sanitized at ingestion time)
-  return stripDangerousElements(normalized);
+  // Should not reach here in practice -- getPurify initializes jsdom on the server.
+  // If jsdom is genuinely unavailable (edge runtime), return empty string rather
+  // than passing through unsanitized content.
+  return "";
+}
+
+/**
+ * Sanitize SVG for the proxy route. Identical to sanitizeSvg but exported
+ * separately for the proxy's use case (no viewBox injection or baseProfile
+ * stripping needed since content is served as-is, not hydrated).
+ */
+export function sanitizeSvgForProxy(raw: string): string {
+  const purify = getPurify();
+  if (purify) {
+    return purify.sanitize(raw, PURIFY_CONFIG);
+  }
+  return "";
 }

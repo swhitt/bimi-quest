@@ -3,20 +3,7 @@ import { CACHE_PRESETS } from "@/lib/cache";
 import { log } from "@/lib/logger";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
-/**
- * Lightweight server-safe SVG sanitizer that doesn't depend on jsdom.
- * The full DOMPurify-based sanitizeSvg requires jsdom which crashes on
- * Vercel serverless. This is safe because we also serve with
- * CSP: default-src 'none' and the SVG is loaded via <img> tags.
- */
-function stripDangerousContent(svg: string): string {
-  return svg
-    .replace(/<script[\s>][\s\S]*?<\/script>/gi, "")
-    .replace(/<foreignObject[\s>][\s\S]*?<\/foreignObject>/gi, "")
-    .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, "")
-    .replace(/href\s*=\s*"javascript:[^"]*"/gi, "")
-    .replace(/href\s*=\s*'javascript:[^']*'/gi, "");
-}
+import { sanitizeSvgForProxy } from "@/lib/sanitize-svg";
 
 // In-memory LRU cache for SVG content
 const cache = new Map<string, { content: string; contentType: string; timestamp: number }>();
@@ -166,7 +153,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const content = stripDangerousContent(rawContent);
+    const content = sanitizeSvgForProxy(rawContent);
 
     // Cache the result (simple LRU: evict oldest when full)
     if (cache.size >= MAX_CACHE_SIZE) {

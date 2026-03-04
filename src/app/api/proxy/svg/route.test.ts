@@ -254,6 +254,40 @@ describe("GET /api/proxy/svg", () => {
     expect(body.error).toBe("No response body");
   });
 
+  it("strips script tags from proxied SVG content", async () => {
+    const maliciousSvg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><rect/></svg>';
+    mockSafeFetch.mockResolvedValue(
+      new Response(streamFromString(maliciousSvg), {
+        status: 200,
+        headers: { "content-type": "image/svg+xml" },
+      }),
+    );
+
+    const req = makeRequest("/api/proxy/svg?url=https://sanitize-test.example.com/logo.svg");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).not.toContain("<script");
+    expect(text).not.toContain("alert(1)");
+    expect(text).toContain("rect");
+  });
+
+  it("strips self-closing script tags from proxied SVG", async () => {
+    const maliciousSvg = "<svg><script/>alert(1)</script><rect/></svg>";
+    mockSafeFetch.mockResolvedValue(
+      new Response(streamFromString(maliciousSvg), {
+        status: 200,
+        headers: { "content-type": "image/svg+xml" },
+      }),
+    );
+
+    const req = makeRequest("/api/proxy/svg?url=https://self-close-script.example.com/logo.svg");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).not.toContain("<script");
+  });
+
   it("includes rate limit headers in successful responses", async () => {
     const svgContent = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
     mockSafeFetch.mockResolvedValue(
