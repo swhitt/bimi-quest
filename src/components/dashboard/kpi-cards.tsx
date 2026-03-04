@@ -1,7 +1,5 @@
-"use client";
-
-import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { RelativeTime } from "@/components/ui/relative-time";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ActiveFilters {
@@ -55,7 +53,7 @@ export function KPICards({
   activeFilters,
   lastUpdated,
 }: KPICardsProps) {
-  const vmcPct = vmcTotal + cmcTotal > 0 ? ((vmcTotal / (vmcTotal + cmcTotal)) * 100).toFixed(0) : "—";
+  const vmcPct = vmcTotal + cmcTotal > 0 ? ((vmcTotal / (vmcTotal + cmcTotal)) * 100).toFixed(0) : "\u2014";
 
   const typeFilter = activeFilters?.type;
   const certNoun = typeFilter ? `${typeFilter}s` : "certs";
@@ -78,7 +76,7 @@ export function KPICards({
         </div>
         {lastUpdated && (
           <p className="text-xs text-muted-foreground/60">
-            Updated {formatDistanceToNow(new Date(lastUpdated), { addSuffix: true })}
+            Updated <RelativeTime date={lastUpdated} />
           </p>
         )}
       </div>
@@ -134,7 +132,7 @@ export function KPICards({
           </Tooltip>
           <span className="text-lg font-bold tabular-nums">{vmcPct}% VMC</span>
           <span className="text-xs text-muted-foreground ml-1.5">
-            {vmcTotal.toLocaleString()} · {cmcTotal.toLocaleString()}
+            {vmcTotal.toLocaleString()} &middot; {cmcTotal.toLocaleString()}
           </span>
         </div>
       </div>

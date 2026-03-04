@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { CertificatesContent } from "./certificates-content";
 
 export const metadata: Metadata = {
@@ -27,16 +25,7 @@ export default async function CertificatesPage(props: {
           Browse and filter all BIMI certificates discovered from CT logs.
         </p>
       </div>
-      <Suspense
-        fallback={
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-[500px] w-full rounded-xl" />
-          </div>
-        }
-      >
-        <CertificatesContent searchParams={searchParams} />
-      </Suspense>
+      <CertificatesContent searchParams={searchParams} />
     </div>
   );
 }

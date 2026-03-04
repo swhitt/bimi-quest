@@ -1,44 +1,39 @@
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { ExpiryChart, type ExpiryRow } from "@/components/dashboard/expiry-chart";
-import { IndustryChart, type IndustryRow } from "@/components/dashboard/industry-chart";
+import { ExpiryChart } from "@/components/dashboard/expiry-chart";
+import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
-import { RecentCerts, type RecentCert } from "@/components/dashboard/recent-certs";
-import { TopOrgs, type OrgRow } from "@/components/dashboard/top-orgs";
+import { RecentCerts } from "@/components/dashboard/recent-certs";
+import { TopOrgs } from "@/components/dashboard/top-orgs";
 import { displayIssuerOrg } from "@/lib/ca-display";
+import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
+import { fetchDashboardData } from "@/lib/data/dashboard";
+import { fetchExpiryTimeline, fetchIndustryBreakdown, fetchTopOrgs } from "@/lib/data/stats";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
-import { getBaseUrl } from "@/lib/server-url";
 
-interface DashboardData {
-  selectedCA: string;
-  totalCerts: number;
-  caCerts: number;
-  activeCerts: number;
-  marketShare: number | null;
-  uniqueOrgs: number;
-  newLast30d: number;
-  caNewLast30d: number;
-  expiringCount: number;
-  caBreakdown: { ca: string | null; total: number; vmcCount: number; cmcCount: number }[];
-  monthlyTrend: { month: string; ca: string | null; count: number }[];
-  markTypeBreakdown: { markType: string | null; count: number }[];
-  lastUpdated: string | null;
-  activeFilters: {
-    type: string | null;
-    mark: string | null;
-    industry: string | null;
-    country: string | null;
-  };
+/**
+ * Serialize Date fields to ISO strings for the RecentCerts client component,
+ * which expects string dates (as would come from a JSON API response).
+ */
+function serializeCertsForClient(result: CertificatesResult) {
+  return result.data.map((row) => ({
+    ...row,
+    notBefore: row.notBefore instanceof Date ? row.notBefore.toISOString() : String(row.notBefore),
+    notAfter: row.notAfter instanceof Date ? row.notAfter.toISOString() : String(row.notAfter),
+    ctLogTimestamp: row.ctLogTimestamp instanceof Date ? row.ctLogTimestamp.toISOString() : row.ctLogTimestamp,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+  }));
 }
 
-/** Fetch JSON from an internal API route, returning null on failure. */
-async function fetchJson<T>(url: string): Promise<T | null> {
-  try {
-    const res = await fetch(url, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
+/**
+ * Build a URLSearchParams from a record, for passing to shared data functions.
+ * Only includes non-empty string values.
+ */
+function toURLSearchParams(record: Record<string, string | string[] | undefined>): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, val] of Object.entries(record)) {
+    if (typeof val === "string" && val) params.set(key, val);
   }
+  return params;
 }
 
 export async function DashboardContent({
@@ -46,29 +41,26 @@ export async function DashboardContent({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
+  const filterParams = toURLSearchParams(searchParams);
   const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
-  const baseUrl = await getBaseUrl();
+  // Build params for recent certs with pagination defaults
+  const recentCertsSearchParams = toURLSearchParams(searchParams);
+  recentCertsSearchParams.set("page", "1");
+  recentCertsSearchParams.set("limit", "7");
+  recentCertsSearchParams.set("sort", "notBefore");
+  recentCertsSearchParams.set("dir", "desc");
 
-  // Fetch dashboard data and sub-widget data in parallel to eliminate waterfall
-  const recentCertsParams = buildApiParamsFromSearchParams(searchParams, {
-    page: "1",
-    limit: "7",
-    sort: "notBefore",
-    dir: "desc",
-  });
-
-  const [dashboardRes, industryRes, expiryRes, topOrgsRes, recentCertsRes] = await Promise.all([
-    fetchJson<DashboardData>(`${baseUrl}/api/dashboard?${apiQuery}`),
-    fetchJson<{ data: IndustryRow[] }>(`${baseUrl}/api/stats/industry-breakdown?${apiQuery}`),
-    fetchJson<{ data: ExpiryRow[] }>(`${baseUrl}/api/stats/expiry-timeline?${apiQuery}`),
-    fetchJson<{ data: OrgRow[] }>(`${baseUrl}/api/stats/top-orgs?${apiQuery}`),
-    fetchJson<{ data: RecentCert[]; pagination: { totalPages: number } }>(
-      `${baseUrl}/api/certificates?${recentCertsParams}`,
-    ),
+  // Fetch all data in parallel directly from the database (no loopback HTTP calls)
+  const [dashboardData, industryData, expiryData, topOrgsData, recentCertsData] = await Promise.all([
+    fetchDashboardData(filterParams).catch(() => null),
+    fetchIndustryBreakdown(filterParams).catch(() => null),
+    fetchExpiryTimeline(filterParams).catch(() => null),
+    fetchTopOrgs(filterParams).catch(() => null),
+    fetchCertificates(recentCertsSearchParams, { page: 1, limit: 7, sort: "notBefore", dir: "desc" }).catch(() => null),
   ]);
 
-  if (!dashboardRes) {
+  if (!dashboardData) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
         <p className="text-destructive">Failed to load dashboard data</p>
@@ -76,7 +68,7 @@ export async function DashboardContent({
     );
   }
 
-  const data = dashboardRes;
+  const data = dashboardData;
   const displayCA = data.selectedCA === "All Issuers" ? "All Issuers" : displayIssuerOrg(data.selectedCA);
 
   const vmcTotal = data.caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
@@ -111,21 +103,21 @@ export async function DashboardContent({
 
       <div className="grid gap-4 md:grid-cols-5 items-stretch">
         <div className="md:col-span-3">
-          <IndustryChart initialData={industryRes?.data ?? undefined} />
+          <IndustryChart initialData={industryData ?? undefined} />
         </div>
         <div className="md:col-span-2">
-          <ExpiryChart initialData={expiryRes?.data ?? undefined} />
+          <ExpiryChart initialData={expiryData ?? undefined} />
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-5 items-stretch">
         <div className="md:col-span-2 min-w-0">
-          <TopOrgs initialData={topOrgsRes?.data ?? undefined} />
+          <TopOrgs initialData={topOrgsData ?? undefined} />
         </div>
         <div className="md:col-span-3 min-w-0">
           <RecentCerts
-            initialData={recentCertsRes?.data ?? undefined}
-            initialTotalPages={recentCertsRes?.pagination?.totalPages ?? undefined}
+            initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
+            initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
           />
         </div>
       </div>

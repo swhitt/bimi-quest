@@ -1,9 +1,9 @@
+import { cache } from "react";
 import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { db } from "@/lib/db";
+import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { certificates } from "@/lib/db/schema";
 import { OrgContent } from "./org-content";
 
@@ -11,9 +11,24 @@ interface Props {
   params: Promise<{ org: string }>;
 }
 
+/** Deduplicated org name resolution shared by generateMetadata and the page component. */
+const resolveOrg = cache(async (rawOrg: string) => {
+  return decodeURIComponent(rawOrg);
+});
+
+/** Deduplicated initial data fetch shared by generateMetadata and the page component. */
+const getOrgCertificates = cache(async (org: string): Promise<CertificatesResult | null> => {
+  try {
+    const params = new URLSearchParams({ org });
+    return await fetchCertificates(params, { page: 1, limit: 50, sort: "notBefore", dir: "desc" });
+  } catch {
+    return null;
+  }
+});
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { org } = await params;
-  const decoded = decodeURIComponent(org);
+  const decoded = await resolveOrg(org);
 
   const rows = await db
     .select({
@@ -72,19 +87,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/**
+ * Serialize Date fields to ISO strings for the client component.
+ * The CertRow type used by the client expects string dates, not Date objects.
+ */
+function serializeForClient(result: CertificatesResult) {
+  return {
+    data: result.data.map((row) => ({
+      ...row,
+      notBefore: row.notBefore instanceof Date ? row.notBefore.toISOString() : row.notBefore,
+      notAfter: row.notAfter instanceof Date ? row.notAfter.toISOString() : row.notAfter,
+      ctLogTimestamp: row.ctLogTimestamp instanceof Date ? row.ctLogTimestamp.toISOString() : row.ctLogTimestamp,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    })),
+    pagination: result.pagination,
+  };
+}
+
 export default async function OrgPage({ params }: Props) {
   const { org } = await params;
-  const decoded = decodeURIComponent(org);
-  return (
-    <Suspense
-      fallback={
-        <div className="space-y-6">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-[500px] w-full rounded-xl" />
-        </div>
-      }
-    >
-      <OrgContent org={decoded} />
-    </Suspense>
-  );
+  const decoded = await resolveOrg(org);
+
+  const result = await getOrgCertificates(decoded);
+  const serialized = result ? serializeForClient(result) : null;
+
+  return <OrgContent org={decoded} initialData={serialized?.data} initialPagination={serialized?.pagination} />;
 }

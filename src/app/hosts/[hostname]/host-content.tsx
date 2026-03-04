@@ -7,22 +7,35 @@ import { CertificatesTable, type CertRow } from "@/components/tables/certificate
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { errorMessage } from "@/lib/utils";
 
-interface HostContentProps {
-  hostname: string;
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
-export function HostContent({ hostname }: HostContentProps) {
+interface HostContentProps {
+  hostname: string;
+  initialData?: CertRow[];
+  initialPagination?: PaginationData;
+}
+
+export function HostContent({ hostname, initialData, initialPagination }: HostContentProps) {
   const searchParams = useSearchParams();
   const { buildApiParams } = useGlobalFilters();
+  const hasInitialData = initialData !== undefined && initialPagination !== undefined;
+
   const [data, setData] = useState<{
     data: CertRow[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
+    pagination: PaginationData;
   }>({
-    data: [],
-    pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+    data: initialData ?? [],
+    pagination: initialPagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 },
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
+  // Track whether this is the first render with SSR data to skip the initial fetch
+  const [isInitialRender, setIsInitialRender] = useState(hasInitialData);
 
   const page = searchParams.get("page") || "";
   const sort = searchParams.get("sort") || "";
@@ -36,6 +49,13 @@ export function HostContent({ hostname }: HostContentProps) {
   });
 
   useEffect(() => {
+    // Skip the initial fetch if we received SSR data and no client-side
+    // params have changed (first render only)
+    if (isInitialRender) {
+      setIsInitialRender(false);
+      return;
+    }
+
     setError(null);
     setLoading(true);
     fetch(`/api/certificates?${apiQuery}`)
@@ -46,7 +66,7 @@ export function HostContent({ hostname }: HostContentProps) {
       .then(setData)
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
-  }, [apiQuery]);
+  }, [apiQuery]); // eslint-disable-line react-hooks/exhaustive-deps -- isInitialRender is intentionally excluded
 
   return (
     <div className="space-y-8">

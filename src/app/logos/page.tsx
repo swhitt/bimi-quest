@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getBaseUrl } from "@/lib/server-url";
 import { GalleryContent, type GalleryResponse } from "./gallery-content";
 
@@ -56,20 +54,10 @@ export default async function GalleryPage() {
           Browse unique BIMI logos discovered from certificate transparency logs.
         </p>
       </div>
-      <Suspense
-        fallback={
-          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
-            {Array.from({ length: 60 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square w-full" />
-            ))}
-          </div>
-        }
-      >
-        <GalleryContent
-          initialLogos={initialGallery?.logos ?? undefined}
-          initialTotal={initialGallery?.total ?? undefined}
-        />
-      </Suspense>
+      <GalleryContent
+        initialLogos={initialGallery?.logos ?? undefined}
+        initialTotal={initialGallery?.total ?? undefined}
+      />
     </div>
   );
 }

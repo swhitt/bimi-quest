@@ -1,23 +1,55 @@
 import { CertificatesTable } from "@/components/tables/certificates-table";
-import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
-import { getBaseUrl } from "@/lib/server-url";
+import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
+
+/**
+ * Build a URLSearchParams from a record, for passing to shared data functions.
+ * Only includes non-empty string values.
+ */
+function toURLSearchParams(record: Record<string, string | string[] | undefined>): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, val] of Object.entries(record)) {
+    if (typeof val === "string" && val) params.set(key, val);
+  }
+  return params;
+}
+
+/**
+ * Serialize Date fields to ISO strings for the client component.
+ * The CertRow type used by the client expects string dates, not Date objects.
+ */
+function serializeForClient(result: CertificatesResult) {
+  return {
+    data: result.data.map((row) => ({
+      ...row,
+      notBefore: row.notBefore instanceof Date ? row.notBefore.toISOString() : String(row.notBefore),
+      notAfter: row.notAfter instanceof Date ? row.notAfter.toISOString() : String(row.notAfter),
+      ctLogTimestamp: row.ctLogTimestamp instanceof Date ? row.ctLogTimestamp.toISOString() : row.ctLogTimestamp,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    })),
+    pagination: result.pagination,
+  };
+}
 
 export async function CertificatesContent({
   searchParams,
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const apiQuery = buildApiParamsFromSearchParams(searchParams);
+  const filterParams = toURLSearchParams(searchParams);
 
-  const baseUrl = await getBaseUrl();
+  const page = filterParams.get("page") ?? undefined;
+  const limit = filterParams.get("limit") ?? undefined;
+  const sort = filterParams.get("sort") ?? undefined;
+  const dir = filterParams.get("dir") ?? undefined;
 
-  let data: { data: []; pagination: { page: number; limit: number; total: number; totalPages: number } };
+  let result: CertificatesResult;
   try {
-    const res = await fetch(`${baseUrl}/api/certificates?${apiQuery}`, {
-      next: { revalidate: 60 },
+    result = await fetchCertificates(filterParams, {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      sort,
+      dir,
     });
-    if (!res.ok) throw new Error("Failed to load");
-    data = await res.json();
   } catch {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
@@ -26,5 +58,7 @@ export async function CertificatesContent({
     );
   }
 
-  return <CertificatesTable data={data.data} pagination={data.pagination} />;
+  const serialized = serializeForClient(result);
+
+  return <CertificatesTable data={serialized.data} pagination={serialized.pagination} />;
 }

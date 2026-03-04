@@ -1,8 +1,8 @@
+import { cache } from "react";
 import { desc, sql } from "drizzle-orm";
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
+import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { certificates } from "@/lib/db/schema";
 import { HostContent } from "./host-content";
 
@@ -10,9 +10,24 @@ interface Props {
   params: Promise<{ hostname: string }>;
 }
 
+/** Deduplicated hostname resolution shared by generateMetadata and the page component. */
+const resolveHostname = cache(async (rawHostname: string) => {
+  return decodeURIComponent(rawHostname).toLowerCase().replace(/\.$/, "");
+});
+
+/** Deduplicated initial data fetch shared by generateMetadata and the page component. */
+const getHostCertificates = cache(async (hostname: string): Promise<CertificatesResult | null> => {
+  try {
+    const params = new URLSearchParams({ host: hostname });
+    return await fetchCertificates(params, { page: 1, limit: 50, sort: "notBefore", dir: "desc" });
+  } catch {
+    return null;
+  }
+});
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { hostname } = await params;
-  const decoded = decodeURIComponent(hostname).toLowerCase();
+  const decoded = await resolveHostname(hostname);
 
   const rows = await db
     .select({
@@ -57,19 +72,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/**
+ * Serialize Date fields to ISO strings for the client component.
+ * The CertRow type used by the client expects string dates, not Date objects.
+ */
+function serializeForClient(result: CertificatesResult) {
+  return {
+    data: result.data.map((row) => ({
+      ...row,
+      notBefore: row.notBefore instanceof Date ? row.notBefore.toISOString() : row.notBefore,
+      notAfter: row.notAfter instanceof Date ? row.notAfter.toISOString() : row.notAfter,
+      ctLogTimestamp: row.ctLogTimestamp instanceof Date ? row.ctLogTimestamp.toISOString() : row.ctLogTimestamp,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    })),
+    pagination: result.pagination,
+  };
+}
+
 export default async function HostPage({ params }: Props) {
   const { hostname } = await params;
-  const decoded = decodeURIComponent(hostname).toLowerCase().replace(/\.$/, "");
-  return (
-    <Suspense
-      fallback={
-        <div className="space-y-6">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-[500px] w-full rounded-xl" />
-        </div>
-      }
-    >
-      <HostContent hostname={decoded} />
-    </Suspense>
-  );
+  const decoded = await resolveHostname(hostname);
+
+  const result = await getHostCertificates(decoded);
+  const serialized = result ? serializeForClient(result) : null;
+
+  return <HostContent hostname={decoded} initialData={serialized?.data} initialPagination={serialized?.pagination} />;
 }
