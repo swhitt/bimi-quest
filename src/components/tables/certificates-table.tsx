@@ -484,7 +484,7 @@ export function CertificatesTable({
                 inputClassName="pl-9"
               />
             </div>
-            <span className="sm:hidden text-xs text-muted-foreground whitespace-nowrap shrink-0">
+            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 tabular-nums">
               {pagination.total.toLocaleString()}
             </span>
           </div>

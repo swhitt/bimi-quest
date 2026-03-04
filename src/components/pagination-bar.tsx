@@ -21,8 +21,18 @@ export function PaginationBar({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className="text-sm text-muted-foreground whitespace-nowrap">
-        {pagination.total.toLocaleString()} {noun}
+      <p className="text-sm text-muted-foreground whitespace-nowrap tabular-nums">
+        {pagination.totalPages > 1 ? (
+          <>
+            {((pagination.page - 1) * pagination.limit + 1).toLocaleString()}–
+            {Math.min(pagination.page * pagination.limit, pagination.total).toLocaleString()} of{" "}
+            {pagination.total.toLocaleString()} {noun}
+          </>
+        ) : (
+          <>
+            {pagination.total.toLocaleString()} {noun}
+          </>
+        )}
       </p>
       <div className="flex items-center gap-1">
         <Button

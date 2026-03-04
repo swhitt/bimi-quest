@@ -18,24 +18,23 @@ function getPurify(): PurifyInstance | null {
   if (_tried) return null;
   _tried = true;
 
-  if (typeof window !== "undefined") {
-    // Browser: dompurify uses the native DOM directly
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("dompurify");
-    _purify = mod.default || mod;
-    return _purify;
-  }
-
-  // Server: dompurify needs a DOM implementation; jsdom provides one.
-  // jsdom is available as a transitive dependency. Using dompurify(window)
-  // factory pattern avoids the isomorphic-dompurify ESM crash on Vercel.
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { JSDOM } = require("jsdom");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const createDOMPurify = require("dompurify");
+    const factory = createDOMPurify.default || createDOMPurify;
+
+    if (typeof window !== "undefined") {
+      // Browser: call the factory with the native window
+      _purify = factory(window) as PurifyInstance;
+      return _purify;
+    }
+
+    // Server: dompurify needs a DOM implementation from jsdom.
+    // jsdom must be a direct dependency so Vercel's bundler traces it.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { JSDOM } = require("jsdom");
     const dom = new JSDOM("");
-    _purify = createDOMPurify(dom.window) as PurifyInstance;
+    _purify = factory(dom.window) as PurifyInstance;
     return _purify;
   } catch {
     // jsdom not available (e.g. edge runtime); fall through to null
