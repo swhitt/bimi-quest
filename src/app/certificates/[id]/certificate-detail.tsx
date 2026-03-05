@@ -435,7 +435,7 @@ export function CertificateDetail({ id }: { id: string }) {
                         <span key={san} className="inline-flex items-center">
                           {i > 0 && <span className="mx-1 text-muted-foreground">,</span>}
                           <Link
-                            href={`/hosts/${encodeURIComponent(san)}`}
+                            href={`/certificates?search=${encodeURIComponent(san)}`}
                             className="inline-flex items-baseline gap-1 text-primary hover:underline"
                           >
                             {san}
@@ -784,7 +784,10 @@ export function CertificateDetail({ id }: { id: string }) {
                     const totalCount = otherCount > 0 ? otherCount + 1 : 0;
                     return (
                       <div key={san} className="pl-[3.5rem]">
-                        <Link href={`/hosts/${encodeURIComponent(san)}`} className="text-primary hover:underline">
+                        <Link
+                          href={`/certificates?search=${encodeURIComponent(san)}`}
+                          className="text-primary hover:underline"
+                        >
                           DNS:{san}
                           {totalCount > 1 && (
                             <span className="ml-1 text-xs text-muted-foreground font-normal no-underline">
