@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
@@ -41,7 +42,6 @@ export interface CertRow {
   ctLogTimestamp: string | null;
   logotypeSvgHash: string | null;
   hasLogo: boolean;
-  logoBg: string | null;
   isPrecert: boolean | null;
   notabilityScore: number | null;
   companyDescription: string | null;
@@ -174,7 +174,6 @@ export function CertificatesTable({
           }
           const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
           const svgUrl = `/api/logo/${hash}?format=svg`;
-          const bg = row.original.logoBg;
           const logoHref = `/logo/${row.original.fingerprintSha256.slice(0, 16)}`;
           return (
             <Tooltip>
@@ -187,8 +186,7 @@ export function CertificatesTable({
                     width={32}
                     height={32}
                     unoptimized
-                    className="size-8 min-w-8 rounded border border-border/30 object-contain"
-                    style={bg ? { backgroundColor: bg } : undefined}
+                    className="size-8 min-w-8 rounded border border-border/30 object-contain dark:bg-gray-100"
                   />
                 </Link>
               </TooltipTrigger>
@@ -199,8 +197,7 @@ export function CertificatesTable({
                   width={160}
                   height={160}
                   unoptimized
-                  className="size-40 rounded object-contain"
-                  style={bg ? { backgroundColor: bg } : undefined}
+                  className="size-40 rounded object-contain dark:bg-gray-100"
                 />
               </TooltipContent>
             </Tooltip>
@@ -223,7 +220,7 @@ export function CertificatesTable({
           const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
           const firstDomain = row.original.sanList[0] || row.original.subjectCn;
           const orgHref = row.original.subjectOrg
-            ? `/orgs/${encodeURIComponent(row.original.subjectOrg)}`
+            ? `/orgs/${slugify(row.original.subjectOrg)}`
             : `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
           return (
             <div className="min-w-0">

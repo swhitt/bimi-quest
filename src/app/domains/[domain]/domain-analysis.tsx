@@ -34,6 +34,7 @@ interface ValidationResult {
 export function DomainAnalysis({ domain }: { domain: string }) {
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/validate", {
@@ -41,14 +42,26 @@ export function DomainAnalysis({ domain }: { domain: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domain }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Validation failed (${res.status})`);
+        return res.json();
+      })
       .then(setValidation)
-      .catch(console.error)
+      .catch((err) => setError(err instanceof Error ? err.message : "Analysis failed"))
       .finally(() => setLoading(false));
   }, [domain]);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center text-muted-foreground">Analyzing {domain}...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
+        <p className="text-destructive">{error}</p>
+        <p className="text-sm text-muted-foreground">Could not analyze {domain}. Try again later.</p>
+      </div>
+    );
   }
 
   return (

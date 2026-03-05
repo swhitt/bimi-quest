@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { detectSearchType, extractDomain, normalizeHex, type SearchType } from "@/lib/search-detect";
+import { slugify } from "@/lib/slugify";
 
 interface Suggestion {
   label: string;
@@ -140,7 +141,7 @@ export function UniversalSearch({ variant = "nav", autoFocus = false, onNavigate
       const hex = normalizeHex(trimmed);
       router.push(`/certificates?serial=${encodeURIComponent(hex)}`);
     } else if (type === "org") {
-      router.push(`/orgs/${encodeURIComponent(input)}`);
+      router.push(`/orgs/${slugify(input)}`);
     } else {
       const domain = extractDomain(trimmed);
       if (domain) {

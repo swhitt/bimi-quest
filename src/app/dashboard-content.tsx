@@ -111,7 +111,7 @@ export async function DashboardContent({
         <ExpiryChart initialData={expiryData ?? undefined} />
       </div>
 
-      <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-3">
         <TopOrgs
           initialData={topOrgsData?.data ?? undefined}
           initialTotalPages={topOrgsData?.totalPages ?? undefined}

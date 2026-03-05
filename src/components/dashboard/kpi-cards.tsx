@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkline } from "@/components/dashboard/sparkline";
 
 interface ActiveFilters {
   type: string | null;
@@ -43,9 +42,15 @@ export function KPICards({
   const vmcPct = vmcTotal + cmcTotal > 0 ? ((vmcTotal / (vmcTotal + cmcTotal)) * 100).toFixed(0) : "\u2014";
   const activePct = totalCerts > 0 ? ((activeCerts / totalCerts) * 100).toFixed(0) : "\u2014";
 
+  // Week-over-week delta from daily trend (last 7 days vs prior 7 days)
+  const thisWeek = dailyTrend.slice(-7).reduce((a, b) => a + b, 0);
+  const lastWeek = dailyTrend.slice(-14, -7).reduce((a, b) => a + b, 0);
+  const wowDelta = thisWeek - lastWeek;
+  const wowPct = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : null;
+
   return (
     <div className="space-y-1.5">
-      {/* Row 1: Hero number + sparkline + primary context */}
+      {/* Row 1: Hero number + weekly delta + primary context */}
       <div className="flex items-center gap-3 flex-wrap">
         <span data-testid="kpi-total-certs" className="text-3xl font-bold font-mono tabular-nums">
           {activeCerts.toLocaleString()}
@@ -56,7 +61,27 @@ export function KPICards({
           </TooltipTrigger>
           <TooltipContent>Currently valid (not expired) certificates</TooltipContent>
         </Tooltip>
-        <Sparkline data={dailyTrend} width={60} height={16} className="text-emerald-500" />
+        {thisWeek > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={`text-sm font-mono tabular-nums cursor-help ${wowDelta > 0 ? "text-emerald-600 dark:text-emerald-400" : wowDelta < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
+              >
+                {wowDelta > 0 ? "+" : ""}
+                {thisWeek} /wk
+                {wowPct !== null && wowDelta !== 0 && (
+                  <span className="text-xs ml-0.5">
+                    ({wowDelta > 0 ? "+" : ""}
+                    {wowPct}%)
+                  </span>
+                )}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {thisWeek} new this week{lastWeek > 0 ? ` vs ${lastWeek} last week` : ""}
+            </TooltipContent>
+          </Tooltip>
+        )}
         <span className="text-sm text-muted-foreground">
           {activePct}% of {totalCerts.toLocaleString()}
         </span>

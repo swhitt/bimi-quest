@@ -39,7 +39,6 @@ export interface CertificateRow {
   industry: string | null;
   createdAt: Date | null;
   hasLogo: boolean;
-  logoBg: string | null;
 }
 
 export interface CertificatesResult {
@@ -68,14 +67,14 @@ export async function fetchCertificates(
 
   const where = buildCertificateConditions(filterParams);
 
-  const sortColumns: Record<SortColumn, AnyColumn> = {
+  const sortColumns = {
     notBefore: certificates.notBefore,
     notAfter: certificates.notAfter,
     ctLogTimestamp: certificates.ctLogTimestamp,
     subjectCn: certificates.subjectCn,
     issuerOrg: certificates.issuerOrg,
     subjectOrg: certificates.subjectOrg,
-  } as const;
+  } satisfies Record<SortColumn, AnyColumn>;
   const sortCol = sortColumns[sortBy];
   const orderFn = sortDir === "asc" ? asc : desc;
 
@@ -115,7 +114,7 @@ export async function fetchCertificates(
 
   const total = rows.length > 0 ? rows[0]._total : 0;
 
-  const data = rows.map(({ _total: _, ...rest }) => ({ ...rest, logoBg: null as string | null }));
+  const data = rows.map(({ _total: _, ...rest }) => rest);
 
   return {
     data,

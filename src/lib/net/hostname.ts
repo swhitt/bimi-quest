@@ -14,6 +14,10 @@ export function isPrivateIP(ip: string): boolean {
     lower.startsWith("fc00:") ||
     lower.startsWith("fd") ||
     lower.startsWith("2001:db8:") || // documentation range (2001:db8::/32)
+    lower.startsWith("2001:0:") || // Teredo tunneling (2001::/32)
+    lower.startsWith("2002:") || // 6to4 transition (2002::/16)
+    lower.startsWith("fec0:") || // site-local (deprecated, fec0::/10)
+    lower.startsWith("ff") || // multicast (ff00::/8)
     lower.startsWith("100::") // discard prefix (100::/64)
   ) {
     return true;

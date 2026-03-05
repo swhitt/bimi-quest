@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
+import { slugify } from "@/lib/slugify";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export interface RecentCert {
@@ -21,7 +22,6 @@ export interface RecentCert {
   sanList: string[];
   logotypeSvgHash: string | null;
   hasLogo: boolean;
-  logoBg: string | null;
   notabilityScore: number | null;
   createdAt: string | null;
 }
@@ -94,14 +94,23 @@ export function RecentCerts({
                       width={20}
                       height={20}
                       unoptimized
-                      className="size-5 shrink-0 rounded border object-contain"
-                      style={cert.logoBg ? { backgroundColor: cert.logoBg } : undefined}
+                      className="size-5 shrink-0 rounded border object-contain dark:bg-gray-100"
                     />
                   ) : (
                     <div className="size-5 shrink-0 rounded border bg-muted" />
                   )}
                   <span className="text-[13px] truncate flex-1 min-w-0">
-                    {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Unknown"}
+                    {cert.subjectOrg ? (
+                      <Link
+                        href={`/orgs/${slugify(cert.subjectOrg)}`}
+                        className="hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {cert.subjectOrg}
+                      </Link>
+                    ) : (
+                      cert.subjectCn || cert.sanList[0] || "Unknown"
+                    )}
                   </span>
                   <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
                     {cert.certType || "BIMI"}

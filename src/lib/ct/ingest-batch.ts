@@ -15,9 +15,23 @@ import { certificateChainLinks, certificates, chainCerts, ingestionCursors } fro
 import { type BrandInput, scoreNotabilityBatch } from "@/lib/notability";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { computeColorRichness } from "@/lib/svg-color-richness";
+import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
 
 const BATCH_SIZE = 256;
+
+/** Classify whether an error is transient (DB/network) vs permanent (parse/logic bug). */
+export function isTransientError(msg: string): boolean {
+  return (
+    msg.includes("fetch failed") ||
+    msg.includes("CONNECT_TIMEOUT") ||
+    msg.includes("connection") ||
+    msg.includes("too many clients") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("socket hang up")
+  );
+}
 
 interface PendingCert {
   id: number;
@@ -82,8 +96,8 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
     });
 
   if (updateQueries.length > 0) {
-    // Type-safe batch call: getDb() returns NeonHttpDatabase which has a typed batch() method
-    await db.batch(updateQueries as [(typeof updateQueries)[0], ...typeof updateQueries]);
+    const [first, ...rest] = updateQueries;
+    await db.batch([first, ...rest]);
   }
 
   // Dispatch notifications for notable certs (separate from DB update)
@@ -205,6 +219,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             subjectDn: bimiData.subjectDn,
             subjectCn: bimiData.subjectCn,
             subjectOrg: bimiData.subjectOrg,
+            subjectOrgSlug: bimiData.subjectOrg ? slugify(bimiData.subjectOrg) : null,
             subjectCountry: bimiData.subjectCountry,
             subjectState: bimiData.subjectState,
             subjectLocality: bimiData.subjectLocality,
@@ -263,14 +278,26 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             await db.update(certificates).set({ isSuperseded: true }).where(eq(certificates.id, inserted.id));
           }
 
-          // Parse chain cert data (fingerprints + metadata) in parallel
-          const chainData = await Promise.all(
+          // Parse chain cert data (fingerprints + metadata) in parallel.
+          // Use allSettled so one malformed chain cert doesn't lose the rest.
+          const chainResults = await Promise.allSettled(
             parsed.chainPems.map(async (pem) => ({
               info: parseChainCert(pem),
               fingerprint: await computePemFingerprint(pem),
               pem,
             })),
           );
+          const chainData = chainResults
+            .filter(
+              (
+                r,
+              ): r is PromiseFulfilledResult<{
+                info: ReturnType<typeof parseChainCert>;
+                fingerprint: string;
+                pem: string;
+              }> => r.status === "fulfilled",
+            )
+            .map((r) => r.value);
 
           if (chainData.length > 0) {
             // Batch INSERT all chain certs at once
@@ -343,12 +370,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
         // Distinguish transient DB errors from parse errors: if the error
         // message suggests a database/network issue, stop the batch to avoid
         // silently skipping entries that could succeed on retry.
-        const isTransient =
-          msg.includes("fetch failed") ||
-          msg.includes("CONNECT_TIMEOUT") ||
-          msg.includes("connection") ||
-          msg.includes("too many clients");
-        if (isTransient) {
+        if (isTransientError(msg)) {
           onProgress?.(`Transient error at entry ${entryIndex}, stopping batch: ${msg.slice(0, 200)}`);
           hadDbError = true;
           break;

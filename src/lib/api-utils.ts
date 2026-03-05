@@ -36,12 +36,13 @@ export function verifyCronAuth(request: NextRequest): NextResponse | null {
 
   const authHeader = request.headers.get("authorization") ?? "";
   const expected = `Bearer ${cronSecret}`;
+  // Pad both buffers to the same length to avoid leaking secret length via timing
   const maxLen = Math.max(authHeader.length, expected.length);
   const authBuf = Buffer.alloc(maxLen);
   const expectedBuf = Buffer.alloc(maxLen);
   authBuf.write(authHeader);
   expectedBuf.write(expected);
-  if (authHeader.length !== expected.length || !timingSafeEqual(authBuf, expectedBuf)) {
+  if (!timingSafeEqual(authBuf, expectedBuf) || authHeader.length !== expected.length) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

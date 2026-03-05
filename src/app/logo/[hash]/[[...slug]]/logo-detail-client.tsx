@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatUtcFull } from "@/components/ui/utc-time";
 import { getMarkTypeInfo } from "@/lib/mark-types";
+import { slugify } from "@/lib/slugify";
 import { DARK_BG, isLightBg, LIGHT_BG, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 
 interface LogoData {
@@ -91,7 +92,9 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           Gallery
         </Link>
         <span className="text-muted-foreground">/</span>
-        <span className="text-foreground truncate font-medium">{logo.org}</span>
+        <Link href={`/orgs/${slugify(logo.org)}`} className="text-foreground truncate font-medium hover:underline">
+          {logo.org}
+        </Link>
       </nav>
 
       {/* Hero: Logo + Identity */}
@@ -252,7 +255,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
         <div className="flex flex-wrap gap-3 p-4 bg-muted/30">
           {logo.org && logo.org !== "Unknown" && (
             <Link
-              href={`/orgs/${encodeURIComponent(logo.org)}`}
+              href={`/orgs/${slugify(logo.org)}`}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <Award className="size-3.5" />

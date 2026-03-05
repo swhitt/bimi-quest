@@ -172,21 +172,20 @@ export function sanitizeSvg(raw: string): string {
     return purify.sanitize(normalized, PURIFY_CONFIG);
   }
 
-  // Should not reach here in practice -- getPurify initializes jsdom on the server.
-  // If jsdom is genuinely unavailable (edge runtime), return empty string rather
-  // than passing through unsanitized content.
-  return "";
+  // If jsdom is genuinely unavailable (edge runtime), throw rather than
+  // silently returning empty string — callers must know sanitization failed.
+  throw new Error("SVG sanitization unavailable: DOMPurify could not be initialized");
 }
 
 /**
- * Sanitize SVG for the proxy route. Identical to sanitizeSvg but exported
- * separately for the proxy's use case (no viewBox injection or baseProfile
- * stripping needed since content is served as-is, not hydrated).
+ * Sanitize SVG for the proxy route. Same sanitization as sanitizeSvg but
+ * without viewBox injection or baseProfile stripping (content is served
+ * as-is, not hydrated).
  */
 export function sanitizeSvgForProxy(raw: string): string {
   const purify = getPurify();
   if (purify) {
     return purify.sanitize(raw, PURIFY_CONFIG);
   }
-  return "";
+  throw new Error("SVG sanitization unavailable: DOMPurify could not be initialized");
 }

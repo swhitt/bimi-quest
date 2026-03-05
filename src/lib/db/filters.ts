@@ -4,9 +4,21 @@ import { certificates } from "./schema";
 
 /**
  * Safely parse a date string, returning null for invalid/missing values.
+ * Supports relative dates: "today", "+30d" (30 days from now), "-7d" (7 days ago).
  */
 export function parseDate(value: string | null): Date | null {
   if (!value) return null;
+  if (value === "today") {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  const relMatch = value.match(/^([+-]\d+)d$/);
+  if (relMatch) {
+    const d = new Date();
+    d.setDate(d.getDate() + parseInt(relMatch[1], 10));
+    return d;
+  }
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
 }

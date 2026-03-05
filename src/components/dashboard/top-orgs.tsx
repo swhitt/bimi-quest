@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OrgRow } from "@/lib/data/stats";
+import { slugify } from "@/lib/slugify";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export type { OrgRow };
@@ -48,7 +49,7 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
                 </span>
                 <div className="min-w-0 flex-1 truncate">
                   {org.org ? (
-                    <Link href={`/orgs/${encodeURIComponent(org.org)}`} className="hover:underline truncate">
+                    <Link href={`/orgs/${slugify(org.org)}`} className="hover:underline truncate">
                       {org.org}
                     </Link>
                   ) : (

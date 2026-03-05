@@ -21,6 +21,7 @@ export const certificates = pgTable(
     subjectDn: text("subject_dn").notNull(),
     subjectCn: text("subject_cn"),
     subjectOrg: text("subject_org"),
+    subjectOrgSlug: text("subject_org_slug"),
     subjectCountry: text("subject_country"),
     subjectState: text("subject_state"),
     subjectLocality: text("subject_locality"),
@@ -73,6 +74,11 @@ export const certificates = pgTable(
     index("idx_certs_notafter_precert").on(table.notAfter, table.isPrecert),
     index("idx_certificates_san_list_gin").using("gin", table.sanList),
     index("idx_certificates_subject_org").on(table.subjectOrg),
+    // Functional index for case-insensitive org lookups (LOWER() can't use the btree above)
+    index("idx_certificates_subject_org_lower").using("btree", sql`LOWER(${table.subjectOrg})`),
+    // Btree index for fingerprint prefix searches (LIKE 'abc%' can't use the UNIQUE constraint)
+    index("idx_certificates_fingerprint_prefix").on(table.fingerprintSha256),
+    index("idx_certificates_subject_org_slug").on(table.subjectOrgSlug),
     index("idx_certificates_industry").on(table.industry),
     index("idx_certificates_svg_hash").on(table.logotypeSvgHash),
     index("idx_certificates_visual_hash").on(table.logotypeVisualHash),

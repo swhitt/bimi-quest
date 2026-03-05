@@ -13,6 +13,7 @@ import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 
@@ -222,7 +223,13 @@ export function CertificateDetail({ id }: { id: string }) {
           Certificates
         </Link>
         <span>/</span>
-        <span className="text-foreground">{cert.subjectOrg || cert.subjectCn || cert.sanList[0] || `#${cert.id}`}</span>
+        {cert.subjectOrg ? (
+          <Link href={`/orgs/${slugify(cert.subjectOrg)}`} className="text-foreground hover:underline">
+            {cert.subjectOrg}
+          </Link>
+        ) : (
+          <span className="text-foreground">{cert.subjectCn || cert.sanList[0] || `#${cert.id}`}</span>
+        )}
       </nav>
 
       {/* Header */}
@@ -411,10 +418,7 @@ export function CertificateDetail({ id }: { id: string }) {
                 <span className="break-all">
                   {cert.subjectOrg ? (
                     <>
-                      <Link
-                        href={`/orgs/${encodeURIComponent(cert.subjectOrg)}`}
-                        className="text-primary hover:underline"
-                      >
+                      <Link href={`/orgs/${slugify(cert.subjectOrg)}`} className="text-primary hover:underline">
                         {cert.subjectOrg}
                       </Link>
                       {cert.subjectCountry && `, ${cert.subjectCountry}`}
@@ -865,7 +869,14 @@ export function CertificateDetail({ id }: { id: string }) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Leaf Certificate</span>
-                        {cert.subjectOrg && <span className="text-sm text-muted-foreground">{cert.subjectOrg}</span>}
+                        {cert.subjectOrg && (
+                          <Link
+                            href={`/orgs/${slugify(cert.subjectOrg)}`}
+                            className="text-sm text-muted-foreground hover:underline"
+                          >
+                            {cert.subjectOrg}
+                          </Link>
+                        )}
                       </div>
                       <Badge variant="outline" className="text-xs">
                         Position 0

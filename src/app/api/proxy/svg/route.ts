@@ -41,7 +41,10 @@ function corsHeaders(request: NextRequest): Record<string, string> {
 }
 
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+  return new NextResponse(null, {
+    status: 204,
+    headers: { ...corsHeaders(request), "Access-Control-Max-Age": "86400" },
+  });
 }
 
 export async function GET(request: NextRequest) {

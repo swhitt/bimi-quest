@@ -191,6 +191,8 @@ export async function extractBIMIData(cert: X509Certificate, certDer: Uint8Array
   };
 }
 
+const MAX_CHAIN_DEPTH = 10;
+
 /** Parse certificate chain from extra_data */
 export function parseChainFromExtraData(extraBuf: Uint8Array, entryType: number): string[] {
   const pems: string[] = [];
@@ -204,7 +206,7 @@ export function parseChainFromExtraData(extraBuf: Uint8Array, entryType: number)
       offset = 3;
       const end = Math.min(3 + totalLen, extraBuf.length);
 
-      while (offset < end) {
+      while (offset < end && pems.length < MAX_CHAIN_DEPTH) {
         const certLen = readUint24(extraBuf, offset);
         offset += 3;
         if (offset + certLen > extraBuf.length) break;
@@ -223,7 +225,7 @@ export function parseChainFromExtraData(extraBuf: Uint8Array, entryType: number)
         offset += 3;
         const end = Math.min(offset + totalLen, extraBuf.length);
 
-        while (offset < end) {
+        while (offset < end && pems.length < MAX_CHAIN_DEPTH) {
           const certLen = readUint24(extraBuf, offset);
           offset += 3;
           if (offset + certLen > extraBuf.length) break;

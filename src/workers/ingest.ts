@@ -47,6 +47,9 @@ if (mode === "stream") {
   const resumeOffset = recalc ? parseInt(process.argv[4] || "0", 10) || 0 : 0;
   const { scoreLogos } = await import("./modes/score-logos");
   scoreLogos(sql, limit, recalc, resumeOffset).catch(console.error);
+} else if (mode === "reslug") {
+  const { reslug } = await import("./modes/reslug");
+  reslug(sql).catch(console.error);
 } else {
   const { backfill } = await import("./modes/backfill");
   backfill().catch(console.error);

@@ -1,19 +1,40 @@
 import { cache } from "react";
 import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { certificates } from "@/lib/db/schema";
+import { slugify } from "@/lib/slugify";
 import { OrgContent } from "./org-content";
 
 interface Props {
   params: Promise<{ org: string }>;
 }
 
-/** Deduplicated org name resolution shared by generateMetadata and the page component. */
-const resolveOrg = cache(async (rawOrg: string) => {
-  return decodeURIComponent(rawOrg);
+/**
+ * Resolve a URL param to an org name.
+ * If the param looks like a legacy URL-encoded name (has uppercase or %), slugify and redirect.
+ * Otherwise treat it as a slug and resolve via DB lookup.
+ */
+const resolveOrg = cache(async (rawOrg: string): Promise<string | null> => {
+  const decoded = decodeURIComponent(rawOrg);
+  const slug = slugify(decoded);
+
+  // If the param isn't already the canonical slug, redirect
+  if (rawOrg !== slug) {
+    redirect(`/orgs/${slug}`);
+  }
+
+  // Look up org name from slug
+  const row = await db
+    .select({ subjectOrg: certificates.subjectOrg })
+    .from(certificates)
+    .where(eq(certificates.subjectOrgSlug, slug))
+    .limit(1);
+
+  return row[0]?.subjectOrg ?? null;
 });
 
 /** Deduplicated initial data fetch shared by generateMetadata and the page component. */
@@ -28,7 +49,11 @@ const getOrgCertificates = cache(async (org: string): Promise<CertificatesResult
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { org } = await params;
-  const decoded = await resolveOrg(org);
+  const orgName = await resolveOrg(org);
+
+  if (!orgName) {
+    return { title: "Organization not found" };
+  }
 
   const rows = await db
     .select({
@@ -39,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       notabilityScore: certificates.notabilityScore,
     })
     .from(certificates)
-    .where(eq(certificates.subjectOrg, decoded))
+    .where(eq(certificates.subjectOrg, orgName))
     .orderBy(desc(certificates.notBefore))
     .limit(50);
 
@@ -61,7 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }, null);
 
   const descParts = [
-    `${certCount === 50 ? "50+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""} for ${decoded}`,
+    `${certCount === 50 ? "50+" : certCount} BIMI certificate${certCount !== 1 ? "s" : ""} for ${orgName}`,
     domainsText ? `Domains: ${domainsText}` : "",
     types.length ? `Types: ${types.join(", ")}` : "",
     issuers.length ? `Issued by ${issuers.join(", ")}` : "",
@@ -71,16 +96,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImageUrl = bestCert ? `/api/og/cert/${bestCert.fingerprintSha256.slice(0, 12)}` : undefined;
 
   return {
-    title: `Certificates for ${decoded}`,
+    title: `Certificates for ${orgName}`,
     description: descParts.join(" | "),
     openGraph: {
-      title: `Certificates for ${decoded}`,
+      title: `Certificates for ${orgName}`,
       description: descParts.join(" | "),
       ...(ogImageUrl ? { images: [{ url: ogImageUrl, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
-      title: `Certificates for ${decoded}`,
+      title: `Certificates for ${orgName}`,
       description: descParts.join(" | "),
       ...(ogImageUrl ? { images: [{ url: ogImageUrl, width: 1200, height: 630 }] } : {}),
     },
@@ -106,10 +131,14 @@ function serializeForClient(result: CertificatesResult) {
 
 export default async function OrgPage({ params }: Props) {
   const { org } = await params;
-  const decoded = await resolveOrg(org);
+  const orgName = await resolveOrg(org);
 
-  const result = await getOrgCertificates(decoded);
+  if (!orgName) {
+    notFound();
+  }
+
+  const result = await getOrgCertificates(orgName);
   const serialized = result ? serializeForClient(result) : null;
 
-  return <OrgContent org={decoded} initialData={serialized?.data} initialPagination={serialized?.pagination} />;
+  return <OrgContent org={orgName} initialData={serialized?.data} initialPagination={serialized?.pagination} />;
 }
