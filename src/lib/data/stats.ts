@@ -81,20 +81,32 @@ export async function fetchExpiryTimeline(params: URLSearchParams): Promise<Expi
  * Fetch top organizations data.
  * Shared between the Server Component and the /api/stats/top-orgs route.
  */
-export async function fetchTopOrgs(params: URLSearchParams): Promise<OrgRow[]> {
+export async function fetchTopOrgs(
+  params: URLSearchParams,
+  opts?: { page?: number; limit?: number },
+): Promise<{ data: OrgRow[]; totalPages: number }> {
+  const page = opts?.page ?? 1;
+  const limit = opts?.limit ?? 15;
   const where = and(buildStatsConditions(params), isNotNull(certificates.subjectOrg));
 
-  return db
+  const rows = await db
     .select({
       org: certificates.subjectOrg,
       total: count(),
       maxNotability: max(certificates.notabilityScore),
       industry: max(certificates.industry),
       country: max(certificates.subjectCountry),
+      _groupCount: sql<number>`count(*) over()`,
     })
     .from(certificates)
     .where(where)
     .groupBy(certificates.subjectOrg)
     .orderBy(desc(count()))
-    .limit(10);
+    .limit(limit)
+    .offset((page - 1) * limit);
+
+  const totalGroups = rows[0]?._groupCount ?? 0;
+  const data = rows.map(({ _groupCount, ...rest }) => rest);
+
+  return { data, totalPages: Math.ceil(totalGroups / limit) };
 }

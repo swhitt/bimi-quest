@@ -106,10 +106,16 @@ export async function DashboardContent({
         />
       </div>
 
-      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <IndustryChart initialData={industryData ?? undefined} />
         <ExpiryChart initialData={expiryData ?? undefined} />
-        <TopOrgs initialData={topOrgsData ?? undefined} />
+      </div>
+
+      <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <TopOrgs
+          initialData={topOrgsData?.data ?? undefined}
+          initialTotalPages={topOrgsData?.totalPages ?? undefined}
+        />
         <RecentCerts
           initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
           initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}

@@ -380,9 +380,9 @@ export function CertificateDetail({ id }: { id: string }) {
           <CardTitle>Certificate Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-40 shrink-0 text-muted-foreground">Fingerprint (SHA-256)</span>
-            <code className="break-all text-xs font-mono flex-1">{cert.fingerprintSha256}</code>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Fingerprint (SHA-256)</span>
+            <code className="break-all text-xs font-mono flex-1 min-w-0">{cert.fingerprintSha256}</code>
             <Button
               variant="ghost"
               size="sm"
@@ -395,19 +395,19 @@ export function CertificateDetail({ id }: { id: string }) {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-3">
               <Row label="Serial Number" value={formatSerial(cert.serialNumber)} mono />
-              <div className="flex gap-4">
-                <span className="w-40 shrink-0 text-muted-foreground">Issued</span>
+              <div className="flex flex-col sm:flex-row sm:gap-4">
+                <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Issued</span>
                 <UtcTime date={cert.notBefore} />
               </div>
-              <div className="flex gap-4">
-                <span className="w-40 shrink-0 text-muted-foreground">Expires</span>
+              <div className="flex flex-col sm:flex-row sm:gap-4">
+                <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Expires</span>
                 <UtcTime date={cert.notAfter} expired={isExpired} />
               </div>
             </div>
             <div className="space-y-3">
               <Row label="Issuer" value={cert.issuerOrg || cert.issuerCn} />
-              <div className="flex gap-4">
-                <span className="w-40 shrink-0 text-muted-foreground">Subject</span>
+              <div className="flex flex-col sm:flex-row sm:gap-4">
+                <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Subject</span>
                 <span className="break-all">
                   {cert.subjectOrg ? (
                     <>
@@ -425,8 +425,8 @@ export function CertificateDetail({ id }: { id: string }) {
                 </span>
               </div>
               {cert.sanList.length > 0 && (
-                <div className="flex gap-4">
-                  <span className="w-40 shrink-0 text-muted-foreground">SANs</span>
+                <div className="flex flex-col sm:flex-row sm:gap-4">
+                  <span className="sm:w-40 sm:shrink-0 text-muted-foreground">SANs</span>
                   <span className="break-all">
                     {cert.sanList.map((san, i) => {
                       const otherCount = data.sanCertCounts?.[san] ?? 0;
@@ -469,8 +469,8 @@ export function CertificateDetail({ id }: { id: string }) {
                   </span>
                 </div>
               )}
-              <div className="flex gap-4">
-                <span className="w-40 shrink-0 text-muted-foreground">CT Log</span>
+              <div className="flex flex-col sm:flex-row sm:gap-4">
+                <span className="sm:w-40 sm:shrink-0 text-muted-foreground">CT Log</span>
                 <span>
                   Gorgon (DigiCert)
                   {cert.ctLogIndex && <span className="text-muted-foreground"> #{cert.ctLogIndex}</span>}
@@ -532,15 +532,15 @@ export function CertificateDetail({ id }: { id: string }) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                 {/* Large SVG preview */}
                 <div
-                  className={`flex h-40 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
+                  className={`flex h-32 w-32 sm:h-40 sm:w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
                     svgBgDark ? "bg-zinc-900" : "bg-white"
                   }`}
                   dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
                 />
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 min-w-0 space-y-3">
                   {bimiCheck?.certSvgSizeBytes && (
                     <Row label="Size" value={`${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB`} />
                   )}
@@ -1076,9 +1076,9 @@ function buildBimiChecks(
 
 function Row({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
-    <div className="flex gap-4">
-      <span className="w-40 shrink-0 text-muted-foreground">{label}</span>
-      <span className={`break-all ${mono ? "font-mono text-xs" : ""}`}>{value || "-"}</span>
+    <div className="flex flex-col sm:flex-row sm:gap-4">
+      <span className="sm:w-40 sm:shrink-0 text-muted-foreground">{label}</span>
+      <span className={`break-all min-w-0 ${mono ? "font-mono text-xs" : ""}`}>{value || "-"}</span>
     </div>
   );
 }

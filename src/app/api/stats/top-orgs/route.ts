@@ -5,12 +5,14 @@ import { fetchTopOrgs } from "@/lib/data/stats";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  const limit = Math.min(50, Math.max(1, Number(params.get("limit")) || 15));
 
   try {
-    const data = await fetchTopOrgs(params);
+    const result = await fetchTopOrgs(params, { page, limit });
 
     return NextResponse.json(
-      { data },
+      { data: result.data, pagination: { page, totalPages: result.totalPages } },
       {
         headers: { "Cache-Control": CACHE_PRESETS.MEDIUM },
       },

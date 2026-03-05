@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
-import { useGlobalFilters } from "@/lib/use-global-filters";
+import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export interface RecentCert {
   id: number;
@@ -35,16 +35,24 @@ export function RecentCerts({
   initialData?: RecentCert[];
   initialTotalPages?: number;
 }) {
-  const { buildApiParams } = useGlobalFilters();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [certs, setCerts] = useState<RecentCert[]>(initialData ?? []);
-  const [totalPages, setTotalPages] = useState(initialTotalPages ?? 1);
-  const [page, setPage] = useState(1);
-  const [loadedParams, setLoadedParams] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(!!initialData);
-  const [prevBaseFilter, setPrevBaseFilter] = useState<string | null>(null);
+
+  const {
+    data: certs,
+    page,
+    totalPages,
+    setPage,
+    loading,
+  } = usePaginatedData<RecentCert>({
+    url: "/api/certificates",
+    pageSize: PAGE_SIZE,
+    extraParams: { sort: "notBefore", dir: "desc" },
+    extractData: (json) => (json as { data?: RecentCert[] }).data ?? [],
+    extractTotalPages: (json) => (json as { pagination?: { totalPages?: number } }).pagination?.totalPages ?? 1,
+    initialData,
+    initialTotalPages,
+  });
 
   const caMatch = pathname.match(/\/ca\/([^/]+)/);
   const caSuffix = caMatch ? `/ca/${caMatch[1]}` : "";
@@ -53,64 +61,13 @@ export function RecentCerts({
   filterSearch.delete("limit");
   const viewAllHref = `/certificates${caSuffix}${filterSearch.size > 0 ? `?${filterSearch}` : ""}`;
 
-  const filterParams = buildApiParams({
-    page: String(page),
-    limit: String(PAGE_SIZE),
-    sort: "notBefore",
-    dir: "desc",
-  });
-  const loading = loadedParams !== filterParams;
-
-  const baseFilterParams = buildApiParams();
-  if (prevBaseFilter !== null && prevBaseFilter !== baseFilterParams) {
-    setPrevBaseFilter(baseFilterParams);
-    setPage(1);
-  }
-  if (prevBaseFilter === null) {
-    setPrevBaseFilter(baseFilterParams);
-  }
-
-  if (isInitialLoad) {
-    setIsInitialLoad(false);
-    setLoadedParams(filterParams);
-  }
-
-  if (loadedParams !== filterParams && error !== null) {
-    setError(null);
-  }
-
-  useEffect(() => {
-    if (loadedParams === filterParams) return;
-
-    const controller = new AbortController();
-
-    fetch(`/api/certificates?${filterParams}`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((json) => {
-        setCerts(json.data ?? []);
-        setTotalPages(json.pagination?.totalPages ?? 1);
-        setLoadedParams(filterParams);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message ?? "Failed to load");
-          setCerts([]);
-        }
-      });
-
-    return () => controller.abort();
-  }, [filterParams, loadedParams]);
-
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">latest</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">latest</span>
         <Link
           href={viewAllHref}
-          className="flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-foreground transition-colors"
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
         >
           all <ArrowRight className="size-2.5" />
         </Link>
@@ -118,10 +75,6 @@ export function RecentCerts({
       {loading && certs.length === 0 ? (
         <p className="text-muted-foreground py-4 text-center text-sm" aria-live="polite">
           Loading...
-        </p>
-      ) : error ? (
-        <p className="text-destructive text-sm py-4 text-center" aria-live="polite">
-          {error}
         </p>
       ) : certs.length > 0 ? (
         <div className="space-y-1">
@@ -171,31 +124,12 @@ export function RecentCerts({
             })}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-end gap-1 pt-0.5">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="size-3.5" />
-              </button>
-              <span className="text-[10px] tabular-nums text-muted-foreground">
-                {page}/{totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Next page"
-              >
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-          )}
+          <MiniPagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage((p) => p - 1)}
+            onNext={() => setPage((p) => p + 1)}
+          />
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">No recent issuances match current filters.</p>

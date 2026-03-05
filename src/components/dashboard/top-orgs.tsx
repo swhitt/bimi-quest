@@ -1,24 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFilteredData } from "@/lib/use-filtered-data";
+import type { OrgRow } from "@/lib/data/stats";
+import { usePaginatedData } from "@/lib/use-paginated-data";
 
-export interface OrgRow {
-  org: string | null;
-  total: number;
-  maxNotability: number | null;
-  industry: string | null;
-  country: string | null;
-}
+export type { OrgRow };
 
-export function TopOrgs({ initialData }: { initialData?: OrgRow[] }) {
-  const { data: orgs, loading } = useFilteredData<OrgRow[]>(
-    "/api/stats/top-orgs",
-    (json: unknown) => (json as { data?: OrgRow[] }).data ?? [],
-    initialData ?? [],
+const PAGE_SIZE = 15;
+
+export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgRow[]; initialTotalPages?: number }) {
+  const {
+    data: orgs,
+    page,
+    totalPages,
+    setPage,
+    loading,
+  } = usePaginatedData<OrgRow>({
+    url: "/api/stats/top-orgs",
+    pageSize: PAGE_SIZE,
+    extractData: (json) => (json as { data?: OrgRow[] }).data ?? [],
+    extractTotalPages: (json) => (json as { pagination?: { totalPages?: number } }).pagination?.totalPages ?? 1,
     initialData,
-  );
+    initialTotalPages,
+  });
 
   if (loading && orgs.length === 0) {
     return (
@@ -29,31 +35,37 @@ export function TopOrgs({ initialData }: { initialData?: OrgRow[] }) {
     );
   }
 
-  const orgs10 = orgs.slice(0, 10);
-
   return (
     <div>
       <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
-      {orgs10.length > 0 ? (
-        <ol className="mt-1 space-y-1 max-h-[320px] overflow-y-auto">
-          {orgs10.map((org, i) => (
-            <li key={org.org} className="flex items-center gap-1.5 text-[13px]">
-              <span className="font-mono tabular-nums text-muted-foreground w-5 text-right shrink-0 text-[11px]">
-                {String(i + 1).padStart(2, "0")}.
-              </span>
-              <div className="min-w-0 flex-1 truncate">
-                {org.org ? (
-                  <Link href={`/orgs/${encodeURIComponent(org.org)}`} className="hover:underline truncate">
-                    {org.org}
-                  </Link>
-                ) : (
-                  <span className="truncate">Unknown</span>
-                )}
-              </div>
-              <span className="font-mono tabular-nums text-muted-foreground text-[12px] shrink-0">{org.total}</span>
-            </li>
-          ))}
-        </ol>
+      {orgs.length > 0 ? (
+        <div className="space-y-1">
+          <ol className="mt-1 space-y-0.5">
+            {orgs.map((org, i) => (
+              <li key={org.org} className="flex items-center gap-1.5 text-[13px]">
+                <span className="font-mono tabular-nums text-muted-foreground w-5 text-right shrink-0 text-[11px]">
+                  {String((page - 1) * PAGE_SIZE + i + 1).padStart(2, "0")}.
+                </span>
+                <div className="min-w-0 flex-1 truncate">
+                  {org.org ? (
+                    <Link href={`/orgs/${encodeURIComponent(org.org)}`} className="hover:underline truncate">
+                      {org.org}
+                    </Link>
+                  ) : (
+                    <span className="truncate">Unknown</span>
+                  )}
+                </div>
+                <span className="font-mono tabular-nums text-muted-foreground text-[12px] shrink-0">{org.total}</span>
+              </li>
+            ))}
+          </ol>
+          <MiniPagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage((p) => p - 1)}
+            onNext={() => setPage((p) => p + 1)}
+          />
+        </div>
       ) : (
         <div className="flex h-[120px] items-center justify-center text-muted-foreground text-sm">
           No organizations match current filters.
