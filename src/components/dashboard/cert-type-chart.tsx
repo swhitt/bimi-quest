@@ -4,7 +4,6 @@ import { Download } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCertTypeColors } from "@/lib/chart-colors";
 
 interface CertTypeChartProps {
@@ -71,89 +70,65 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
     }));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>VMC vs CMC</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            title="Download cert type data as CSV"
-            onClick={() => {
-              const sep = apiQuery ? "&" : "";
-              window.location.href = `/api/export/dashboard?dataset=cert-types${sep}${apiQuery}`;
-            }}
-          >
-            <Download />
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-hidden">
-        {grandTotal > 0 ? (
-          <div className="flex flex-col gap-2 h-full">
-            <div
-              role="img"
-              aria-label="Donut chart showing VMC vs CMC certificate type distribution"
-              className="flex-1 min-h-[200px]"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />
-                  {/* Outer ring: VMC vs CMC */}
-                  <Pie
-                    data={outerData}
-                    dataKey="value"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="80%"
-                    innerRadius="58%"
-                    paddingAngle={2}
-                    strokeWidth={0}
-                  >
-                    {outerData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  {/* Inner ring: Mark types */}
-                  {markTypes.length > 0 && (
-                    <Pie
-                      data={markTypes}
-                      dataKey="value"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius="50%"
-                      innerRadius="30%"
-                      paddingAngle={2}
-                      strokeWidth={0}
-                    >
-                      {markTypes.map((entry) => (
-                        <Cell key={entry.name} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                  )}
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-6 text-sm">
-              {outerData.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: entry.fill }} />
-                  <span className="font-medium">{entry.name}</span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {((entry.value / grandTotal) * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-[120px] items-center justify-center text-muted-foreground">
-            No certificates match current filters.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">vmc vs cmc</span>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          title="Download cert type data as CSV"
+          onClick={() => {
+            const sep = apiQuery ? "&" : "";
+            window.location.href = `/api/export/dashboard?dataset=cert-types${sep}${apiQuery}`;
+          }}
+        >
+          <Download className="size-3" />
+        </Button>
+      </div>
+      {grandTotal > 0 ? (
+        <div role="img" aria-label="Donut chart showing VMC vs CMC certificate type distribution" className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />
+              <Pie
+                data={outerData}
+                dataKey="value"
+                cx="50%"
+                cy="50%"
+                outerRadius="80%"
+                innerRadius="58%"
+                paddingAngle={2}
+                strokeWidth={0}
+              >
+                {outerData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.fill} />
+                ))}
+              </Pie>
+              {markTypes.length > 0 && (
+                <Pie
+                  data={markTypes}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="50%"
+                  innerRadius="30%"
+                  paddingAngle={2}
+                  strokeWidth={0}
+                >
+                  {markTypes.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
+                  ))}
+                </Pie>
+              )}
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex h-[120px] items-center justify-center text-muted-foreground">
+          No certificates match current filters.
+        </div>
+      )}
+    </div>
   );
 }

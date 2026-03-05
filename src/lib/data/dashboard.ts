@@ -17,6 +17,7 @@ export interface DashboardData {
   caBreakdown: { ca: string | null; total: number; vmcCount: number; cmcCount: number }[];
   monthlyTrend: { month: string; ca: string | null; count: number }[];
   markTypeBreakdown: { markType: string | null; count: number }[];
+  dailyTrend: number[];
   lastUpdated: string | null;
   activeFilters: {
     type: string | null;
@@ -63,78 +64,104 @@ export async function fetchDashboardData(searchParams: URLSearchParams): Promise
   const trendConditions = [...baseConditions, gte(certificates.notBefore, thirteenMonthsAgo)];
 
   // Run all independent queries in parallel, consolidating count queries that share filter conditions
-  const [[totalRow], [caOverview], caBreakdown, monthlyTrend, markTypeBreakdown, [lastUpdatedRow]] = await Promise.all([
-    // Total certificates (global filters only, no CA/root filter - used as denominator for market share)
-    db.select({ count: count() }).from(certificates).where(globalWhere),
+  const [[totalRow], [caOverview], caBreakdown, monthlyTrend, markTypeBreakdown, [lastUpdatedRow], dailyCounts] =
+    await Promise.all([
+      // Total certificates (global filters only, no CA/root filter - used as denominator for market share)
+      db.select({ count: count() }).from(certificates).where(globalWhere),
 
-    // Consolidated CA-filtered counts: total, active, expiring, new last 30d, unique orgs
-    db
-      .select({
-        total: count(),
-        activeCerts: count(sql`CASE WHEN ${certificates.notAfter} >= NOW() THEN 1 END`),
-        expiringSoon: count(
-          sql`CASE WHEN ${certificates.notAfter} >= NOW() AND ${certificates.notAfter} <= ${thirtyDaysFromNow} THEN 1 END`,
-        ),
-        newLast30d: count(sql`CASE WHEN ${certificates.notBefore} >= ${thirtyDaysAgo} THEN 1 END`),
-        uniqueOrgs: countDistinct(certificates.subjectOrg),
-      })
-      .from(certificates)
-      .where(caWhere),
-
-    // CA breakdown grouped by issuing CA (base filters)
-    db
-      .select({
-        ca: certificates.issuerOrg,
-        total: count(),
-        vmcCount,
-        cmcCount,
-      })
-      .from(certificates)
-      .where(baseWhere)
-      .groupBy(certificates.issuerOrg)
-      .orderBy(desc(count())),
-
-    // Monthly trend (last 12 months, grouped by issuing CA)
-    // Use date_trunc for GROUP BY (index-friendly) and to_char in SELECT for formatting
-    (() => {
-      const monthTrunc = sql`date_trunc('month', ${certificates.notBefore})`;
-      const monthLabel = sql<string>`to_char(date_trunc('month', ${certificates.notBefore}), 'YYYY-MM')`;
-      return db
+      // Consolidated CA-filtered counts: total, active, expiring, new last 30d, unique orgs
+      db
         .select({
-          month: monthLabel.as("month"),
+          total: count(),
+          activeCerts: count(sql`CASE WHEN ${certificates.notAfter} >= NOW() THEN 1 END`),
+          expiringSoon: count(
+            sql`CASE WHEN ${certificates.notAfter} >= NOW() AND ${certificates.notAfter} <= ${thirtyDaysFromNow} THEN 1 END`,
+          ),
+          newLast30d: count(sql`CASE WHEN ${certificates.notBefore} >= ${thirtyDaysAgo} THEN 1 END`),
+          uniqueOrgs: countDistinct(certificates.subjectOrg),
+        })
+        .from(certificates)
+        .where(caWhere),
+
+      // CA breakdown grouped by issuing CA (base filters)
+      db
+        .select({
           ca: certificates.issuerOrg,
+          total: count(),
+          vmcCount,
+          cmcCount,
+        })
+        .from(certificates)
+        .where(baseWhere)
+        .groupBy(certificates.issuerOrg)
+        .orderBy(desc(count())),
+
+      // Monthly trend (last 12 months, grouped by issuing CA)
+      // Use date_trunc for GROUP BY (index-friendly) and to_char in SELECT for formatting
+      (() => {
+        const monthTrunc = sql`date_trunc('month', ${certificates.notBefore})`;
+        const monthLabel = sql<string>`to_char(date_trunc('month', ${certificates.notBefore}), 'YYYY-MM')`;
+        return db
+          .select({
+            month: monthLabel.as("month"),
+            ca: certificates.issuerOrg,
+            count: count(),
+          })
+          .from(certificates)
+          .where(and(...trendConditions))
+          .groupBy(monthTrunc, certificates.issuerOrg)
+          .orderBy(monthTrunc);
+      })(),
+
+      // Mark type breakdown (base filters)
+      db
+        .select({
+          markType: certificates.markType,
           count: count(),
         })
         .from(certificates)
-        .where(and(...trendConditions))
-        .groupBy(monthTrunc, certificates.issuerOrg)
-        .orderBy(monthTrunc);
-    })(),
+        .where(baseWhere)
+        .groupBy(certificates.markType)
+        .orderBy(desc(count())),
 
-    // Mark type breakdown (base filters)
-    db
-      .select({
-        markType: certificates.markType,
-        count: count(),
-      })
-      .from(certificates)
-      .where(baseWhere)
-      .groupBy(certificates.markType)
-      .orderBy(desc(count())),
+      // Last ingestion run timestamp
+      db
+        .select({ lastRun: ingestionCursors.lastRun })
+        .from(ingestionCursors)
+        .orderBy(desc(ingestionCursors.lastRun))
+        .limit(1),
 
-    // Last ingestion run timestamp
-    db
-      .select({ lastRun: ingestionCursors.lastRun })
-      .from(ingestionCursors)
-      .orderBy(desc(ingestionCursors.lastRun))
-      .limit(1),
-  ]);
+      // Daily certificate counts for last 30 days (sparkline)
+      (() => {
+        const dayTrunc = sql`date_trunc('day', ${certificates.notBefore})`;
+        const dayLabel = sql<string>`to_char(date_trunc('day', ${certificates.notBefore}), 'YYYY-MM-DD')`;
+        return db
+          .select({
+            day: dayLabel.as("day"),
+            count: count(),
+          })
+          .from(certificates)
+          .where(and(...[...caConditions, gte(certificates.notBefore, thirtyDaysAgo)]))
+          .groupBy(dayTrunc)
+          .orderBy(dayTrunc);
+      })(),
+    ]);
 
   const totalCerts = totalRow?.count || 0;
   const caCerts = caOverview?.total || 0;
 
   const hasCAFilter = selectedCA || selectedRoot;
   const marketShare = hasCAFilter && totalCerts > 0 ? parseFloat(((caCerts / totalCerts) * 100).toFixed(1)) : null;
+
+  // Build 30-element daily trend array, filling zero-count days
+  const dailyCountMap = new Map(dailyCounts.map((d) => [d.day, d.count]));
+  const dailyTrend: number[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    dailyTrend.push(dailyCountMap.get(key) ?? 0);
+  }
 
   return {
     selectedCA: selectedCA || "All Issuers",
@@ -149,6 +176,7 @@ export async function fetchDashboardData(searchParams: URLSearchParams): Promise
     markTypeBreakdown,
     caNewLast30d: caOverview?.newLast30d || 0,
     activeCerts: caOverview?.activeCerts || 0,
+    dailyTrend,
     lastUpdated: lastUpdatedRow?.lastRun?.toISOString() || null,
     activeFilters: {
       type: searchParams.get("type") || null,

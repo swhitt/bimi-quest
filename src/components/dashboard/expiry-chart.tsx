@@ -5,7 +5,6 @@ import { Download } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { displayIssuerOrg } from "@/lib/ca-display";
 import { CA_COLOR_INDEX, getCAColor, useChartColors } from "@/lib/chart-colors";
@@ -71,18 +70,13 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
 
   if (loading && data.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Expirations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[260px]" />
-        </CardContent>
-      </Card>
+      <div>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">expirations</span>
+        <Skeleton className="h-[200px] mt-1" />
+      </div>
     );
   }
 
-  // Normalize CA names
   const normalized = data.map((d) => ({
     ...d,
     ca: displayIssuerOrg(d.ca),
@@ -109,73 +103,69 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Upcoming Expirations</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            title="Download expiry data as CSV"
-            onClick={() => {
-              const q = filterParams;
-              const sep = q ? "&" : "";
-              window.location.href = `/api/export/dashboard?dataset=expiry${sep}${q}`;
-            }}
-          >
-            <Download />
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        {pivoted.length > 0 ? (
-          <div role="img" aria-label="Stacked bar chart showing upcoming certificate expirations by month">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={tickFormatter}
-                  tick={{ fontSize: 11 }}
-                  className="fill-muted-foreground"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  className="fill-muted-foreground"
-                  axisLine={false}
-                  tickLine={false}
-                  width={40}
-                />
-                <Tooltip
-                  cursor={{ fill: "var(--accent)", opacity: 0.3 }}
-                  content={(props) => <ExpiryTooltip {...props} colors={colors} />}
-                />
-                {cas.map((ca, i) => {
-                  const isLast = i === cas.length - 1;
-                  return (
-                    <Bar
-                      key={ca}
-                      dataKey={ca}
-                      name={ca}
-                      stackId="expiry"
-                      fill={getCAColor(colors, ca)}
-                      fillOpacity={0.85}
-                      // Round top corners only on the topmost (last) segment in the stack
-                      radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                    />
-                  );
-                })}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="flex h-[120px] items-center justify-center text-muted-foreground">
-            No upcoming expirations.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">expirations</span>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          title="Download expiry data as CSV"
+          onClick={() => {
+            const q = filterParams;
+            const sep = q ? "&" : "";
+            window.location.href = `/api/export/dashboard?dataset=expiry${sep}${q}`;
+          }}
+        >
+          <Download className="size-3" />
+        </Button>
+      </div>
+      {pivoted.length > 0 ? (
+        <div role="img" aria-label="Stacked bar chart showing upcoming certificate expirations by month">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+              <XAxis
+                dataKey="month"
+                tickFormatter={tickFormatter}
+                tick={{ fontSize: 10 }}
+                className="fill-muted-foreground"
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                className="fill-muted-foreground"
+                axisLine={false}
+                tickLine={false}
+                width={32}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+                content={(props) => <ExpiryTooltip {...props} colors={colors} />}
+              />
+              {cas.map((ca, i) => {
+                const isLast = i === cas.length - 1;
+                return (
+                  <Bar
+                    key={ca}
+                    dataKey={ca}
+                    name={ca}
+                    stackId="expiry"
+                    fill={getCAColor(colors, ca)}
+                    fillOpacity={0.85}
+                    radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                  />
+                );
+              })}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex h-[120px] items-center justify-center text-muted-foreground text-sm">
+          No upcoming expirations.
+        </div>
+      )}
+    </div>
   );
 }

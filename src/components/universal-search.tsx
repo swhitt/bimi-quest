@@ -233,6 +233,7 @@ export function UniversalSearch({ variant = "nav", autoFocus = false, onNavigate
       </svg>
       <Input
         ref={inputRef}
+        data-search-input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}

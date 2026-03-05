@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkline } from "@/components/dashboard/sparkline";
 
 interface ActiveFilters {
   type: string | null;
@@ -22,21 +23,7 @@ interface KPICardsProps {
   cmcTotal: number;
   activeFilters?: ActiveFilters;
   lastUpdated?: string | null;
-}
-
-function DeltaBadge({ value }: { value: number }) {
-  if (value === 0) return null;
-  const isNegative = value < 0;
-  return (
-    <span
-      className={`text-xs font-medium ${
-        isNegative ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
-      }`}
-    >
-      {isNegative ? "" : "+"}
-      {value.toLocaleString()} / 30d
-    </span>
-  );
+  dailyTrend: number[];
 }
 
 export function KPICards({
@@ -50,91 +37,95 @@ export function KPICards({
   expiringCount,
   vmcTotal,
   cmcTotal,
-  activeFilters,
   lastUpdated,
+  dailyTrend,
 }: KPICardsProps) {
   const vmcPct = vmcTotal + cmcTotal > 0 ? ((vmcTotal / (vmcTotal + cmcTotal)) * 100).toFixed(0) : "\u2014";
-
-  const typeFilter = activeFilters?.type;
-  const certNoun = typeFilter ? `${typeFilter}s` : "certs";
-  const totalLabel = typeFilter ? `${totalCerts.toLocaleString()} ${certNoun}` : `${totalCerts.toLocaleString()} total`;
+  const activePct = totalCerts > 0 ? ((activeCerts / totalCerts) * 100).toFixed(0) : "\u2014";
 
   return (
-    <div className="space-y-1">
-      {/* Hero metric */}
-      <div>
-        <p className="text-xs text-muted-foreground">{typeFilter ? `Active ${typeFilter}s` : "Active Certificates"}</p>
-        <div className="flex items-baseline gap-3">
-          <span data-testid="kpi-total-certs" className="text-4xl font-bold tabular-nums">
-            {activeCerts.toLocaleString()}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {totalCerts > 0
-              ? `${((activeCerts / totalCerts) * 100).toFixed(0)}% of ${totalLabel}`
-              : `Currently valid ${certNoun}`}
-          </span>
-        </div>
-        {lastUpdated && (
-          <p className="text-xs text-muted-foreground/60">
-            Updated <RelativeTime date={lastUpdated} />
-          </p>
+    <div className="space-y-1.5">
+      {/* Row 1: Hero number + sparkline + primary context */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span data-testid="kpi-total-certs" className="text-3xl font-bold font-mono tabular-nums">
+          {activeCerts.toLocaleString()}
+        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-sm text-muted-foreground cursor-help">active</span>
+          </TooltipTrigger>
+          <TooltipContent>Currently valid (not expired) certificates</TooltipContent>
+        </Tooltip>
+        <Sparkline data={dailyTrend} width={60} height={16} className="text-emerald-500" />
+        <span className="text-sm text-muted-foreground">
+          {activePct}% of {totalCerts.toLocaleString()}
+        </span>
+        <span className="text-muted-foreground/40 hidden sm:inline">&middot;</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-sm text-muted-foreground cursor-help hidden sm:inline">
+              {selectedCA}{" "}
+              <span className="font-mono tabular-nums font-medium text-foreground">{caCerts.toLocaleString()}</span>
+              {caNewLast30d > 0 && <span className="text-emerald-600 dark:text-emerald-400 ml-1">+{caNewLast30d}</span>}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            Certificates from {selectedCA}
+            {caNewLast30d > 0 ? ` (+${caNewLast30d} in last 30 days)` : ""}
+          </TooltipContent>
+        </Tooltip>
+        {marketShare != null && (
+          <>
+            <span className="text-muted-foreground/40 hidden sm:inline">&middot;</span>
+            <span className="text-sm font-mono tabular-nums text-muted-foreground hidden sm:inline">
+              {marketShare}% share
+            </span>
+          </>
         )}
       </div>
 
-      {/* Secondary metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-2 pt-1">
-        <div>
-          <p className="text-xs text-muted-foreground">{selectedCA}</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold tabular-nums">{caCerts.toLocaleString()}</span>
-            <DeltaBadge value={caNewLast30d} />
-          </div>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground">Market Share</p>
-          <span className="text-lg font-bold tabular-nums">{marketShare != null ? `${marketShare}%` : "100%"}</span>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground">Unique Orgs</p>
-          <span className="text-lg font-bold tabular-nums">{uniqueOrgs.toLocaleString()}</span>
-        </div>
-
-        <div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <p className="text-xs text-muted-foreground underline decoration-dotted cursor-help w-fit">
-                Expiring Soon
-              </p>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-64">
-              Certificates expiring within the next 30 days.
-            </TooltipContent>
-          </Tooltip>
-          <Link
-            href="/certificates?validity=active&expiresFrom=today&expiresTo=+30d"
-            className={`text-lg font-bold tabular-nums hover:underline ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
-          >
-            {expiringCount.toLocaleString()}
-          </Link>
-        </div>
-
-        <div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <p className="text-xs text-muted-foreground underline decoration-dotted cursor-help w-fit">VMC / CMC</p>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-72">
-              VMC = Verified Mark Certificate (requires registered trademark). CMC = Common Mark Certificate (no
-              trademark required).
-            </TooltipContent>
-          </Tooltip>
-          <span className="text-lg font-bold tabular-nums">{vmcPct}% VMC</span>
-          <span className="text-xs text-muted-foreground ml-1.5">
-            {vmcTotal.toLocaleString()} &middot; {cmcTotal.toLocaleString()}
-          </span>
-        </div>
+      {/* Row 2: Secondary metrics */}
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help font-mono tabular-nums">{uniqueOrgs.toLocaleString()} orgs</span>
+          </TooltipTrigger>
+          <TooltipContent>Unique organizations with certificates</TooltipContent>
+        </Tooltip>
+        <span className="text-muted-foreground/40">&middot;</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/certificates?validity=active&expiresFrom=today&expiresTo=+30d"
+              className={`cursor-help font-mono tabular-nums hover:underline ${expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
+            >
+              {expiringCount} expiring
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Certificates expiring within 30 days</TooltipContent>
+        </Tooltip>
+        <span className="text-muted-foreground/40">&middot;</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help font-mono tabular-nums">
+              {vmcPct}% VMC
+              <span className="text-xs ml-1">
+                ({vmcTotal.toLocaleString()}/{cmcTotal.toLocaleString()})
+              </span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            VMC = Verified Mark Certificate (requires trademark). CMC = Common Mark Certificate.
+          </TooltipContent>
+        </Tooltip>
+        {lastUpdated && (
+          <>
+            <span className="flex-1" />
+            <span className="text-xs text-muted-foreground/50">
+              updated <RelativeTime date={lastUpdated} />
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

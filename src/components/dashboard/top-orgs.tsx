@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFilteredData } from "@/lib/use-filtered-data";
 
@@ -23,56 +22,43 @@ export function TopOrgs({ initialData }: { initialData?: OrgRow[] }) {
 
   if (loading && orgs.length === 0) {
     return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle>Who&rsquo;s Adopting</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[260px]" />
-        </CardContent>
-      </Card>
+      <div>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">top orgs</span>
+        <Skeleton className="h-[200px] mt-1" />
+      </div>
     );
   }
 
-  const orgs15 = orgs.slice(0, 15);
+  const orgs10 = orgs.slice(0, 10);
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader>
-        <CardTitle>Who&rsquo;s Adopting</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto">
-        {orgs15.length > 0 ? (
-          <ol className="space-y-2.5">
-            {orgs15.map((org, i) => (
-              <li key={org.org} className="flex items-center gap-2 text-[15px]">
-                <span className="text-sm text-muted-foreground/60 tabular-nums w-4 text-right shrink-0">{i + 1}</span>
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  {org.org ? (
-                    <Link
-                      href={`/orgs/${encodeURIComponent(org.org)}`}
-                      className="truncate font-medium hover:underline"
-                    >
-                      {org.org}
-                    </Link>
-                  ) : (
-                    <span className="truncate font-medium">Unknown</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
-                  {org.industry && <span className="hidden sm:inline truncate max-w-24">{org.industry}</span>}
-                  {org.country && <span>{org.country}</span>}
-                  <span className="tabular-nums font-medium text-foreground">{org.total}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <div className="flex h-[120px] items-center justify-center text-muted-foreground">
-            No organizations match current filters.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div>
+      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">top orgs</span>
+      {orgs10.length > 0 ? (
+        <ol className="mt-1 space-y-1 max-h-[320px] overflow-y-auto">
+          {orgs10.map((org, i) => (
+            <li key={org.org} className="flex items-center gap-1.5 text-[13px]">
+              <span className="font-mono tabular-nums text-muted-foreground/50 w-5 text-right shrink-0 text-[11px]">
+                {String(i + 1).padStart(2, "0")}.
+              </span>
+              <div className="min-w-0 flex-1 truncate">
+                {org.org ? (
+                  <Link href={`/orgs/${encodeURIComponent(org.org)}`} className="hover:underline truncate">
+                    {org.org}
+                  </Link>
+                ) : (
+                  <span className="truncate">Unknown</span>
+                )}
+              </div>
+              <span className="font-mono tabular-nums text-muted-foreground text-[12px] shrink-0">{org.total}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="flex h-[120px] items-center justify-center text-muted-foreground text-sm">
+          No organizations match current filters.
+        </div>
+      )}
+    </div>
   );
 }

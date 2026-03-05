@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { DashboardContent } from "./dashboard-content";
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default async function DashboardPage(props: {
   return (
     <div className="space-y-6">
       <DashboardContent searchParams={searchParams} />
+      <KeyboardShortcuts />
     </div>
   );
 }

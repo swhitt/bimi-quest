@@ -5,15 +5,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TrendChart = dynamic(
   () => import("@/components/dashboard/trend-chart").then((m) => ({ default: m.TrendChart })),
-  { loading: () => <Skeleton className="h-[320px]" /> },
+  { loading: () => <Skeleton className="h-[200px]" /> },
 );
 const MarketShareChart = dynamic(
   () => import("@/components/dashboard/market-share-chart").then((m) => ({ default: m.MarketShareChart })),
-  { loading: () => <Skeleton className="h-[320px]" /> },
+  { loading: () => <Skeleton className="h-[200px]" /> },
 );
 const CertTypeChart = dynamic(
   () => import("@/components/dashboard/cert-type-chart").then((m) => ({ default: m.CertTypeChart })),
-  { loading: () => <Skeleton className="h-[320px]" /> },
+  { loading: () => <Skeleton className="h-[200px]" /> },
 );
 
 interface DashboardChartsProps {
@@ -34,10 +34,16 @@ export function DashboardCharts({
   hasDateFilter,
 }: DashboardChartsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-stretch">
-      <MarketShareChart data={caBreakdown} selectedCA={selectedCA} apiQuery={apiQuery} />
-      <TrendChart data={monthlyTrend} selectedCA={selectedCA} apiQuery={apiQuery} hasDateFilter={hasDateFilter} />
-      <CertTypeChart caBreakdown={caBreakdown} markTypeBreakdown={markTypeBreakdown} apiQuery={apiQuery} />
+    <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
+      <div className="flex-1 min-w-0">
+        <MarketShareChart data={caBreakdown} selectedCA={selectedCA} apiQuery={apiQuery} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <TrendChart data={monthlyTrend} selectedCA={selectedCA} apiQuery={apiQuery} hasDateFilter={hasDateFilter} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <CertTypeChart caBreakdown={caBreakdown} markTypeBreakdown={markTypeBreakdown} apiQuery={apiQuery} />
+      </div>
     </div>
   );
 }

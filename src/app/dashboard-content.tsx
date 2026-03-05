@@ -77,49 +77,43 @@ export async function DashboardContent({
 
   return (
     <div data-testid="dashboard" className="space-y-6">
-      <KPICards
-        selectedCA={displayCA}
-        totalCerts={data.totalCerts}
-        caCerts={data.caCerts}
-        activeCerts={data.activeCerts || 0}
-        marketShare={data.marketShare}
-        uniqueOrgs={data.uniqueOrgs}
-        caNewLast30d={data.caNewLast30d || 0}
-        expiringCount={data.expiringCount || 0}
-        vmcTotal={vmcTotal}
-        cmcTotal={cmcTotal}
-        activeFilters={data.activeFilters}
-        lastUpdated={data.lastUpdated}
-      />
-
-      <DashboardCharts
-        caBreakdown={data.caBreakdown}
-        monthlyTrend={data.monthlyTrend}
-        markTypeBreakdown={data.markTypeBreakdown}
-        selectedCA={displayCA}
-        apiQuery={apiQuery}
-        hasDateFilter={hasDateFilter}
-      />
-
-      <div className="grid gap-4 md:grid-cols-5 items-stretch">
-        <div className="md:col-span-3">
-          <IndustryChart initialData={industryData ?? undefined} />
-        </div>
-        <div className="md:col-span-2">
-          <ExpiryChart initialData={expiryData ?? undefined} />
-        </div>
+      <div data-dashboard-section="1">
+        <KPICards
+          selectedCA={displayCA}
+          totalCerts={data.totalCerts}
+          caCerts={data.caCerts}
+          activeCerts={data.activeCerts || 0}
+          marketShare={data.marketShare}
+          uniqueOrgs={data.uniqueOrgs}
+          caNewLast30d={data.caNewLast30d || 0}
+          expiringCount={data.expiringCount || 0}
+          vmcTotal={vmcTotal}
+          cmcTotal={cmcTotal}
+          activeFilters={data.activeFilters}
+          lastUpdated={data.lastUpdated}
+          dailyTrend={data.dailyTrend}
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5 items-stretch">
-        <div className="md:col-span-2 min-w-0">
-          <TopOrgs initialData={topOrgsData ?? undefined} />
-        </div>
-        <div className="md:col-span-3 min-w-0">
-          <RecentCerts
-            initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
-            initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
-          />
-        </div>
+      <div data-dashboard-section="2">
+        <DashboardCharts
+          caBreakdown={data.caBreakdown}
+          monthlyTrend={data.monthlyTrend}
+          markTypeBreakdown={data.markTypeBreakdown}
+          selectedCA={displayCA}
+          apiQuery={apiQuery}
+          hasDateFilter={hasDateFilter}
+        />
+      </div>
+
+      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <IndustryChart initialData={industryData ?? undefined} />
+        <ExpiryChart initialData={expiryData ?? undefined} />
+        <TopOrgs initialData={topOrgsData ?? undefined} />
+        <RecentCerts
+          initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
+          initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
+        />
       </div>
     </div>
   );
