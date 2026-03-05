@@ -33,16 +33,19 @@ export function formatUtcFull(date: Date | string): string {
 
 function compactTimeAgo(d: Date): string {
   const ms = Date.now() - d.getTime();
-  const mins = Math.floor(ms / 60_000);
-  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const future = ms < 0;
+  const absMs = Math.abs(ms);
+  const mins = Math.floor(absMs / 60_000);
+  const fmt = (n: number, unit: string) => (future ? `in ${n}${unit}` : `${n}${unit} ago`);
+  if (mins < 60) return fmt(Math.max(1, mins), "m");
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return fmt(hours, "h");
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return fmt(days, "d");
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
+  if (months < 12) return fmt(months, "mo");
   const years = Math.floor(months / 12);
-  return `${years}y ago`;
+  return fmt(years, "y");
 }
 
 function localStr(d: Date): string {
@@ -73,7 +76,7 @@ export function UtcTime({ date, showTime, relative, compact, expired, tooltipExt
                   {showTime ? utcDateTime(d) : utcDate(d)}
                 </time>
                 {relative && (
-                  <span className={`text-xs block ${expired ? "text-destructive" : "text-muted-foreground/60"}`}>
+                  <span className={`text-xs block ${expired ? "text-destructive" : "text-muted-foreground"}`}>
                     {formatDistanceToNow(d, { addSuffix: true })}
                   </span>
                 )}

@@ -269,7 +269,7 @@ export function CertificateDetail({ id }: { id: string }) {
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <HelpCircle className="size-3.5 text-muted-foreground/50 cursor-help" />
+                    <HelpCircle className="size-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-64">
                     Reflects the organization&apos;s global brand recognition and email volume (1-10). Higher scores
@@ -821,7 +821,7 @@ export function CertificateDetail({ id }: { id: string }) {
                       <div key={oid} className="pl-[3.5rem] py-0.5">
                         <span className="text-muted-foreground">
                           {displayName}
-                          {showOid && <span className="text-muted-foreground/50 font-mono text-xs ml-1">({oid})</span>}:
+                          {showOid && <span className="text-muted-foreground font-mono text-xs ml-1">({oid})</span>}:
                         </span>
                         {isCritical && (
                           <Badge variant="destructive" className="ml-1.5 text-[10px] px-1 py-0 h-4 align-text-top">

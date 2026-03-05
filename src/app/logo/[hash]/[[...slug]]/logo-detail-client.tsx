@@ -90,7 +90,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
         <Link href="/logos" className="hover:text-foreground transition-colors">
           Gallery
         </Link>
-        <span className="text-muted-foreground/50">/</span>
+        <span className="text-muted-foreground">/</span>
         <span className="text-foreground truncate font-medium">{logo.org}</span>
       </nav>
 

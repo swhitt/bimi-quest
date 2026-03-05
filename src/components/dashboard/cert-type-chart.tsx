@@ -70,13 +70,13 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
     }));
 
   return (
-    <div className="p-4">
+    <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">vmc vs cmc</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">vmc vs cmc</span>
         <Button
           variant="ghost"
           size="icon-xs"
-          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          className="size-5 text-muted-foreground hover:text-foreground"
           title="Download cert type data as CSV"
           onClick={() => {
             const sep = apiQuery ? "&" : "";
@@ -87,7 +87,7 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
         </Button>
       </div>
       {grandTotal > 0 ? (
-        <div role="img" aria-label="Donut chart showing VMC vs CMC certificate type distribution" className="h-[280px]">
+        <div role="img" aria-label="Donut chart showing VMC vs CMC certificate type distribution" className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />

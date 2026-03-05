@@ -160,7 +160,7 @@ function LogoTile({ logo }: { logo: Logo }) {
   const [copied, setCopied] = useState(false);
   const [lazyRef, isVisible] = useLazyRender<HTMLDivElement>("300px");
 
-  const { bgColor, lightBg, ringColor, strippedSvg } = useMemo(() => {
+  const { bgColor, lightBg, strippedSvg } = useMemo(() => {
     const stripped = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
     const bg = stripped ? tileBgForSvg(stripped) : undefined;
     const light = bg ? isLightBg(bg) : false;
@@ -168,7 +168,6 @@ function LogoTile({ logo }: { logo: Logo }) {
       strippedSvg: stripped,
       bgColor: bg,
       lightBg: light,
-      ringColor: light ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)",
     };
   }, [logo.svg]);
 
@@ -194,19 +193,8 @@ function LogoTile({ logo }: { logo: Logo }) {
   const tile = (
     <div
       ref={lazyRef}
-      className="group relative aspect-square bg-neutral-800 transition-all duration-200 ease-out hover:z-20 hover:scale-[1.25] hover:rounded-md"
-      style={{
-        ...(bgColor ? { backgroundColor: bgColor } : {}),
-        // @ts-expect-error CSS custom property
-        "--ring": ringColor,
-        boxShadow: "0 0 0 0px var(--ring)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = `0 0 0 3px var(--ring)`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = `0 0 0 0px var(--ring)`;
-      }}
+      className="group relative aspect-square bg-neutral-800 transition-all duration-200 ease-out hover:z-20 hover:ring-2 hover:ring-primary/50"
+      style={bgColor ? { backgroundColor: bgColor } : undefined}
     >
       {isVisible ? (
         sanitizedHtml ? (
@@ -465,7 +453,7 @@ export function GalleryContent({ initialLogos, initialTotal }: { initialLogos?: 
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => handlePresetClick(key)}
-                    className={`rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`rounded px-3 py-2 text-xs font-medium transition-colors ${
                       activePreset === key
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"

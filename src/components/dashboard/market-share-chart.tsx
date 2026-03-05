@@ -83,13 +83,13 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
   const barHeight = Math.min(Math.max(chartData.length * 40, 120), 280);
 
   return (
-    <div className="p-4">
+    <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">market share</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">market share</span>
         <Button
           variant="ghost"
           size="icon-xs"
-          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          className="size-5 text-muted-foreground hover:text-foreground"
           title="Download market share as CSV"
           onClick={() => {
             const sep = apiQuery ? "&" : "";
@@ -107,7 +107,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
         >
           <ResponsiveContainer width="100%" height={barHeight}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-              <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid horizontal={false} className="stroke-border" />
               <XAxis
                 type="number"
                 tick={{ fontSize: 11 }}
@@ -128,7 +128,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}
                 content={(props) => <BarTooltip {...props} vmcColor={certColors.VMC} cmcColor={certColors.CMC} />}
               />
-              <Bar dataKey="vmcCount" name="VMC" stackId="share" fill={certColors.VMC} radius={[0, 0, 0, 0]}>
+              <Bar dataKey="vmcCount" name="VMC" stackId="share" fill={certColors.VMC}>
                 {chartData.map((entry) => {
                   const isSelected = entry.name === selectedCA;
                   return (
@@ -140,7 +140,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                   );
                 })}
               </Bar>
-              <Bar dataKey="cmcCount" name="CMC" stackId="share" fill={certColors.CMC} radius={[0, 3, 3, 0]}>
+              <Bar dataKey="cmcCount" name="CMC" stackId="share" fill={certColors.CMC}>
                 {chartData.map((entry) => {
                   const isSelected = entry.name === selectedCA;
                   return (

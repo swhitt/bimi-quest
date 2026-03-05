@@ -138,49 +138,41 @@ export function ValidateContent() {
   const rngChecks = result?.checks.filter((c) => c.id.startsWith("rng-")) ?? [];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold">BIMI Validator</h1>
-        <p className="text-muted-foreground">
-          Check if a domain is ready for BIMI (Brand Indicators for Message Identification). Tests DNS records, DMARC
-          policy, SVG logo compliance, and certificate status.
-        </p>
-      </div>
+    <div className="space-y-3">
+      <h1 className="text-lg font-semibold">BIMI Validator</h1>
 
-      <Card>
-        <CardContent className="pt-6 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <HostnameAutocomplete
-              value={domain}
-              onChange={setDomain}
-              onSelect={(val) => {
-                setDomain(val);
-                handleValidate(val);
-              }}
-              placeholder="example.com"
-              className="sm:max-w-md flex-1"
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <HostnameAutocomplete
+            value={domain}
+            onChange={setDomain}
+            onSelect={(val) => {
+              setDomain(val);
+              handleValidate(val);
+            }}
+            placeholder="example.com"
+            className="sm:max-w-md flex-1"
+          />
+          <Button onClick={() => handleValidate()} disabled={loading}>
+            {loading ? "Validating..." : "Validate"}
+          </Button>
+        </div>
+        <details open={showAdvanced} onToggle={(e) => setShowAdvanced((e.target as HTMLDetailsElement).open)}>
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+            Advanced options
+          </summary>
+          <div className="mt-2 flex items-center gap-2">
+            <label className="text-xs text-muted-foreground">Selector:</label>
+            <input
+              type="text"
+              value={selector}
+              onChange={(e) => setSelector(e.target.value)}
+              placeholder="default"
+              className="text-xs border rounded px-2 py-1 w-32 bg-background"
             />
-            <Button onClick={() => handleValidate()} disabled={loading}>
-              {loading ? "Validating..." : "Validate"}
-            </Button>
           </div>
-          <details open={showAdvanced} onToggle={(e) => setShowAdvanced((e.target as HTMLDetailsElement).open)}>
-            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-              Advanced options
-            </summary>
-            <div className="mt-2 flex items-center gap-2">
-              <label className="text-xs text-muted-foreground">Selector:</label>
-              <input
-                type="text"
-                value={selector}
-                onChange={(e) => setSelector(e.target.value)}
-                placeholder="default"
-                className="text-xs border rounded px-2 py-1 w-32 bg-background"
-              />
-            </div>
-          </details>
-        </CardContent>
-      </Card>
+        </details>
+      </div>
 
       {error && (
         <Card className="border-destructive" role="alert">
@@ -189,7 +181,7 @@ export function ValidateContent() {
       )}
 
       {result && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Tier 1: The Verdict */}
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center gap-4">

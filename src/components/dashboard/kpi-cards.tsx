@@ -60,7 +60,7 @@ export function KPICards({
         <span className="text-sm text-muted-foreground">
           {activePct}% of {totalCerts.toLocaleString()}
         </span>
-        <span className="text-muted-foreground/40 hidden sm:inline">&middot;</span>
+        <span className="text-muted-foreground hidden sm:inline">&middot;</span>
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="text-sm text-muted-foreground cursor-help hidden sm:inline">
@@ -76,7 +76,7 @@ export function KPICards({
         </Tooltip>
         {marketShare != null && (
           <>
-            <span className="text-muted-foreground/40 hidden sm:inline">&middot;</span>
+            <span className="text-muted-foreground hidden sm:inline">&middot;</span>
             <span className="text-sm font-mono tabular-nums text-muted-foreground hidden sm:inline">
               {marketShare}% share
             </span>
@@ -92,7 +92,7 @@ export function KPICards({
           </TooltipTrigger>
           <TooltipContent>Unique organizations with certificates</TooltipContent>
         </Tooltip>
-        <span className="text-muted-foreground/40">&middot;</span>
+        <span className="text-muted-foreground">&middot;</span>
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
@@ -104,7 +104,7 @@ export function KPICards({
           </TooltipTrigger>
           <TooltipContent>Certificates expiring within 30 days</TooltipContent>
         </Tooltip>
-        <span className="text-muted-foreground/40">&middot;</span>
+        <span className="text-muted-foreground">&middot;</span>
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="cursor-help font-mono tabular-nums">
@@ -121,7 +121,7 @@ export function KPICards({
         {lastUpdated && (
           <>
             <span className="flex-1" />
-            <span className="text-xs text-muted-foreground/50">
+            <span className="text-xs text-muted-foreground">
               updated <RelativeTime date={lastUpdated} />
             </span>
           </>

@@ -3,7 +3,7 @@
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
@@ -36,7 +36,6 @@ export function RecentCerts({
   initialTotalPages?: number;
 }) {
   const { buildApiParams } = useGlobalFilters();
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [certs, setCerts] = useState<RecentCert[]>(initialData ?? []);
@@ -130,18 +129,10 @@ export function RecentCerts({
             {certs.map((cert) => {
               const certPath = `/certificates/${cert.fingerprintSha256.slice(0, 12)}`;
               return (
-                <div
+                <Link
                   key={cert.id}
-                  className="flex items-center gap-2 py-0.5 hover:bg-secondary/50 rounded px-1 cursor-pointer transition-colors"
-                  onClick={() => router.push(certPath)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(certPath);
-                    }
-                  }}
-                  tabIndex={0}
-                  role="link"
+                  href={certPath}
+                  className="flex items-center gap-2 py-0.5 hover:bg-secondary/50 rounded px-1"
                 >
                   {cert.hasLogo && cert.logotypeSvgHash ? (
                     <Image
@@ -175,7 +166,7 @@ export function RecentCerts({
                       }
                     />
                   </span>
-                </div>
+                </Link>
               );
             })}
           </div>

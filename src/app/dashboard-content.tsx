@@ -76,7 +76,7 @@ export async function DashboardContent({
   const hasDateFilter = !!(searchParams.from || searchParams.to);
 
   return (
-    <div data-testid="dashboard" className="space-y-6">
+    <div data-testid="dashboard" className="space-y-3">
       <div data-dashboard-section="1">
         <KPICards
           selectedCA={displayCA}
@@ -106,7 +106,7 @@ export async function DashboardContent({
         />
       </div>
 
-      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <IndustryChart initialData={industryData ?? undefined} />
         <ExpiryChart initialData={expiryData ?? undefined} />
         <TopOrgs initialData={topOrgsData ?? undefined} />

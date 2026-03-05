@@ -60,7 +60,7 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
   if (loading && data.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">by sector</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">by sector</span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -78,11 +78,11 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">by sector</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">by sector</span>
         <Button
           variant="ghost"
           size="icon-xs"
-          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          className="size-5 text-muted-foreground hover:text-foreground"
           title="Download industry data as CSV"
           onClick={() => {
             const q = filterParams;
@@ -97,7 +97,7 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
         <div role="img" aria-label="Horizontal bar chart showing certificate distribution by industry">
           <ResponsiveContainer width="100%" height={barHeight}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-              <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid horizontal={false} className="stroke-border" />
               <XAxis
                 type="number"
                 tick={{ fontSize: 10 }}
@@ -116,14 +116,7 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
               />
               <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<IndustryTooltip />} />
               <Bar dataKey="vmcCount" name="VMC" stackId="industry" fill={certColors.VMC} fillOpacity={0.9} />
-              <Bar
-                dataKey="cmcCount"
-                name="CMC"
-                stackId="industry"
-                fill={certColors.CMC}
-                fillOpacity={0.7}
-                radius={[0, 3, 3, 0]}
-              />
+              <Bar dataKey="cmcCount" name="CMC" stackId="industry" fill={certColors.CMC} fillOpacity={0.7} />
             </BarChart>
           </ResponsiveContainer>
         </div>

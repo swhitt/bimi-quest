@@ -47,13 +47,8 @@ export default async function GalleryPage() {
   const initialGallery = await fetchInitialLogos();
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Logo Gallery</h1>
-        <p className="text-sm text-muted-foreground">
-          Browse unique BIMI logos discovered from certificate transparency logs.
-        </p>
-      </div>
+    <div className="space-y-3">
+      <h1 className="text-lg font-semibold">Logo Gallery</h1>
       <GalleryContent
         initialLogos={initialGallery?.logos ?? undefined}
         initialTotal={initialGallery?.total ?? undefined}

@@ -98,15 +98,15 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
   };
 
   return (
-    <div className="p-4">
+    <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
           {isFiltered ? `${selectedCA} issuance` : "issuance trend"}
         </span>
         <Button
           variant="ghost"
           size="icon-xs"
-          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          className="size-5 text-muted-foreground hover:text-foreground"
           title="Download trend data as CSV"
           onClick={() => {
             const sep = apiQuery ? "&" : "";
@@ -117,10 +117,10 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
         </Button>
       </div>
       {pivoted.length > 0 ? (
-        <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time" className="h-[280px]">
+        <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time" className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid vertical={false} className="stroke-border" />
               <XAxis
                 dataKey="month"
                 tickFormatter={tickFormatter}
@@ -140,9 +140,8 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}
                 content={(props) => <TrendTooltip {...props} colors={colors} />}
               />
-              {displayCAs.map((ca, i) => {
+              {displayCAs.map((ca) => {
                 const color = getCAColor(colors, ca);
-                const isLast = i === displayCAs.length - 1;
                 return (
                   <Bar
                     key={ca}
@@ -151,7 +150,6 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
                     stackId={isFiltered ? undefined : "trend"}
                     fill={color}
                     fillOpacity={isFiltered ? 0.85 : 0.8}
-                    radius={isFiltered || isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                   />
                 );
               })}

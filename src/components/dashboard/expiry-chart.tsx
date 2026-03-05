@@ -71,7 +71,7 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   if (loading && data.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">expirations</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">expirations</span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -105,11 +105,11 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">expirations</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">expirations</span>
         <Button
           variant="ghost"
           size="icon-xs"
-          className="size-5 text-muted-foreground/50 hover:text-foreground"
+          className="size-5 text-muted-foreground hover:text-foreground"
           title="Download expiry data as CSV"
           onClick={() => {
             const q = filterParams;
@@ -122,9 +122,9 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
       </div>
       {pivoted.length > 0 ? (
         <div role="img" aria-label="Stacked bar chart showing upcoming certificate expirations by month">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid vertical={false} className="stroke-border" />
               <XAxis
                 dataKey="month"
                 tickFormatter={tickFormatter}
@@ -144,20 +144,16 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}
                 content={(props) => <ExpiryTooltip {...props} colors={colors} />}
               />
-              {cas.map((ca, i) => {
-                const isLast = i === cas.length - 1;
-                return (
-                  <Bar
-                    key={ca}
-                    dataKey={ca}
-                    name={ca}
-                    stackId="expiry"
-                    fill={getCAColor(colors, ca)}
-                    fillOpacity={0.85}
-                    radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                  />
-                );
-              })}
+              {cas.map((ca) => (
+                <Bar
+                  key={ca}
+                  dataKey={ca}
+                  name={ca}
+                  stackId="expiry"
+                  fill={getCAColor(colors, ca)}
+                  fillOpacity={0.85}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
