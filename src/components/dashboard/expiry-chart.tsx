@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { CA_COLOR_INDEX, getCAColor, useChartColors } from "@/lib/chart-colors";
 import { useFilteredData } from "@/lib/use-filtered-data";
 import { useGlobalFilters } from "@/lib/use-global-filters";
@@ -79,7 +79,7 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
 
   const normalized = data.map((d) => ({
     ...d,
-    ca: displayIssuerOrg(d.ca),
+    ca: displayIntermediateCa(d.ca),
   }));
 
   const months = [...new Set(normalized.map((d) => d.month))].sort();

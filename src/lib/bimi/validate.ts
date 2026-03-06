@@ -189,7 +189,7 @@ export async function validateDomain(domain: string, selector: string = "default
         if (certInfo) {
           const chainResult = await validateCertificateChain(pemText);
 
-          // Check if issuing CA is authorized for BIMI
+          // Check if intermediate CA is authorized for BIMI
           const normalizedIssuer = normalizeIssuerOrg(certInfo.issuerOrg);
           const authorizedCa = normalizedIssuer ? AUTHORIZED_CAS.has(normalizedIssuer) : false;
 
@@ -531,7 +531,7 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
       );
     } else if (input.certResult.authorizedCa === false) {
       checks.push(
-        check("ca-trust", "spec", "Authorized CA", "fail", "Issuing CA is not in the authorized BIMI CA list", {
+        check("ca-trust", "spec", "Authorized CA", "fail", "Intermediate CA is not in the authorized BIMI CA list", {
           specRef: "VMC Requirements",
           remediation:
             "BIMI certificates must be issued by an authorized CA (DigiCert, Entrust, GlobalSign, Sectigo, or SSL.com). You'll need to purchase a VMC or CMC from one of these providers.",

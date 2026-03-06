@@ -1,4 +1,4 @@
-// Bidirectional mapping between URL slugs and issuer CA org names from certificates
+// Bidirectional mapping between URL slugs and intermediate CA org names from certificates
 export const CA_SLUG_TO_NAME: Record<string, string> = {
   digicert: "DigiCert",
   entrust: "Entrust",
@@ -11,7 +11,7 @@ export const CA_NAME_TO_SLUG: Record<string, string> = Object.fromEntries(
   Object.entries(CA_SLUG_TO_NAME).map(([slug, name]) => [name, slug]),
 );
 
-// Display-friendly label for each issuer CA
+// Display-friendly label for each intermediate CA
 export const CA_DISPLAY_NAMES: Record<string, string> = {
   digicert: "DigiCert",
   entrust: "Entrust",

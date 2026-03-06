@@ -1,6 +1,6 @@
 import { sql, count, countDistinct } from "drizzle-orm";
 import { ImageResponse } from "next/og";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { colors, OG_HEIGHT, OG_WIDTH } from "@/lib/og/card-styles";
@@ -82,7 +82,7 @@ export async function GET() {
         {topCAs.map((ca) => (
           <div key={ca.ca} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 18, color: colors.textPrimary }}>{displayIssuerOrg(ca.ca)}</div>
+              <div style={{ fontSize: 18, color: colors.textPrimary }}>{displayIntermediateCa(ca.ca)}</div>
               <div style={{ fontSize: 18, color: colors.textSecondary }}>{ca.certCount.toLocaleString()}</div>
             </div>
             <div

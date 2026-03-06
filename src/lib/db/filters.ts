@@ -132,7 +132,7 @@ export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
 
 /**
  * Build combined filter conditions for stats endpoints.
- * Applies all common filters plus the `ca` (issuerOrg) and `root` (rootCaOrg)
+ * Applies all common filters plus the `ca` (intermediate CA) and `root` (root CA)
  * params that stats routes consistently need.
  * Returns a single SQL expression ready for a `.where()` clause, or undefined
  * when no filters are active.

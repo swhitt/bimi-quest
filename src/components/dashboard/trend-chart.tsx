@@ -5,7 +5,7 @@ import { Download } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { CA_COLOR_INDEX, getCAColor, useChartColors } from "@/lib/chart-colors";
 
 interface TrendDataPoint {
@@ -63,11 +63,11 @@ function TrendTooltip({
 
 export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: TrendChartProps) {
   const colors = useChartColors();
-  const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
+  const isFiltered = selectedCA !== "All Intermediates" && selectedCA in CA_COLOR_INDEX;
 
   const normalized = data.map((d) => ({
     ...d,
-    ca: displayIssuerOrg(d.ca),
+    ca: displayIntermediateCa(d.ca),
   }));
 
   const allMonths = [...new Set(normalized.map((d) => d.month))].sort();

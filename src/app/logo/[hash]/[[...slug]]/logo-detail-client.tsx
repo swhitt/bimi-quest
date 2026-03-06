@@ -212,7 +212,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           </DetailRow>
 
           {logo.issuer && (
-            <DetailRow label="Issuer">
+            <DetailRow label="Intermediate CA">
               {logo.issuer}
               {logo.rootCa && logo.rootCa !== logo.rawIssuer && (
                 <span className="text-muted-foreground"> via {logo.rootCa}</span>

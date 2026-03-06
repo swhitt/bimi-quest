@@ -18,8 +18,8 @@ const ROOT_CA_DISPLAY: Record<string, string> = {
   "SSL Corporation": "SSL.com",
 };
 
-// Canonical display names for issuing CAs (intermediates)
-const ISSUER_DISPLAY: Record<string, string> = {
+// Canonical display names for intermediate CAs
+const INTERMEDIATE_CA_DISPLAY: Record<string, string> = {
   DigiCert: "DigiCert",
   "DigiCert, Inc.": "DigiCert",
   Entrust: "Entrust",
@@ -34,20 +34,20 @@ export function displayRootCa(rootCaOrg: string | null): string {
   return ROOT_CA_DISPLAY[rootCaOrg] || rootCaOrg;
 }
 
-export function displayIssuerOrg(issuerOrg: string | null): string {
+export function displayIntermediateCa(issuerOrg: string | null): string {
   if (!issuerOrg) return "Unknown";
-  return ISSUER_DISPLAY[issuerOrg] || issuerOrg;
+  return INTERMEDIATE_CA_DISPLAY[issuerOrg] || issuerOrg;
 }
 
 /**
- * Returns the issuer display name with root CA context when they differ.
- * e.g. "Sectigo (via SSL.com)" or just "DigiCert" when root = issuer.
+ * Returns the intermediate CA display name with root CA context when they differ.
+ * e.g. "Sectigo (via SSL.com)" or just "DigiCert" when root matches intermediate.
  */
-export function displayIssuerWithRoot(issuerOrg: string | null, rootCaOrg: string | null): string {
-  const issuer = displayIssuerOrg(issuerOrg);
+export function displayIntermediateWithRoot(issuerOrg: string | null, rootCaOrg: string | null): string {
+  const intermediate = displayIntermediateCa(issuerOrg);
   const root = displayRootCa(rootCaOrg);
-  if (issuer === root || !rootCaOrg) return issuer;
-  return `${issuer} (via ${root})`;
+  if (intermediate === root || !rootCaOrg) return intermediate;
+  return `${intermediate} (via ${root})`;
 }
 
 /**

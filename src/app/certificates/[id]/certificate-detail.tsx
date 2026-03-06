@@ -412,7 +412,7 @@ export function CertificateDetail({ id }: { id: string }) {
               </div>
             </div>
             <div className="space-y-3">
-              <Row label="Issuer" value={cert.issuerOrg || cert.issuerCn} />
+              <Row label="Intermediate CA" value={cert.issuerOrg || cert.issuerCn} />
               <div className="flex flex-col sm:flex-row sm:gap-4">
                 <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Subject</span>
                 <span className="break-all">

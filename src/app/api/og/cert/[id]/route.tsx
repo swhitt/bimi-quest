@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { ImageResponse } from "next/og";
-import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { displayIntermediateCa, displayRootCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { colors, daysRemainingText, OG_HEIGHT, OG_WIDTH, validityColor } from "@/lib/og/card-styles";
@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const fonts = await getOgFonts();
   const org = cert.subjectOrg || "Unknown Organization";
   const primaryDomain = cert.sanList?.[0] ?? "";
-  const issuer = displayIssuerOrg(cert.issuerOrg);
+  const issuer = displayIntermediateCa(cert.issuerOrg);
   const rootCa = displayRootCa(cert.rootCaOrg);
   const certType = cert.certType || "BIMI";
   const vColor = validityColor(cert.notAfter);

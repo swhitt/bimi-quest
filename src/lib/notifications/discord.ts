@@ -1,4 +1,4 @@
-import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { displayIntermediateCa, displayRootCa } from "@/lib/ca-display";
 import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
 import { log } from "@/lib/logger";
 
@@ -16,7 +16,7 @@ export interface DiscordCertPayload {
   notabilityReason?: string | null;
   companyDescription?: string | null;
   hasLogo?: boolean;
-  /** CAs whose root CA should always be shown even when it matches the issuer. Configurable via DISCORD_SHOW_ROOT_CAS env var. */
+  /** CAs whose root CA should always be shown even when it matches the intermediate. Configurable via DISCORD_SHOW_ROOT_CAS env var. */
   alwaysShowRootCas?: string[];
 }
 
@@ -37,7 +37,7 @@ export async function sendDiscordNotification(payload: DiscordCertPayload): Prom
     return;
   }
 
-  const issuerDisplay = displayIssuerOrg(payload.issuer);
+  const issuerDisplay = displayIntermediateCa(payload.issuer);
   const rootDisplay = displayRootCa(payload.rootCa);
   const color = CA_COLORS[rootDisplay] ?? CA_COLORS[issuerDisplay] ?? DEFAULT_COLOR;
   const certUrl = `${payload.baseUrl}/certificates/${payload.fingerprintSha256.slice(0, 12)}`;
@@ -55,7 +55,7 @@ export async function sendDiscordNotification(payload: DiscordCertPayload): Prom
     color,
     fields: [
       { name: "Domain", value: payload.domain, inline: true },
-      { name: "Issuer", value: issuerDisplay, inline: true },
+      { name: "Intermediate CA", value: issuerDisplay, inline: true },
       ...(showRootCa ? [{ name: "Root CA", value: rootDisplay, inline: true }] : []),
       { name: "Type", value: certTypeDisplay, inline: true },
       ...(payload.country ? [{ name: "Country", value: payload.country, inline: true }] : []),

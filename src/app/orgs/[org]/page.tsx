@@ -2,7 +2,7 @@ import { cache } from "react";
 import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { certificates } from "@/lib/db/schema";
@@ -70,7 +70,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const certCount = rows.length;
   const types = [...new Set(rows.map((r) => r.certType).filter(Boolean))];
-  const issuers = [...new Set(rows.map((r) => (r.issuerOrg ? displayIssuerOrg(r.issuerOrg) : null)).filter(Boolean))];
+  const issuers = [
+    ...new Set(rows.map((r) => (r.issuerOrg ? displayIntermediateCa(r.issuerOrg) : null)).filter(Boolean)),
+  ];
   const allDomains = [...new Set(rows.flatMap((r) => r.sanList ?? []))];
 
   const domainsText =

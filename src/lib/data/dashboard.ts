@@ -45,7 +45,7 @@ export async function fetchDashboardData(searchParams: URLSearchParams): Promise
   if (selectedRoot) baseConditions.push(eq(certificates.rootCaOrg, selectedRoot));
   const baseWhere = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-  // CA conditions: base + issuer CA
+  // CA conditions: base + intermediate CA
   const caConditions = selectedCA ? [...baseConditions, eq(certificates.issuerOrg, selectedCA)] : baseConditions;
   const caWhere = caConditions.length > 0 ? and(...caConditions) : undefined;
 
@@ -83,7 +83,7 @@ export async function fetchDashboardData(searchParams: URLSearchParams): Promise
         .from(certificates)
         .where(caWhere),
 
-      // CA breakdown grouped by issuing CA (base filters)
+      // CA breakdown grouped by intermediate CA (base filters)
       db
         .select({
           ca: certificates.issuerOrg,
@@ -96,7 +96,7 @@ export async function fetchDashboardData(searchParams: URLSearchParams): Promise
         .groupBy(certificates.issuerOrg)
         .orderBy(desc(count())),
 
-      // Monthly trend (last 12 months, grouped by issuing CA)
+      // Monthly trend (last 12 months, grouped by intermediate CA)
       // Use date_trunc for GROUP BY (index-friendly) and to_char in SELECT for formatting
       (() => {
         const monthTrunc = sql`date_trunc('month', ${certificates.notBefore})`;
@@ -164,7 +164,7 @@ export async function fetchDashboardData(searchParams: URLSearchParams): Promise
   }
 
   return {
-    selectedCA: selectedCA || "All Issuers",
+    selectedCA: selectedCA || "All Intermediates",
     totalCerts,
     caCerts,
     marketShare,

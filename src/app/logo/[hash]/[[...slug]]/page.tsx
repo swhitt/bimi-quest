@@ -2,7 +2,7 @@ import { cache } from "react";
 import { and, isNotNull, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { domainSlug } from "@/lib/domain-slug";
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const primaryDomain = logo.domain?.[0] ?? "";
   const org = logo.org ?? primaryDomain;
 
-  const issuer = logo.issuer ? displayIssuerOrg(logo.issuer) : "unknown CA";
+  const issuer = logo.issuer ? displayIntermediateCa(logo.issuer) : "unknown CA";
   const markLabel = logo.certType ?? "Certificate";
   const descParts = [
     `BIMI ${markLabel} logo for ${org}${primaryDomain ? ` (${primaryDomain})` : ""}`,
@@ -97,7 +97,7 @@ export default async function LogoPage({ params }: Props) {
         domains: logo.domain ?? [],
         certType: logo.certType,
         markType: logo.markType,
-        issuer: logo.issuer ? displayIssuerOrg(logo.issuer) : null,
+        issuer: logo.issuer ? displayIntermediateCa(logo.issuer) : null,
         rawIssuer: logo.issuer,
         rootCa: logo.rootCa,
         score: logo.score,

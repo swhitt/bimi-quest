@@ -4,7 +4,7 @@ import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { TopOrgs } from "@/components/dashboard/top-orgs";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { fetchDashboardData } from "@/lib/data/dashboard";
 import { fetchExpiryTimeline, fetchIndustryBreakdown, fetchTopOrgs } from "@/lib/data/stats";
@@ -69,7 +69,8 @@ export async function DashboardContent({
   }
 
   const data = dashboardData;
-  const displayCA = data.selectedCA === "All Issuers" ? "All Issuers" : displayIssuerOrg(data.selectedCA);
+  const displayCA =
+    data.selectedCA === "All Intermediates" ? "All Intermediates" : displayIntermediateCa(data.selectedCA);
 
   const vmcTotal = data.caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = data.caBreakdown.reduce((s, d) => s + d.cmcCount, 0);

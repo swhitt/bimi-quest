@@ -203,11 +203,11 @@ function CASelect({
 }) {
   return (
     <Select value={value || "all"} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by issuing CA" className={className ?? "w-[140px]"}>
-        <SelectValue placeholder="All Issuers" />
+      <SelectTrigger size="sm" aria-label="Filter by intermediate CA" className={className ?? "w-[175px]"}>
+        <SelectValue placeholder="All Intermediates" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All Issuers</SelectItem>
+        <SelectItem value="all">All Intermediates</SelectItem>
         {ALL_CA_SLUGS.map((slug) => (
           <SelectItem key={slug} value={slug}>
             {CA_DISPLAY_NAMES[slug]}
@@ -685,7 +685,7 @@ function FilterBarContent() {
   if (ca)
     chips.push({
       key: "ca",
-      label: "Issuer",
+      label: "Intermediate CA",
       value: CA_DISPLAY_NAMES[caSlug] ?? ca,
       onRemove: () => router.push(buildUrl("", {})),
     });
@@ -796,7 +796,7 @@ function FilterBarContent() {
                 <div className="flex flex-col gap-4">
                   <div>
                     <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
-                      Issuer
+                      Intermediate CA
                     </span>
                     <CASelect
                       value={caSlug}

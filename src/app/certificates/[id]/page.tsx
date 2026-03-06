@@ -2,7 +2,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { displayIssuerOrg, displayRootCa } from "@/lib/ca-display";
+import { displayIntermediateCa, displayRootCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { resolveCertParam } from "@/lib/db/filters";
 import { certificates } from "@/lib/db/schema";
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const org = cert.subjectOrg || "Unknown";
   const type = cert.certType || "BIMI";
-  const issuer = cert.issuerOrg ? displayIssuerOrg(cert.issuerOrg) : "Unknown CA";
+  const issuer = cert.issuerOrg ? displayIntermediateCa(cert.issuerOrg) : "Unknown CA";
   const rootCa = cert.rootCaOrg ? displayRootCa(cert.rootCaOrg) : null;
   const primaryDomain = cert.sanList?.[0] ?? "";
   const fp12 = fingerprint.slice(0, 12);

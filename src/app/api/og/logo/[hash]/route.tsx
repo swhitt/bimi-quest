@@ -1,6 +1,6 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { ImageResponse } from "next/og";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { colors, OG_HEIGHT, OG_WIDTH } from "@/lib/og/card-styles";
@@ -33,7 +33,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
   const org = cert.subjectOrg || "Unknown";
   const primaryDomain = cert.sanList?.[0] ?? "";
   const certType = cert.certType || "BIMI";
-  const issuer = displayIssuerOrg(cert.issuerOrg);
+  const issuer = displayIntermediateCa(cert.issuerOrg);
 
   let logoDataUri: string | null = null;
   try {

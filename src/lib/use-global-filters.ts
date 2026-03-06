@@ -6,7 +6,7 @@ import { buildApiParamsFromSearchParams } from "./global-filter-params";
 
 /**
  * Reads global filter values from both the URL path (/ca/slug) and search params.
- * The issuer CA comes from the path segment, root CA from the "root" query param,
+ * The intermediate CA comes from the path segment, root CA from the "root" query param,
  * and everything else from query params.
  * Returns a query string suitable for API calls.
  */

@@ -375,7 +375,7 @@ export async function decodeCTEntry(entry: CTLogEntry, index: number): Promise<D
       label: "Issuer Key Hash",
       color: COLORS.issuerKeyHash,
       value: issuerKeyHash.substring(0, 16) + "...",
-      description: "SHA-256 hash of the issuing CA's public key",
+      description: "SHA-256 hash of the intermediate CA's public key",
     });
     certLenOffset = 44;
   } else {

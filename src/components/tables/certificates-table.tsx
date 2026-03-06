@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UtcTime } from "@/components/ui/utc-time";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 
 export interface CertRow {
@@ -360,7 +360,7 @@ export function CertificatesTable({
           />
         ),
         cell: ({ row }) => {
-          const issuer = displayIssuerOrg(row.original.issuerOrg);
+          const issuer = displayIntermediateCa(row.original.issuerOrg);
           return <span className="text-xs text-muted-foreground truncate">{issuer}</span>;
         },
       },

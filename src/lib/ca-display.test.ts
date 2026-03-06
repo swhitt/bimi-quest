@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayIssuerOrg, displayIssuerWithRoot, displayRootCa, normalizeIssuerOrg } from "./ca-display";
+import { displayIntermediateCa, displayIntermediateWithRoot, displayRootCa, normalizeIssuerOrg } from "./ca-display";
 
 describe("displayRootCa", () => {
   it("maps 'DigiCert, Inc.' to 'DigiCert'", () => {
@@ -27,35 +27,35 @@ describe("displayRootCa", () => {
   });
 });
 
-describe("displayIssuerOrg", () => {
+describe("displayIntermediateCa", () => {
   it("maps 'Sectigo Limited' to 'Sectigo'", () => {
-    expect(displayIssuerOrg("Sectigo Limited")).toBe("Sectigo");
+    expect(displayIntermediateCa("Sectigo Limited")).toBe("Sectigo");
   });
 
   it("maps 'DigiCert, Inc.' to 'DigiCert'", () => {
-    expect(displayIssuerOrg("DigiCert, Inc.")).toBe("DigiCert");
+    expect(displayIntermediateCa("DigiCert, Inc.")).toBe("DigiCert");
   });
 
   it("returns 'Unknown' for null", () => {
-    expect(displayIssuerOrg(null)).toBe("Unknown");
+    expect(displayIntermediateCa(null)).toBe("Unknown");
   });
 
   it("passes through unknown values", () => {
-    expect(displayIssuerOrg("Acme Corp")).toBe("Acme Corp");
+    expect(displayIntermediateCa("Acme Corp")).toBe("Acme Corp");
   });
 });
 
-describe("displayIssuerWithRoot", () => {
-  it("returns just issuer when root matches", () => {
-    expect(displayIssuerWithRoot("DigiCert, Inc.", "DigiCert, Inc.")).toBe("DigiCert");
+describe("displayIntermediateWithRoot", () => {
+  it("returns just intermediate when root matches", () => {
+    expect(displayIntermediateWithRoot("DigiCert, Inc.", "DigiCert, Inc.")).toBe("DigiCert");
   });
 
   it("returns 'Sectigo (via SSL.com)' when they differ", () => {
-    expect(displayIssuerWithRoot("Sectigo Limited", "SSL Corporation")).toBe("Sectigo (via SSL.com)");
+    expect(displayIntermediateWithRoot("Sectigo Limited", "SSL Corporation")).toBe("Sectigo (via SSL.com)");
   });
 
-  it("returns just issuer when rootCaOrg is null", () => {
-    expect(displayIssuerWithRoot("DigiCert, Inc.", null)).toBe("DigiCert");
+  it("returns just intermediate when rootCaOrg is null", () => {
+    expect(displayIntermediateWithRoot("DigiCert, Inc.", null)).toBe("DigiCert");
   });
 });
 

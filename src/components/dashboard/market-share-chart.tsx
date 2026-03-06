@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
-import { displayIssuerOrg } from "@/lib/ca-display";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { CA_COLOR_INDEX, useCertTypeColors } from "@/lib/chart-colors";
 
 interface CABreakdown {
@@ -66,14 +66,14 @@ function BarTooltip({
 
 export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShareChartProps) {
   const certColors = useCertTypeColors();
-  const isFiltered = selectedCA !== "All Issuers" && selectedCA in CA_COLOR_INDEX;
+  const isFiltered = selectedCA !== "All Intermediates" && selectedCA in CA_COLOR_INDEX;
 
   const grandTotal = data.reduce((s, d) => s + d.total, 0);
 
   const chartData = [...data]
     .sort((a, b) => b.total - a.total)
     .map((d) => ({
-      name: displayIssuerOrg(d.ca),
+      name: displayIntermediateCa(d.ca),
       total: d.total,
       vmcCount: d.vmcCount,
       cmcCount: d.cmcCount,
