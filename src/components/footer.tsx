@@ -2,9 +2,11 @@ import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ingestionCursors } from "@/lib/db/schema";
+import { CommitBadge } from "./commit-badge";
 import { CtLogStatus } from "./ct-log-status";
 
 const commitSha = process.env.NEXT_PUBLIC_COMMIT_SHA;
+const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME;
 
 async function getLastChecked(): Promise<{ logName: string; lastRun: Date } | null> {
   try {
@@ -37,11 +39,7 @@ export async function Footer() {
             Certificate Transparency
           </a>{" "}
           logs.
-          {commitSha && (
-            <span className="ml-2 text-[10px] opacity-40 font-mono" title={commitSha}>
-              {commitSha.slice(0, 7)}
-            </span>
-          )}
+          {commitSha && buildTime && <CommitBadge sha={commitSha} buildTime={buildTime} />}
         </p>
         <nav className="flex items-center gap-4">
           {lastChecked && <CtLogStatus logName={lastChecked.logName} lastChecked={lastChecked.lastRun.toISOString()} />}

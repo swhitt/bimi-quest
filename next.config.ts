@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_COMMIT_SHA ?? "",
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
   },
   // Allow SVG images from any domain via our proxy
   images: {
