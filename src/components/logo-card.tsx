@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSmartBg } from "@/hooks/use-smart-bg";
+import { logoUrl } from "@/lib/entity-urls";
 import { DARK_BG, LIGHT_BG } from "@/lib/svg-bg";
 import { cn } from "@/lib/utils";
 
@@ -140,7 +141,7 @@ function LogoCardInner({
       {showShare && fingerprint && (
         <div className="flex justify-center mt-2">
           <Link
-            href={`/logo/${fingerprint.slice(0, 16)}`}
+            href={logoUrl(fingerprint)}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
@@ -192,7 +193,7 @@ function LogoCardWithTooltip({
 export function LogoCard(props: LogoCardProps) {
   const { fingerprint, asLink, size = "md", svgUrl, tileBg, alt = "" } = props;
   const shouldLink = asLink ?? !!fingerprint;
-  const href = fingerprint ? `/logo/${fingerprint.slice(0, 16)}` : null;
+  const href = fingerprint ? logoUrl(fingerprint) : null;
   const needsTooltip = (size === "xs" || size === "sm") && svgUrl;
 
   const inner = <LogoCardInner {...props} />;

@@ -1,13 +1,15 @@
 "use client";
 
-import { Shield } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { CertChip } from "@/components/cert-chip";
 import { HostnameLink } from "@/components/hostname-link";
+import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
+import { logoUrl } from "@/lib/entity-urls";
 import type { DecodedCert, DecodedLeaf } from "@/lib/ct/decode-entry";
 
 interface CertSummaryProps {
@@ -73,17 +75,16 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
         {cert.isBIMI && (
           <Field label="BIMI">
             <div className="flex items-center gap-2">
-              <Link
-                href={`/certificates/${cert.fingerprint.slice(0, 12)}`}
-                className="inline-flex items-center gap-1 text-emerald-500 font-medium hover:underline"
-              >
-                <Shield className="size-3.5" />
-                {cert.certType ?? "BIMI"}
-                {cert.markType != null && <span className="text-xs text-muted-foreground">({cert.markType})</span>}
-              </Link>
+              <CertChip
+                fingerprint={cert.fingerprint}
+                label={cert.certType ?? "BIMI"}
+                compact
+                className="text-emerald-500 font-medium"
+              />
+              {cert.markType != null && <span className="text-xs text-muted-foreground">({cert.markType})</span>}
               {cert.logotypeSvg && (
                 <Link
-                  href={`/logo/${cert.fingerprint.slice(0, 16)}`}
+                  href={logoUrl(cert.fingerprint)}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   title="Share logo"
                 >
@@ -99,7 +100,7 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
         </Field>
         {cert.organization != null && (
           <Field label="Organization">
-            <span className="truncate block">{cert.organization}</span>
+            <OrgChip org={cert.organization} size="xs" compact />
           </Field>
         )}
         <Field label="Issuer">

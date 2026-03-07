@@ -5,8 +5,10 @@ import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HostChip } from "@/components/host-chip";
 import { HostnameLink } from "@/components/hostname-link";
 import { LogoCard } from "@/components/logo-card";
+import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,9 +16,9 @@ import { ExternalArrowIcon } from "@/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
+import { certUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
-import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 
@@ -226,9 +228,7 @@ export function CertificateDetail({ id }: { id: string }) {
         </Link>
         <span>/</span>
         {cert.subjectOrg ? (
-          <Link href={`/orgs/${slugify(cert.subjectOrg)}`} className="text-foreground hover:underline">
-            {cert.subjectOrg}
-          </Link>
+          <OrgChip org={cert.subjectOrg} compact className="text-foreground" />
         ) : (
           <span className="text-foreground">{cert.subjectCn || cert.sanList[0] || `#${cert.id}`}</span>
         )}
@@ -352,7 +352,7 @@ export function CertificateDetail({ id }: { id: string }) {
             })()}
           {data.pairedCert && (
             <Link
-              href={`/certificates/${data.pairedCert.fingerprintSha256.slice(0, 12)}`}
+              href={certUrl(data.pairedCert.fingerprintSha256)}
               className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary ${cert.isPrecert ? "border-amber-500/40 text-amber-700 dark:text-amber-300" : "border-blue-500/40 text-blue-700 dark:text-blue-300"}`}
             >
               {cert.isPrecert ? "View Final Cert" : "View Precert"}
@@ -418,9 +418,7 @@ export function CertificateDetail({ id }: { id: string }) {
                 <span className="break-all">
                   {cert.subjectOrg ? (
                     <>
-                      <Link href={`/orgs/${slugify(cert.subjectOrg)}`} className="text-primary hover:underline">
-                        {cert.subjectOrg}
-                      </Link>
+                      <OrgChip org={cert.subjectOrg} compact className="text-primary" />
                       {cert.subjectCountry && `, ${cert.subjectCountry}`}
                     </>
                   ) : (
@@ -438,28 +436,10 @@ export function CertificateDetail({ id }: { id: string }) {
                       return (
                         <span key={san} className="inline-flex items-center">
                           {i > 0 && <span className="mx-1 text-muted-foreground">,</span>}
-                          <HostnameLink hostname={san} />
+                          <HostChip hostname={san} showBimiCheck />
                           {totalCount > 1 && (
                             <span className="text-xs text-muted-foreground font-normal ml-1">· {totalCount} certs</span>
                           )}
-                          <Link
-                            href={`/domains/${encodeURIComponent(san)}`}
-                            className="ml-1.5 inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
-                            aria-label={`Run BIMI check for ${san}`}
-                            title={`Run BIMI check for ${san}`}
-                          >
-                            <svg
-                              className="size-3.5"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-                            </svg>
-                          </Link>
                         </span>
                       );
                     })}
@@ -836,12 +816,7 @@ export function CertificateDetail({ id }: { id: string }) {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Leaf Certificate</span>
                         {cert.subjectOrg && (
-                          <Link
-                            href={`/orgs/${slugify(cert.subjectOrg)}`}
-                            className="text-sm text-muted-foreground hover:underline"
-                          >
-                            {cert.subjectOrg}
-                          </Link>
+                          <OrgChip org={cert.subjectOrg} size="sm" compact className="text-muted-foreground" />
                         )}
                       </div>
                       <Badge variant="outline" className="text-xs">

@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
+import { OrgChip } from "@/components/org-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OrgRow } from "@/lib/data/stats";
-import { slugify } from "@/lib/slugify";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export type { OrgRow };
@@ -64,13 +63,7 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
                   {String((page - 1) * PAGE_SIZE + i + 1).padStart(2, "0")}.
                 </span>
                 <div className="min-w-0 flex-1 truncate">
-                  {org.org ? (
-                    <Link href={`/orgs/${slugify(org.org)}`} className="hover:underline truncate">
-                      {org.org}
-                    </Link>
-                  ) : (
-                    <span className="truncate">Unknown</span>
-                  )}
+                  {org.org ? <OrgChip org={org.org} size="xs" compact /> : <span className="truncate">Unknown</span>}
                 </div>
                 <span className="font-mono tabular-nums text-muted-foreground text-[12px] shrink-0">{org.total}</span>
               </li>

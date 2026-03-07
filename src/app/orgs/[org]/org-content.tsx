@@ -6,8 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { HostnameLink } from "@/components/hostname-link";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { Badge } from "@/components/ui/badge";
+import { orgUrl } from "@/lib/entity-urls";
 import { useGlobalFilters } from "@/lib/use-global-filters";
-import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
 
 interface PaginationData {
@@ -160,12 +160,7 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
             </div>
           )}
 
-          <CertificatesTable
-            data={data.data}
-            pagination={data.pagination}
-            basePath={`/orgs/${slugify(org)}`}
-            showSearch={false}
-          />
+          <CertificatesTable data={data.data} pagination={data.pagination} basePath={orgUrl(org)} showSearch={false} />
         </>
       )}
     </div>

@@ -4,12 +4,13 @@ import { Award, Shield, Star } from "lucide-react";
 import Link from "next/link";
 import { HostnameLink } from "@/components/hostname-link";
 import { LogoCard } from "@/components/logo-card";
+import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { formatUtcFull } from "@/components/ui/utc-time";
+import { certUrl, orgUrl, validateUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
-import { slugify } from "@/lib/slugify";
 
 interface LogoData {
   svg: string | null;
@@ -84,9 +85,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           Gallery
         </Link>
         <span className="text-muted-foreground">/</span>
-        <Link href={`/orgs/${slugify(logo.org)}`} className="text-foreground truncate font-medium hover:underline">
-          {logo.org}
-        </Link>
+        <OrgChip org={logo.org} compact className="text-foreground font-medium" />
       </nav>
 
       {/* Hero: Logo + Identity */}
@@ -154,7 +153,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
 
           {/* Primary action */}
           <Button asChild variant="outline" size="sm" className="mt-2">
-            <Link href={`/certificates/${logo.fingerprintSha256.slice(0, 12)}`}>
+            <Link href={certUrl(logo.fingerprintSha256)}>
               <Award className="mr-1.5 size-3.5" />
               View certificate details
             </Link>
@@ -165,7 +164,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
       {/* Details card */}
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="divide-y">
-          <DetailRow label="Certificate" href={`/certificates/${logo.fingerprintSha256.slice(0, 12)}`}>
+          <DetailRow label="Certificate" href={certUrl(logo.fingerprintSha256)}>
             <span className="font-mono text-xs truncate">{logo.fingerprintSha256}</span>
           </DetailRow>
 
@@ -213,7 +212,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
         <div className="flex flex-wrap gap-3 p-4 bg-muted/30">
           {logo.org && logo.org !== "Unknown" && (
             <Link
-              href={`/orgs/${slugify(logo.org)}`}
+              href={orgUrl(logo.org)}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <Award className="size-3.5" />
@@ -222,7 +221,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
           {logo.primaryDomain && (
             <Link
-              href={`/validate?q=${encodeURIComponent(logo.primaryDomain)}`}
+              href={validateUrl(logo.primaryDomain)}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <Shield className="size-3.5" />

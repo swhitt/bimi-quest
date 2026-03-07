@@ -7,7 +7,7 @@ import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
-import { slugify } from "@/lib/slugify";
+import { certUrl, orgUrl } from "@/lib/entity-urls";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export interface RecentCert {
@@ -81,7 +81,7 @@ export function RecentCerts({
         <div className="space-y-1">
           <div className="max-h-[320px] overflow-y-auto space-y-0.5">
             {certs.map((cert) => {
-              const certPath = `/certificates/${cert.fingerprintSha256.slice(0, 12)}`;
+              const certPath = certUrl(cert.fingerprintSha256);
               return (
                 <div
                   key={cert.id}
@@ -109,7 +109,7 @@ export function RecentCerts({
                   <span className="text-[13px] truncate flex-1 min-w-0">
                     {cert.subjectOrg ? (
                       <Link
-                        href={`/orgs/${slugify(cert.subjectOrg)}`}
+                        href={orgUrl(cert.subjectOrg)}
                         className="hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >

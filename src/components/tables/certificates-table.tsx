@@ -4,7 +4,7 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tan
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { slugify } from "@/lib/slugify";
+import { certUrl, orgUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
@@ -203,8 +203,8 @@ export function CertificatesTable({
           const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
           const firstDomain = row.original.sanList[0] || row.original.subjectCn;
           const orgHref = row.original.subjectOrg
-            ? `/orgs/${slugify(row.original.subjectOrg)}`
-            : `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
+            ? orgUrl(row.original.subjectOrg)
+            : certUrl(row.original.fingerprintSha256);
           return (
             <div className="min-w-0">
               <Link
@@ -512,7 +512,7 @@ export function CertificatesTable({
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => {
                 const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
-                const certPath = `/certificates/${row.original.fingerprintSha256.slice(0, 12)}`;
+                const certPath = certUrl(row.original.fingerprintSha256);
                 return (
                   <TableRow
                     key={row.id}

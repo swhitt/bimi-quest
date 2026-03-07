@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ExternalArrowIcon } from "@/components/ui/icons";
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { OrgChip } from "@/components/org-chip";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
+import { validateUrl } from "@/lib/entity-urls";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { errorMessage } from "@/lib/utils";
 
@@ -37,6 +39,12 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
   const [error, setError] = useState<string | null>(null);
   // Track whether this is the first render with SSR data to skip the initial fetch
   const [isInitialRender, setIsInitialRender] = useState(hasInitialData);
+
+  const sharedOrg = useMemo(() => {
+    if (!data.data.length) return null;
+    const orgs = new Set(data.data.map((c) => c.subjectOrg).filter(Boolean));
+    return orgs.size === 1 ? [...orgs][0]! : null;
+  }, [data.data]);
 
   const page = searchParams.get("page") || "";
   const sort = searchParams.get("sort") || "";
@@ -98,15 +106,18 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
                 <ExternalArrowIcon className="size-4" />
               </a>
             </h1>
-            <p className="text-muted-foreground">
-              {loading
-                ? "Loading certificates..."
-                : `${data.pagination.total} certificate${data.pagination.total !== 1 ? "s" : ""} found`}
+            <p className="text-muted-foreground flex items-center gap-2">
+              <span>
+                {loading
+                  ? "Loading certificates..."
+                  : `${data.pagination.total} certificate${data.pagination.total !== 1 ? "s" : ""} found`}
+              </span>
+              {sharedOrg && <OrgChip org={sharedOrg} size="xs" />}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={`/domains/${encodeURIComponent(hostname)}`}
+              href={validateUrl(hostname)}
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary"
             >
               <svg
@@ -168,7 +179,7 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
           <p className="text-sm text-muted-foreground">
             This hostname has not appeared in any VMC or CMC certificates in our CT log data.
           </p>
-          <Link href={`/domains/${encodeURIComponent(hostname)}`} className="text-sm text-primary hover:underline">
+          <Link href={validateUrl(hostname)} className="text-sm text-primary hover:underline">
             Run a BIMI check to see if this domain has BIMI configured
           </Link>
         </div>
