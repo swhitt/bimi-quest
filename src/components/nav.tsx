@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { caNameToSlug } from "@/lib/ca-slugs";
@@ -137,9 +137,7 @@ export function Nav() {
 
         {/* Desktop nav links - hidden on mobile */}
         <div data-testid="main-nav" className="hidden md:flex">
-          <Suspense fallback={null}>
-            <NavLinks />
-          </Suspense>
+          <NavLinks />
         </div>
 
         {/* Mobile hamburger menu */}
@@ -159,9 +157,7 @@ export function Nav() {
               </div>
 
               {/* Nav links */}
-              <Suspense fallback={null}>
-                <MobileNavLinks onNavigate={() => setSheetOpen(false)} />
-              </Suspense>
+              <MobileNavLinks onNavigate={() => setSheetOpen(false)} />
 
               {/* Search */}
               <div className="px-4 py-3 border-t">
@@ -170,9 +166,7 @@ export function Nav() {
 
               {/* Theme toggle at the bottom */}
               <div className="mt-auto p-4 border-t">
-                <Suspense>
-                  <ThemeToggle />
-                </Suspense>
+                <ThemeToggle />
               </div>
             </div>
           </SheetContent>
@@ -183,9 +177,7 @@ export function Nav() {
           <div className="hidden md:block">
             <UniversalSearch variant="nav" />
           </div>
-          <Suspense>
-            <ThemeToggle />
-          </Suspense>
+          <ThemeToggle />
         </div>
       </div>
     </header>

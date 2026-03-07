@@ -42,7 +42,7 @@ const ITEMS_PER_PAGE = 100;
 
 /* ── Preset definitions ─────────────────────────────────────────────── */
 
-type PresetKey = "showcase" | "full-color" | "new-arrivals" | "hidden-gems";
+type PresetKey = "recent" | "hall-of-fame" | "best-logos";
 
 interface PresetConfig {
   sort: string;
@@ -53,24 +53,28 @@ interface PresetConfig {
 }
 
 const PRESETS: Record<PresetKey, PresetConfig> = {
-  showcase: { sort: "quality", minScore: 5, minLogoQuality: 6 },
-  "full-color": { sort: "quality", minScore: 1, minColorRichness: 7 },
-  "new-arrivals": { sort: "recent", minScore: 1 },
-  "hidden-gems": { sort: "quality", minScore: 1, maxScore: 4, minLogoQuality: 6 },
+  recent: { sort: "recent", minScore: 1 },
+  "hall-of-fame": { sort: "quality", minScore: 5, minLogoQuality: 6 },
+  "best-logos": { sort: "quality", minScore: 1, minLogoQuality: 6 },
 };
 
 const PRESET_LABELS: Record<PresetKey, string> = {
-  showcase: "Showcase",
-  "full-color": "Full Color",
-  "new-arrivals": "New Arrivals",
-  "hidden-gems": "Hidden Gems",
+  recent: "Latest",
+  "hall-of-fame": "Hall of Fame",
+  "best-logos": "Best Logos",
 };
 
 const PRESET_DESCRIPTIONS: Record<PresetKey, string> = {
-  showcase: "High-quality logos from well-known brands",
-  "full-color": "Vibrant, colorful logos across all brands",
-  "new-arrivals": "Most recently issued certificates",
-  "hidden-gems": "Great logos from lesser-known brands",
+  recent: "Most recently issued certificates",
+  "hall-of-fame": "Impressive logos from well-known brands",
+  "best-logos": "High-quality logo designs across all brands",
+};
+
+const LEGACY_MAP: Record<string, PresetKey> = {
+  showcase: "hall-of-fame",
+  "full-color": "best-logos",
+  "new-arrivals": "recent",
+  "hidden-gems": "best-logos",
 };
 
 const PRESET_KEYS = Object.keys(PRESETS) as PresetKey[];
@@ -135,8 +139,8 @@ function buildGalleryParams(preset: PresetKey | null, filters: CustomFilters): U
     if (cfg.minLogoQuality != null) p.set("minLogoQuality", String(cfg.minLogoQuality));
     if (cfg.minColorRichness != null) p.set("minColorRichness", String(cfg.minColorRichness));
   } else {
-    // Custom mode: default sort is quality
-    p.set("sort", "quality");
+    // Custom mode: default sort is recent
+    p.set("sort", "recent");
 
     const nota = NOTABILITY_OPTIONS.find((o) => o.value === filters.notability);
     if (nota?.min != null) p.set("minScore", String(nota.min));
@@ -299,8 +303,9 @@ export function GalleryContent({ initialLogos, initialTotal }: { initialLogos?: 
   const initPreset = (() => {
     const v = searchParams.get("view");
     if (v && v in PRESETS) return v as PresetKey;
-    // No view param and no legacy sort/score params → default to fullColor
-    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "full-color" as PresetKey;
+    if (v && v in LEGACY_MAP) return LEGACY_MAP[v];
+    // No view param and no legacy sort/score params → default to recent
+    if (!searchParams.get("sort") && !searchParams.get("minScore")) return "recent" as PresetKey;
     return null;
   })();
 

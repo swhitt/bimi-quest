@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import { Footer } from "@/components/footer";
 import { GlobalFilterBar } from "@/components/global-filter-bar";
 import { Nav } from "@/components/nav";
@@ -83,7 +84,9 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>
-            <Nav />
+            <Suspense>
+              <Nav />
+            </Suspense>
             <GlobalFilterBar />
             <main className="container mx-auto px-4 pt-2 pb-4 sm:py-4 flex-1">{children}</main>
             <Footer />

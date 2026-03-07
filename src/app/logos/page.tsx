@@ -23,11 +23,10 @@ export const metadata: Metadata = {
 async function fetchInitialLogos(): Promise<GalleryResponse | null> {
   try {
     const baseUrl = await getBaseUrl();
-    // Default preset is "full-color": sort=quality, minScore=1, minColorRichness=7
+    // Default preset is "recent": newest certificates first
     const params = new URLSearchParams({
-      sort: "quality",
+      sort: "recent",
       minScore: "1",
-      minColorRichness: "7",
       page: "1",
       limit: "100",
       dedupSvg: "true",
