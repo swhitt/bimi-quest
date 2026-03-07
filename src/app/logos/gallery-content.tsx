@@ -9,10 +9,10 @@ import { ChainLinkIcon } from "@/components/ui/icons";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSmartBg } from "@/hooks/use-smart-bg";
 import { domainSlug } from "@/lib/domain-slug";
 import { errorMessage } from "@/lib/utils";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
-import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { useLazyRender } from "@/lib/use-lazy-render";
 
@@ -28,6 +28,7 @@ interface Logo {
   score: number | null;
   logoQuality: number | null;
   ctLogTimestamp: string | null;
+  tileBg: string | null;
   count: number;
 }
 
@@ -165,21 +166,16 @@ function LogoTile({ logo }: { logo: Logo }) {
   const [copied, setCopied] = useState(false);
   const [lazyRef, isVisible] = useLazyRender<HTMLDivElement>("300px");
 
-  const { bgColor, lightBg, strippedSvg } = useMemo(() => {
-    const stripped = logo.svg ? stripWhiteSvgBg(logo.svg) : null;
-    const bg = stripped ? tileBgForSvg(stripped) : undefined;
-    const light = bg ? isLightBg(bg) : false;
-    return {
-      strippedSvg: stripped,
-      bgColor: bg,
-      lightBg: light,
-    };
-  }, [logo.svg]);
+  const {
+    bgColor,
+    isLight: lightBg,
+    displaySvg,
+  } = useSmartBg(logo.svg ?? null, logo.tileBg as "light" | "dark" | null);
 
   const sanitizedHtml = useMemo(() => {
-    if (!isVisible || !strippedSvg) return null;
-    return sanitizeSvg(strippedSvg);
-  }, [isVisible, strippedSvg]);
+    if (!isVisible || !displaySvg) return null;
+    return sanitizeSvg(displaySvg);
+  }, [isVisible, displaySvg]);
 
   const handleCopyLink = useCallback(
     (e: React.MouseEvent) => {
@@ -323,70 +319,100 @@ export function GalleryContent({ initialLogos, initialTotal }: { initialLogos?: 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const hasInitialData = useRef(!!initialLogos);
 
+  const buildFetchUrl = useCallback(
+    (p: number) => {
+      const galleryParams = buildGalleryParams(activePreset, customFilters);
+      const localParams = new URLSearchParams(filterQuery);
+      for (const [k, v] of galleryParams) localParams.set(k, v);
+      localParams.set("page", String(p));
+      localParams.set("limit", String(ITEMS_PER_PAGE));
+      if (dedupSvg) localParams.set("dedupSvg", "true");
+      return localParams;
+    },
+    [activePreset, customFilters, dedupSvg, filterQuery],
+  );
+
+  const handleFetchResult = useCallback(
+    (p: number, result: GalleryResponse, append: boolean) => {
+      if (append) {
+        setLogos((prev) => {
+          const seen = new Set(prev.map((l) => l.fingerprint));
+          const fresh = result.logos.filter((l) => !seen.has(l.fingerprint));
+          return [...prev, ...fresh];
+        });
+      } else {
+        setLogos(result.logos);
+      }
+      setTotal(result.total);
+      setPage(p);
+
+      const urlParams = new URLSearchParams();
+      if (activePreset) urlParams.set("view", activePreset);
+      if (dedupSvg) urlParams.set("unique", "1");
+      const basePath = window.location.pathname.replace(/\/page\/\d+$/, "");
+      const pageSuffix = p > 1 ? `/page/${p}` : "";
+      const qs = urlParams.toString();
+      window.history.replaceState(null, "", `${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
+    },
+    [activePreset, dedupSvg],
+  );
+
   const fetchPage = useCallback(
     (p: number, append = false) => {
       if (append) {
         setLoadingMore(true);
       } else {
         setLoading(true);
+        setLogos([]);
       }
       setError(null);
       if (!append) window.scrollTo({ top: 0, behavior: "smooth" });
 
-      const galleryParams = buildGalleryParams(activePreset, customFilters);
-      const localParams = new URLSearchParams(filterQuery);
-      // Merge gallery-specific params
-      for (const [k, v] of galleryParams) localParams.set(k, v);
-      localParams.set("page", String(p));
-      localParams.set("limit", String(ITEMS_PER_PAGE));
-      if (dedupSvg) localParams.set("dedupSvg", "true");
-
-      fetch(`/api/logos?${localParams}`)
+      fetch(`/api/logos?${buildFetchUrl(p)}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load");
           return res.json();
         })
-        .then((result: GalleryResponse) => {
-          if (append) {
-            setLogos((prev) => {
-              const seen = new Set(prev.map((l) => l.fingerprint));
-              const fresh = result.logos.filter((l) => !seen.has(l.fingerprint));
-              return [...prev, ...fresh];
-            });
-          } else {
-            setLogos(result.logos);
-          }
-          setTotal(result.total);
-          setPage(p);
-
-          // Update URL: ?view=<preset> for presets, nothing for custom
-          const urlParams = new URLSearchParams();
-          if (activePreset) urlParams.set("view", activePreset);
-          if (dedupSvg) urlParams.set("unique", "1");
-          const basePath = window.location.pathname.replace(/\/page\/\d+$/, "");
-          const pageSuffix = p > 1 ? `/page/${p}` : "";
-          const qs = urlParams.toString();
-          window.history.replaceState(null, "", `${basePath}${pageSuffix}${qs ? `?${qs}` : ""}`);
-        })
+        .then((result: GalleryResponse) => handleFetchResult(p, result, append))
         .catch((err) => setError(errorMessage(err)))
         .finally(() => {
           setLoading(false);
           setLoadingMore(false);
         });
     },
-    [activePreset, customFilters, dedupSvg, filterQuery],
+    [buildFetchUrl, handleFetchResult],
   );
 
-  // Refetch when preset/filters/dedup change
+  // Refetch when preset/filters/dedup/global-filters change.
+  // All setState is in .then()/.catch()/.finally() callbacks (not synchronous)
+  // so this avoids the cascading-render anti-pattern.
   useEffect(() => {
-    // Skip the first fetch if the server provided initial data
     if (hasInitialData.current) {
       hasInitialData.current = false;
       return;
     }
-    setLogos([]);
-    fetchPage(1);
-  }, [fetchPage]);
+    let cancelled = false;
+    fetch(`/api/logos?${buildFetchUrl(1)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
+      .then((result: GalleryResponse) => {
+        if (!cancelled) handleFetchResult(1, result, false);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(errorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [buildFetchUrl, handleFetchResult]);
 
   // Infinite scroll observer
   useEffect(() => {

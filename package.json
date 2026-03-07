@@ -18,6 +18,7 @@
     "ingest:backfill-visual-hash": "tsx src/workers/ingest.ts backfill-visual-hash",
     "ingest:score-logos": "tsx src/workers/ingest.ts score-logos",
     "ingest:reslug": "tsx src/workers/ingest.ts reslug",
+    "ingest:backfill-tile-bg": "tsx src/workers/ingest.ts backfill-tile-bg",
     "ingest:bimi-dns": "tsx src/workers/ingest.ts bimi-dns",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

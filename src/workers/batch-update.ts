@@ -124,6 +124,30 @@ export async function batchUpdateVisualHash(
 }
 
 /**
+ * Batch-update tile background hint by SVG hash.
+ * Used by the backfill-tile-bg worker mode.
+ */
+export async function batchUpdateTileBg(
+  sql: NeonQueryFunction<false, false>,
+  rows: { hash: string; bg: string }[],
+): Promise<void> {
+  if (rows.length === 0) return;
+
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const hashes = chunk.map((r) => r.hash);
+    const bgs = chunk.map((r) => r.bg);
+
+    await sql`
+      UPDATE certificates AS c SET logo_tile_bg = d.bg
+      FROM unnest(${hashes}::text[], ${bgs}::text[]) AS d(hash, bg)
+      WHERE c.logotype_svg_hash = d.hash
+    `;
+  }
+}
+
+/**
  * Batch-update logo quality scores by SVG hash.
  * Used by the score-logos worker mode.
  */

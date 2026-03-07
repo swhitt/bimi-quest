@@ -1,7 +1,6 @@
 "use client";
 
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -18,6 +17,7 @@ declare module "@tanstack/react-table" {
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search } from "lucide-react";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
 import { HostnameLink } from "@/components/hostname-link";
+import { LogoCard } from "@/components/logo-card";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,6 +42,7 @@ export interface CertRow {
   sanList: string[];
   ctLogTimestamp: string | null;
   logotypeSvgHash: string | null;
+  logoTileBg: string | null;
   hasLogo: boolean;
   isPrecert: boolean | null;
   notabilityScore: number | null;
@@ -175,33 +176,14 @@ export function CertificatesTable({
           }
           const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
           const svgUrl = `/api/logo/${hash}?format=svg`;
-          const logoHref = `/logo/${row.original.fingerprintSha256.slice(0, 16)}`;
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href={logoHref} onClick={(e) => e.stopPropagation()} aria-label={`${org} logo`}>
-                  <Image
-                    src={svgUrl}
-                    alt={`${org} logo`}
-                    loading="lazy"
-                    width={32}
-                    height={32}
-                    unoptimized
-                    className="size-8 min-w-8 rounded border border-border/30 object-contain dark:bg-gray-100"
-                  />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="p-1">
-                <Image
-                  src={svgUrl}
-                  alt={`${org} logo`}
-                  width={160}
-                  height={160}
-                  unoptimized
-                  className="size-40 rounded object-contain dark:bg-gray-100"
-                />
-              </TooltipContent>
-            </Tooltip>
+            <LogoCard
+              svgUrl={svgUrl}
+              tileBg={row.original.logoTileBg as "light" | "dark" | null}
+              size="sm"
+              fingerprint={row.original.fingerprintSha256}
+              alt={`${org} logo`}
+            />
           );
         },
       },

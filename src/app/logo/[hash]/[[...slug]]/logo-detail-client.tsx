@@ -1,17 +1,15 @@
 "use client";
 
-import { Award, Moon, Shield, Star, Sun } from "lucide-react";
+import { Award, Shield, Star } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { HostnameLink } from "@/components/hostname-link";
-import { LogoSvg } from "@/components/logo-svg";
+import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { formatUtcFull } from "@/components/ui/utc-time";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { slugify } from "@/lib/slugify";
-import { DARK_BG, isLightBg, LIGHT_BG, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 
 interface LogoData {
   svg: string | null;
@@ -71,15 +69,6 @@ function ScoreStars({ score }: { score: number }) {
 }
 
 export function LogoDetailClient({ logo }: { logo: LogoData }) {
-  const autoBg = useMemo(() => {
-    if (!logo.svg) return DARK_BG;
-    const stripped = stripWhiteSvgBg(logo.svg);
-    return tileBgForSvg(stripped);
-  }, [logo.svg]);
-  const autoIsLight = isLightBg(autoBg);
-  const strippedSvg = useMemo(() => (logo.svg ? stripWhiteSvgBg(logo.svg) : null), [logo.svg]);
-
-  const [bgMode, setBgMode] = useState<"auto" | "dark" | "light">("auto");
   const now = new Date();
   const isExpired = logo.notAfter ? new Date(logo.notAfter) < now : false;
   const mtInfo = getMarkTypeInfo(logo.markType);
@@ -103,53 +92,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
       {/* Hero: Logo + Identity */}
       <div className="flex flex-col items-center gap-5">
         {/* Logo with background toggle */}
-        <div className="relative group">
-          <div
-            className={`w-72 h-72 rounded-2xl p-5 ring-1 transition-colors duration-200
-              [&>div>svg]:h-full [&>div>svg]:w-full
-              ${bgMode === "light" || (bgMode === "auto" && autoIsLight) ? "ring-black/10" : "ring-white/10"}`}
-            style={{
-              backgroundColor: bgMode === "auto" ? autoBg : bgMode === "dark" ? DARK_BG : LIGHT_BG,
-            }}
-          >
-            {logo.svg ? (
-              <LogoSvg
-                svg={bgMode === "light" ? logo.svg : (strippedSvg ?? logo.svg)}
-                className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">No image</div>
-            )}
-          </div>
-          {/* Background toggle */}
-          <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={() => {
-                if (bgMode === "auto") {
-                  setBgMode(autoIsLight ? "dark" : "light");
-                } else if (bgMode === "light") {
-                  setBgMode("dark");
-                } else {
-                  setBgMode("light");
-                }
-              }}
-              title={
-                bgMode === "light" || (bgMode === "auto" && autoIsLight)
-                  ? "Switch to dark background"
-                  : "Switch to light background"
-              }
-              className="backdrop-blur-sm bg-background/80 shadow-md"
-            >
-              {bgMode === "dark" || (bgMode === "auto" && !autoIsLight) ? (
-                <Sun className="size-3.5" />
-              ) : (
-                <Moon className="size-3.5" />
-              )}
-            </Button>
-          </div>
-        </div>
+        <LogoCard svg={logo.svg} size="lg" />
 
         {/* Identity block */}
         <div className="text-center space-y-2">

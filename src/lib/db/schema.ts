@@ -50,6 +50,8 @@ export const certificates = pgTable(
     // 1-10 visual quality score from multimodal LLM (Gemini Flash-Lite)
     logoQualityScore: integer("logo_quality_score"),
     logoQualityReason: text("logo_quality_reason"),
+    // Pre-computed tile background hint ("light" or "dark") for thumbnail rendering
+    logoTileBg: text("logo_tile_bg"),
     // Perceptual dHash of the rendered SVG, invariant to XML formatting/padding/zoom
     logotypeVisualHash: text("logotype_visual_hash"),
     // True when a precert has been superseded by its matching final certificate

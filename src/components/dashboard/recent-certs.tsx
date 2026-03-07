@@ -1,10 +1,10 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
+import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { slugify } from "@/lib/slugify";
@@ -97,13 +97,11 @@ export function RecentCerts({
                   tabIndex={0}
                 >
                   {cert.hasLogo && cert.logotypeSvgHash ? (
-                    <Image
-                      src={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
-                      alt=""
-                      width={20}
-                      height={20}
-                      unoptimized
-                      className="size-5 shrink-0 rounded border object-contain dark:bg-gray-100"
+                    <LogoCard
+                      svgUrl={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
+                      size="xs"
+                      asLink={false}
+                      className="shrink-0"
                     />
                   ) : (
                     <div className="size-5 shrink-0 rounded border bg-muted" />

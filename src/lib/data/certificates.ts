@@ -37,6 +37,7 @@ export interface CertificateRow {
   notabilityScore: number | null;
   companyDescription: string | null;
   industry: string | null;
+  logoTileBg: string | null;
   createdAt: Date | null;
   hasLogo: boolean;
 }
@@ -98,6 +99,7 @@ export async function fetchCertificates(
       sanList: certificates.sanList,
       ctLogTimestamp: certificates.ctLogTimestamp,
       logotypeSvgHash: certificates.logotypeSvgHash,
+      logoTileBg: certificates.logoTileBg,
       hasLogo: sql<boolean>`${certificates.logotypeSvg} IS NOT NULL`.as("has_logo"),
       isPrecert: certificates.isPrecert,
       notabilityScore: certificates.notabilityScore,

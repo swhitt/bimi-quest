@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
           ctLogTimestamp: sql<string>`(array_agg(${certificates.ctLogTimestamp} ORDER BY ${pickOrder}))[1]`.as(
             "ct_log_timestamp",
           ),
+          tileBg: sql<string>`(array_agg(${certificates.logoTileBg} ORDER BY ${pickOrder}))[1]`.as("tile_bg"),
         })
         .from(certificates)
         .where(baseWhere)

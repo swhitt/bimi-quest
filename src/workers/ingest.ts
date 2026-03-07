@@ -34,6 +34,10 @@ if (mode === "stream") {
   const recalc = process.argv[3] === "recalc";
   const { backfillColorRichness } = await import("./modes/backfill-color-richness");
   backfillColorRichness(sql, recalc).catch(console.error);
+} else if (mode === "backfill-tile-bg") {
+  const recalc = process.argv[3] === "recalc";
+  const { backfillTileBg } = await import("./modes/backfill-tile-bg");
+  backfillTileBg(sql, recalc).catch(console.error);
 } else if (mode === "backfill-visual-hash") {
   const recalc = process.argv[3] === "recalc";
   const { backfillVisualHash } = await import("./modes/backfill-visual-hash");

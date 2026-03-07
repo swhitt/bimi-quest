@@ -15,6 +15,7 @@ import { certificateChainLinks, certificates, chainCerts, ingestionCursors } fro
 import { type BrandInput, scoreNotabilityBatch } from "@/lib/notability";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { computeColorRichness } from "@/lib/svg-color-richness";
+import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
 
@@ -233,6 +234,11 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             logotypeSvgHash: bimiData.logotypeSvgHash,
             logotypeSvg: bimiData.logotypeSvg,
             logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
+            logoTileBg: bimiData.logotypeSvg
+              ? isLightBg(tileBgForSvg(stripWhiteSvgBg(bimiData.logotypeSvg)))
+                ? "light"
+                : "dark"
+              : null,
             // Visual hash is deferred to the backfillVisualHash worker to keep
             // the ingestion hot path fast (sharp render is 50-200ms per cert)
             logotypeVisualHash: null,

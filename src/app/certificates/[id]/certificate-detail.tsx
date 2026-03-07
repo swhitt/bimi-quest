@@ -6,14 +6,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HostnameLink } from "@/components/hostname-link";
+import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
+import { ExternalArrowIcon } from "@/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
-import { domainSlug } from "@/lib/domain-slug";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { slugify } from "@/lib/slugify";
@@ -141,7 +141,6 @@ export function CertificateDetail({ id }: { id: string }) {
   const [showPem, setShowPem] = useState(false);
   const [bimiCheck, setBimiCheck] = useState<BimiCheckResult | null>(null);
   const [bimiLoading, setBimiLoading] = useState(false);
-  const [svgBgDark, setSvgBgDark] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showDiff, setShowDiff] = useState<string | null>(null);
   const [revocation, setRevocation] = useState<RevocationResult | null>(null);
@@ -239,9 +238,11 @@ export function CertificateDetail({ id }: { id: string }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           {cert.logotypeSvg && (
-            <div
-              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-white p-1.5 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
-              dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
+            <LogoCard
+              svg={cert.logotypeSvg}
+              size="sm"
+              fingerprint={cert.fingerprintSha256}
+              className="shrink-0 [&>div]:size-16 [&>div]:p-1.5 [&>div]:rounded-lg"
             />
           )}
           <div>
@@ -499,18 +500,6 @@ export function CertificateDetail({ id }: { id: string }) {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Embedded Logo</CardTitle>
               <div className="flex items-center gap-2">
-                {cert.fingerprintSha256 && (
-                  <Link
-                    href={`/logo/${cert.fingerprintSha256.slice(0, 16)}/${domainSlug(cert.sanList?.[0] || cert.subjectCn || "logo")}`}
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <ChainLinkIcon className="size-3.5" />
-                    Share
-                  </Link>
-                )}
-                <Button variant="outline" size="sm" onClick={() => setSvgBgDark(!svgBgDark)}>
-                  {svgBgDark ? "Light BG" : "Dark BG"}
-                </Button>
                 {bimiCheck?.certSvgValidation && (
                   <Badge variant={bimiCheck.certSvgValidation.valid ? "default" : "destructive"}>
                     SVG {bimiCheck.certSvgValidation.valid ? "Valid" : "Invalid"}
@@ -520,12 +509,12 @@ export function CertificateDetail({ id }: { id: string }) {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                {/* Large SVG preview */}
-                <div
-                  className={`flex h-32 w-32 sm:h-40 sm:w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-3 [&>svg]:max-h-full [&>svg]:max-w-full ${
-                    svgBgDark ? "bg-zinc-900" : "bg-white"
-                  }`}
-                  dangerouslySetInnerHTML={{ __html: sanitizedSvg! }}
+                <LogoCard
+                  svg={cert.logotypeSvg}
+                  size="md"
+                  fingerprint={cert.fingerprintSha256}
+                  showShare
+                  className="shrink-0 [&>div:first-child]:h-32 [&>div:first-child]:w-32 sm:[&>div:first-child]:h-40 sm:[&>div:first-child]:w-40"
                 />
                 <div className="flex-1 min-w-0 space-y-3">
                   {bimiCheck?.certSvgSizeBytes && (
