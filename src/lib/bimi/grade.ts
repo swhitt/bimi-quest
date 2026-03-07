@@ -4,10 +4,10 @@ import type { BimiCheckItem, BimiGradeResult } from "./types";
  * Compute a letter grade from structured BIMI check results.
  *
  * Rules:
- *   F  - domain declined BIMI or no BIMI record found
- *   D  - multiple spec failures
- *   C  - any spec "fail" caps at C
- *   B  - all spec checks pass, some compatibility warnings
+ *   F  - domain declined BIMI, no BIMI record, or 3+ spec failures
+ *   D  - 2 spec failures
+ *   C  - 1 spec failure
+ *   B  - all spec checks pass, some spec or compatibility warnings
  *   A  - everything clean
  */
 export function computeGrade(checks: BimiCheckItem[], declined: boolean = false): BimiGradeResult {
@@ -49,17 +49,14 @@ export function computeGrade(checks: BimiCheckItem[], declined: boolean = false)
     };
   }
 
-  if (specWarns.length > 0) {
-    return {
-      grade: "C",
-      summary: `${specWarns.length} spec warning${specWarns.length > 1 ? "s" : ""} to address`,
-    };
-  }
-
-  if (compatWarns.length > 0) {
+  const totalWarns = specWarns.length + compatWarns.length;
+  if (totalWarns > 0) {
+    const parts: string[] = [];
+    if (specWarns.length > 0) parts.push(`${specWarns.length} spec`);
+    if (compatWarns.length > 0) parts.push(`${compatWarns.length} compatibility`);
     return {
       grade: "B",
-      summary: `Spec compliant with ${compatWarns.length} compatibility note${compatWarns.length > 1 ? "s" : ""}`,
+      summary: `Spec compliant with ${parts.join(" and ")} warning${totalWarns > 1 ? "s" : ""}`,
     };
   }
 

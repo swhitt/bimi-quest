@@ -93,57 +93,56 @@ describe("computeGrade", () => {
     });
   });
 
-  describe("C - spec warnings", () => {
-    it("returns C with singular wording for 1 spec warning", () => {
+  describe("B - warnings (spec or compatibility)", () => {
+    it("returns B for 1 spec warning", () => {
       const checks = [makeCheck({ id: "check-a", category: "spec", status: "warn" })];
       const result = computeGrade(checks);
-      expect(result.grade).toBe("C");
-      expect(result.summary).toBe("1 spec warning to address");
+      expect(result.grade).toBe("B");
+      expect(result.summary).toBe("Spec compliant with 1 spec warning");
     });
 
-    it("returns C with plural wording for multiple spec warnings", () => {
+    it("returns B for multiple spec warnings", () => {
       const checks = [
         makeCheck({ id: "check-a", category: "spec", status: "warn" }),
         makeCheck({ id: "check-b", category: "spec", status: "warn" }),
       ];
       const result = computeGrade(checks);
-      expect(result.grade).toBe("C");
-      expect(result.summary).toBe("2 spec warnings to address");
+      expect(result.grade).toBe("B");
+      expect(result.summary).toBe("Spec compliant with 2 spec warnings");
     });
 
-    it("spec warnings take priority over compatibility warnings", () => {
-      const checks = [
-        makeCheck({ id: "check-a", category: "spec", status: "warn" }),
-        makeCheck({ id: "check-b", category: "compatibility", status: "warn" }),
-      ];
-      const result = computeGrade(checks);
-      expect(result.grade).toBe("C");
-    });
-  });
-
-  describe("B - compatibility warnings", () => {
-    it("returns B with singular wording for 1 compatibility warning", () => {
+    it("returns B for 1 compatibility warning", () => {
       const checks = [makeCheck({ id: "check-a", category: "compatibility", status: "warn" })];
       const result = computeGrade(checks);
       expect(result.grade).toBe("B");
-      expect(result.summary).toBe("Spec compliant with 1 compatibility note");
+      expect(result.summary).toBe("Spec compliant with 1 compatibility warning");
     });
 
-    it("returns B with plural wording for multiple compatibility warnings", () => {
+    it("returns B for multiple compatibility warnings", () => {
       const checks = [
         makeCheck({ id: "check-a", category: "compatibility", status: "warn" }),
         makeCheck({ id: "check-b", category: "compatibility", status: "warn" }),
       ];
       const result = computeGrade(checks);
       expect(result.grade).toBe("B");
-      expect(result.summary).toBe("Spec compliant with 2 compatibility notes");
+      expect(result.summary).toBe("Spec compliant with 2 compatibility warnings");
+    });
+
+    it("combines spec and compatibility warning counts", () => {
+      const checks = [
+        makeCheck({ id: "check-a", category: "spec", status: "warn" }),
+        makeCheck({ id: "check-b", category: "compatibility", status: "warn" }),
+      ];
+      const result = computeGrade(checks);
+      expect(result.grade).toBe("B");
+      expect(result.summary).toBe("Spec compliant with 1 spec and 1 compatibility warnings");
     });
 
     it("treats compatibility fails as compatibility warnings for grading purposes", () => {
       const checks = [makeCheck({ id: "check-a", category: "compatibility", status: "fail" })];
       const result = computeGrade(checks);
       expect(result.grade).toBe("B");
-      expect(result.summary).toBe("Spec compliant with 1 compatibility note");
+      expect(result.summary).toBe("Spec compliant with 1 compatibility warning");
     });
   });
 
