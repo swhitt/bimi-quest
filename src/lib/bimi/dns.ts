@@ -3,6 +3,19 @@ import { errorMessage } from "@/lib/utils";
 import { getOrgDomain } from "./dmarc";
 import { parseTxtTagList } from "./txt-tags";
 
+const DNS_TIMEOUT_MS = 10_000;
+
+function withDnsTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(Object.assign(new Error(`DNS timed out after ${DNS_TIMEOUT_MS}ms`), { code: "ETIMEOUT" })),
+      DNS_TIMEOUT_MS,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export interface BIMIRecord {
   raw: string;
   version: string;
@@ -37,7 +50,7 @@ export async function lookupBIMIRecord(domain: string, selector: string = "defau
 
 async function lookupBIMIRecordAt(domain: string, selector: string): Promise<BIMIRecord | null> {
   try {
-    const records = await dns.resolveTxt(`${selector}._bimi.${domain}`);
+    const records = await withDnsTimeout(dns.resolveTxt(`${selector}._bimi.${domain}`));
     // TXT records can be split across multiple strings, concatenate them
     for (const record of records) {
       const txt = record.join("");

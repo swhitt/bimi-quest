@@ -36,6 +36,7 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 - `DATABASE_URL` - Neon PostgreSQL connection string (required)
 - `DISCORD_WEBHOOK_URL` - Discord webhook for notifications (optional)
 - `NEXT_PUBLIC_BASE_URL` - Base URL for links in notifications
+- `CRON_SECRET` - Shared secret for authenticating cron API endpoints (optional)
 
 ## Important Notes
 

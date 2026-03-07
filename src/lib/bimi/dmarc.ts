@@ -3,6 +3,19 @@ import { getDomain } from "tldts";
 import { errorMessage } from "@/lib/utils";
 import { parseTxtTagList } from "./txt-tags";
 
+const DNS_TIMEOUT_MS = 10_000;
+
+function withDnsTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(Object.assign(new Error(`DNS timed out after ${DNS_TIMEOUT_MS}ms`), { code: "ETIMEOUT" })),
+      DNS_TIMEOUT_MS,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export interface DMARCRecord {
   raw: string;
   version: string;
@@ -47,7 +60,7 @@ export async function lookupDMARC(domain: string): Promise<DMARCLookupResult | n
 
 async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
   try {
-    const records = await dns.resolveTxt(`_dmarc.${domain}`);
+    const records = await withDnsTimeout(dns.resolveTxt(`_dmarc.${domain}`));
     for (const record of records) {
       const txt = record.join("");
       if (txt.toLowerCase().startsWith("v=dmarc1")) {

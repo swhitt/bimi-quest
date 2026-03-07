@@ -18,6 +18,8 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
     totalPages,
     setPage,
     loading,
+    error,
+    retry,
   } = usePaginatedData<OrgRow>({
     url: "/api/stats/top-orgs",
     pageSize: PAGE_SIZE,
@@ -32,6 +34,20 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
       <div>
         <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
         <Skeleton className="h-[200px] mt-1" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
+        <div className="flex h-[200px] flex-col items-center justify-center gap-2">
+          <p className="text-sm text-destructive">Failed to load</p>
+          <button className="text-xs underline text-muted-foreground hover:text-foreground" onClick={retry}>
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

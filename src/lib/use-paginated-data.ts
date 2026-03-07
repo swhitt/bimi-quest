@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 
 interface UsePaginatedDataResult<T> {
@@ -9,6 +9,8 @@ interface UsePaginatedDataResult<T> {
   totalPages: number;
   setPage: (p: number | ((prev: number) => number)) => void;
   loading: boolean;
+  error: string | null;
+  retry: () => void;
 }
 
 /**
@@ -38,6 +40,7 @@ export function usePaginatedData<T>({
   const [page, setPage] = useState(1);
   const [loadedParams, setLoadedParams] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(!!initialData);
+  const [error, setError] = useState<string | null>(null);
   const [prevBaseFilter, setPrevBaseFilter] = useState<string | null>(null);
 
   const extractDataRef = useRef(extractData);
@@ -73,6 +76,7 @@ export function usePaginatedData<T>({
     if (loadedParams === filterParams) return;
 
     const controller = new AbortController();
+    setError(null);
 
     fetch(`${url}?${filterParams}`, { signal: controller.signal })
       .then((res) => {
@@ -85,7 +89,11 @@ export function usePaginatedData<T>({
         setLoadedParams(filterParams);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") setData([]);
+        if (err.name !== "AbortError") {
+          setData([]);
+          setError(err.message || "Failed to load");
+          setLoadedParams(filterParams);
+        }
       });
 
     return () => controller.abort();
@@ -93,5 +101,10 @@ export function usePaginatedData<T>({
 
   const loading = loadedParams !== filterParams;
 
-  return { data, page, totalPages, setPage, loading };
+  const retry = useCallback(() => {
+    setError(null);
+    setLoadedParams(null);
+  }, []);
+
+  return { data, page, totalPages, setPage, loading, error, retry };
 }
