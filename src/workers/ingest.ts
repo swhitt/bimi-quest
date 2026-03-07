@@ -50,6 +50,10 @@ if (mode === "stream") {
 } else if (mode === "reslug") {
   const { reslug } = await import("./modes/reslug");
   reslug(sql).catch(console.error);
+} else if (mode === "bimi-dns") {
+  const limit = parseInt(process.argv[3] || "1000", 10);
+  const { backfillBimiDns } = await import("./modes/backfill-bimi-dns");
+  backfillBimiDns(sql, limit).catch(console.error);
 } else {
   const { backfill } = await import("./modes/backfill");
   backfill().catch(console.error);
