@@ -5,16 +5,16 @@ import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HostnameLink } from "@/components/hostname-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
-import { getMarkTypeInfo } from "@/lib/mark-types";
-import { HostnameLink } from "@/components/hostname-link";
-import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
 import { domainSlug } from "@/lib/domain-slug";
+import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
@@ -1352,14 +1352,14 @@ function LogoComparison({
               )}
             </div>
           </div>
-          <div className="flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
+          <div className="relative flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
             {logoUrl && (
               <Image
                 src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
                 alt="Web BIMI logo"
-                className="max-h-full max-w-full object-contain"
-                width={200}
-                height={200}
+                className="object-contain p-2"
+                fill
+                sizes="(max-width: 768px) 40vw, 200px"
                 unoptimized
               />
             )}
