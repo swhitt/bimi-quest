@@ -8,6 +8,16 @@ vi.mock("dns", () => ({
   },
 }));
 
+// Mock undici Agent to capture the lookup callback
+const mockAgentConstructor = vi.fn();
+vi.mock("undici", () => ({
+  Agent: class MockAgent {
+    constructor(opts: unknown) {
+      mockAgentConstructor(opts);
+    }
+  },
+}));
+
 import { promises as dns } from "dns";
 import { safeFetch } from "./safe-fetch";
 
@@ -37,22 +47,30 @@ describe("safeFetch", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
   });
 
-  it("pins connection to the resolved IP", async () => {
+  it("preserves original hostname in URL for correct TLS SNI", async () => {
     mockResolve4.mockResolvedValue(["93.184.216.34"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
     await safeFetch("https://example.com/test");
     const calledUrl = mockFetch.mock.calls[0][0] as string;
-    expect(calledUrl).toContain("93.184.216.34");
+    expect(calledUrl).toBe("https://example.com/test");
   });
 
-  it("sets Host header to original hostname for pinned requests", async () => {
+  it("pins connection via undici Agent with custom DNS lookup", async () => {
     mockResolve4.mockResolvedValue(["93.184.216.34"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
     await safeFetch("https://example.com/test");
-    const calledInit = mockFetch.mock.calls[0][1] as RequestInit;
-    expect(calledInit.headers).toHaveProperty("Host", "example.com");
+    expect(mockAgentConstructor).toHaveBeenCalledOnce();
+
+    // Extract the lookup callback and verify it returns the validated IP
+    // biome-ignore lint: test helper extracts the lookup fn
+    const agentOpts = mockAgentConstructor.mock.calls[0][0] as {
+      connect: { lookup: (...args: unknown[]) => void };
+    };
+    const callback = vi.fn();
+    agentOpts.connect.lookup("example.com", {}, callback);
+    expect(callback).toHaveBeenCalledWith(null, [{ address: "93.184.216.34", family: 4 }]);
   });
 
   it("uses redirect: error to prevent redirect-based SSRF", async () => {
@@ -62,6 +80,15 @@ describe("safeFetch", () => {
     await safeFetch("https://example.com/test");
     const calledInit = mockFetch.mock.calls[0][1] as RequestInit;
     expect(calledInit.redirect).toBe("error");
+  });
+
+  it("passes dispatcher to fetch", async () => {
+    mockResolve4.mockResolvedValue(["93.184.216.34"]);
+    mockResolve6.mockRejectedValue(new Error("no AAAA"));
+
+    await safeFetch("https://example.com/test");
+    const calledInit = mockFetch.mock.calls[0][1] as Record<string, unknown>;
+    expect(calledInit.dispatcher).toBeDefined();
   });
 
   it("blocks fetch when DNS resolves to private IPv4", async () => {
@@ -81,7 +108,6 @@ describe("safeFetch", () => {
   });
 
   it("blocks when any IP in the set is private", async () => {
-    // One public IP, one private
     mockResolve4.mockResolvedValue(["8.8.8.8", "10.0.0.1"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
@@ -125,7 +151,7 @@ describe("safeFetch", () => {
     );
   });
 
-  it("preserves caller-provided headers alongside Host", async () => {
+  it("preserves caller-provided headers", async () => {
     mockResolve4.mockResolvedValue(["93.184.216.34"]);
     mockResolve6.mockRejectedValue(new Error("no AAAA"));
 
@@ -134,11 +160,7 @@ describe("safeFetch", () => {
     });
     const calledInit = mockFetch.mock.calls[0][1] as RequestInit;
     const headers = calledInit.headers as Record<string, string>;
-    // Headers API normalizes keys to lowercase
-    expect(headers["user-agent"]).toBe("test-agent");
-    expect(headers.accept).toBe("text/html");
-    // Host is set explicitly with capital H, but it's overwritten after
-    // the spread so it appears with whatever case we set it to
-    expect(headers.Host).toBe("example.com");
+    expect(headers["User-Agent"]).toBe("test-agent");
+    expect(headers.Accept).toBe("text/html");
   });
 });

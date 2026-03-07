@@ -1,15 +1,15 @@
 import { promises as dns } from "dns";
+import { Agent } from "undici";
 import { isPrivateHostname, isPrivateIP } from "./hostname";
 
 /**
- * Fetch wrapper that resolves DNS, validates IPs, then connects to the
- * validated IP directly (setting Host header to the original hostname).
+ * Fetch wrapper that resolves DNS, validates all IPs against SSRF,
+ * then uses an undici Agent with a custom DNS lookup to pin the
+ * connection to the validated IP.
  *
- * This closes the TOCTOU gap where DNS is resolved for validation but
- * fetch() re-resolves independently -- an attacker with a short-TTL DNS
- * record could return a safe IP during validation then a private IP for
- * the actual fetch. By pinning to the resolved IP, the connection always
- * goes to the validated address.
+ * Unlike URL-rewriting approaches, this preserves the original hostname
+ * in the URL so TLS SNI is sent correctly — critical for CDN-hosted
+ * domains where the server selects its certificate based on SNI.
  *
  * Redirects are blocked (`redirect: "error"`) so a public URL can't
  * redirect to an internal IP and bypass the check.
@@ -30,25 +30,26 @@ export async function safeFetch(url: string | URL, init?: RequestInit): Promise<
   // Resolve DNS and validate all IPs; returns first valid IPv4
   const resolvedIP = await resolveAndValidateIPs(parsed.hostname);
 
-  // Build a URL that connects to the resolved IP directly, preventing
-  // a second DNS lookup from returning a different (potentially private) IP.
-  const pinnedUrl = new URL(parsed.toString());
-  const originalHost = parsed.hostname;
+  // Use an undici Agent with a custom DNS lookup that returns the
+  // pre-validated IP. This pins the connection to the safe IP while
+  // keeping the original hostname in the URL for correct TLS SNI.
+  const dispatcher = resolvedIP
+    ? new Agent({
+        connect: {
+          lookup: (_hostname, _options, callback) => {
+            callback(null, [{ address: resolvedIP, family: resolvedIP.includes(":") ? 6 : 4 }]);
+          },
+        },
+      })
+    : undefined;
 
-  if (resolvedIP) {
-    pinnedUrl.hostname = resolvedIP;
-  }
-
-  return fetch(pinnedUrl.toString(), {
+  return fetch(parsed.toString(), {
     ...init,
     // Block redirects: a redirect from a public URL to an internal IP
     // would bypass our DNS validation.
     redirect: "error",
-    headers: {
-      ...Object.fromEntries(new Headers(init?.headers).entries()),
-      // Restore the original hostname so TLS SNI and virtual hosting work
-      Host: originalHost,
-    },
+    // @ts-expect-error -- dispatcher is a valid undici option for Node.js fetch
+    dispatcher,
   });
 }
 

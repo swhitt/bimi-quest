@@ -1,9 +1,9 @@
 import type { NeonQueryFunction } from "@neondatabase/serverless";
-import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { isDMARCValidForBIMI, lookupDMARC } from "@/lib/bimi/dmarc";
+import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { computeSvgHash, decompressSvgIfNeeded, validateSVGTinyPS } from "@/lib/bimi/svg";
 import { throttle } from "@/lib/ct/gorgon";
-import { isPrivateHostname } from "@/lib/net/hostname";
+import { safeFetch } from "@/lib/net/safe-fetch";
 
 interface BimiDnsRow {
   domain: string;
@@ -79,16 +79,11 @@ async function lookupDomain(domain: string): Promise<BimiDnsRow> {
     row.dmarc_valid = isDMARCValidForBIMI(dmarcResult.record, dmarcResult.isSubdomain);
   }
 
-  // Fetch SVG if we have a logo URL (direct fetch — this is a trusted worker,
-  // not user input, so we skip safeFetch's IP-pinning which breaks TLS to CDNs)
   if (bimiRecord?.logoUrl) {
     try {
-      const logoHost = new URL(bimiRecord.logoUrl).hostname;
-      if (isPrivateHostname(logoHost)) throw new Error("private host");
-      const res = await fetch(bimiRecord.logoUrl, {
+      const res = await safeFetch(bimiRecord.logoUrl, {
         headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)", Accept: "image/svg+xml" },
         signal: AbortSignal.timeout(10_000),
-        redirect: "follow",
       });
       if (res.ok) {
         row.svg_content_type = res.headers.get("content-type");
