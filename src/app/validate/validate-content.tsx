@@ -107,7 +107,7 @@ interface ValidationResult {
 
 export function ValidateContent() {
   const searchParams = useSearchParams();
-  const urlDomain = searchParams.get("domain") || "";
+  const urlDomain = searchParams.get("q") || searchParams.get("domain") || "";
   const [domain, setDomain] = useState(urlDomain);
   const [selector, setSelector] = useState("default");
   const [receiverDomainsInput, setReceiverDomainsInput] = useState("");
@@ -145,7 +145,7 @@ export function ValidateContent() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Validation failed");
         setResult(data);
-        window.history.replaceState(null, "", `/validate?domain=${encodeURIComponent(target)}`);
+        window.history.replaceState(null, "", `/validate?q=${encodeURIComponent(target)}`);
       } catch (err) {
         setError(errorMessage(err));
       } finally {

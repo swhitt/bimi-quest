@@ -4,10 +4,10 @@ import { Award, Moon, Shield, Star, Sun } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { HostnameLink } from "@/components/hostname-link";
-import { ChainLinkIcon } from "@/components/ui/icons";
 import { LogoSvg } from "@/components/logo-svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChainLinkIcon } from "@/components/ui/icons";
 import { formatUtcFull } from "@/components/ui/utc-time";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { slugify } from "@/lib/slugify";
@@ -279,7 +279,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
           {logo.primaryDomain && (
             <Link
-              href={`/validate?domain=${encodeURIComponent(logo.primaryDomain)}`}
+              href={`/validate?q=${encodeURIComponent(logo.primaryDomain)}`}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <Shield className="size-3.5" />

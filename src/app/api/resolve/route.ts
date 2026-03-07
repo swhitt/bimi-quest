@@ -7,7 +7,7 @@ import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit
 
 /**
  * Resolve a domain to its newest certificate, or fall back to validate.
- * Returns { url: "/certificates/abc123..." } or { url: "/validate?domain=..." }
+ * Returns { url: "/certificates/abc123..." } or { url: "/validate?q=..." }
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      url: `/validate?domain=${encodeURIComponent(domain)}`,
+      url: `/validate?q=${encodeURIComponent(domain)}`,
       found: false,
     });
   } catch (err) {
