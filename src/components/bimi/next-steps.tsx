@@ -86,7 +86,7 @@ export function NextSteps({ checks, overallValid }: NextStepsProps) {
   if (overallValid) {
     return (
       <Card className="border-emerald-200 dark:border-emerald-800">
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex items-start gap-3">
             <span className="text-emerald-600 dark:text-emerald-400 text-lg font-bold mt-0.5">&#x2713;</span>
             <div>

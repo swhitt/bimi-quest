@@ -272,7 +272,7 @@ export function ValidateContent() {
 
           {/* Tier 3: Technical Deep Dive */}
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <TechnicalDetails
                 authResult={result.authResult}
                 responseHeaders={result.responseHeaders}
