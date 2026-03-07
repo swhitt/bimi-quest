@@ -63,6 +63,18 @@ vi.mock("@/lib/logger", () => ({
   log: vi.fn(),
 }));
 
+vi.mock("@/lib/cache", () => ({
+  CACHE_PRESETS: {
+    SHORT: "public, s-maxage=60, stale-while-revalidate=300",
+    MEDIUM: "public, s-maxage=120, stale-while-revalidate=600",
+    MEDIUM_LONG: "public, s-maxage=300, stale-while-revalidate=600",
+    LONG: "public, s-maxage=3600, stale-while-revalidate=86400",
+    LONG_STATIC: "public, s-maxage=86400, stale-while-revalidate=3600",
+    STATIC: "public, max-age=86400",
+    IMMUTABLE: "public, max-age=86400, s-maxage=86400",
+  },
+}));
+
 vi.mock("@/lib/net/safe-fetch", () => ({
   safeFetch: vi.fn(),
 }));
@@ -98,13 +110,14 @@ vi.mock("@peculiar/x509", () => ({
 // resolveOrError (in @/lib/api-utils) delegates to resolveCertParam, so mocking
 // the latter controls both.
 const mockResolveCertParam = vi.fn();
-vi.mock("@/lib/db/filters", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    resolveCertParam: (...args: unknown[]) => mockResolveCertParam(...args),
-  };
-});
+vi.mock("@/lib/db/filters", () => ({
+  resolveCertParam: (...args: unknown[]) => mockResolveCertParam(...args),
+  parseDate: () => null,
+  excludeDuplicatePrecerts: () => ({ sql: "1=1" }),
+  buildPrecertCondition: () => ({ sql: "1=1" }),
+  buildCommonFilterConditions: () => [],
+  buildStatsConditions: () => undefined,
+}));
 
 // Import routes after all mocks are registered
 import { GET as getRevocation } from "./[id]/revocation/route";

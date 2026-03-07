@@ -46,15 +46,21 @@ vi.mock("@/lib/ct/ingest-batch", () => ({
   processIngestBatch: (...args: unknown[]) => mockProcessIngestBatch(...args),
 }));
 
-vi.mock("@/lib/api-utils", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    apiError: vi.fn((_error: unknown, _key: string, _route: string, message: string) =>
-      NextResponse.json({ error: message }, { status: 500 }),
-    ),
-  };
-});
+vi.mock("@/lib/api-utils", () => ({
+  apiError: vi.fn((_error: unknown, _key: string, _route: string, message: string) =>
+    NextResponse.json({ error: message }, { status: 500 }),
+  ),
+  verifyCronAuth: (request: { headers: { get: (k: string) => string | null } }) => {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 500 });
+    const authHeader = request.headers.get("authorization") ?? "";
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return null;
+  },
+  resolveOrError: vi.fn(),
+}));
 
 // Import route after all mocks are registered
 import { GET } from "./route";
@@ -65,11 +71,13 @@ function makeRequest(headers: Record<string, string> = {}): NextRequest {
   });
 }
 
+const originalEnv = { ...process.env };
+
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.unstubAllEnvs();
+  process.env = { ...originalEnv };
   mockDbResult = [];
-  vi.stubEnv("CRON_SECRET", "test-secret");
+  process.env.CRON_SECRET = "test-secret";
 });
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -88,7 +96,7 @@ describe("GET /api/cron/ingest", () => {
     });
 
     it("returns 500 when CRON_SECRET is an empty string (fail-closed)", async () => {
-      vi.stubEnv("CRON_SECRET", "");
+      process.env.CRON_SECRET = "";
 
       const req = makeRequest({ authorization: "Bearer anything" });
       const res = await GET(req);

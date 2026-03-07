@@ -258,7 +258,7 @@ describe("POST /api/validate", () => {
   // ── Rate limiting ───────────────────────────────────────────────
 
   it("returns 429 when the rate limit is exceeded", async () => {
-    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+    (checkRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       allowed: false,
       remaining: 0,
       resetMs: 60000,

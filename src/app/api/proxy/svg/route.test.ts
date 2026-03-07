@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock safeFetch before importing the route
@@ -8,6 +8,27 @@ vi.mock("@/lib/net/safe-fetch", () => ({
 
 vi.mock("@/lib/logger", () => ({
   log: vi.fn(),
+}));
+
+vi.mock("@/lib/cache", () => ({
+  CACHE_PRESETS: {
+    STATIC: "public, max-age=86400",
+    SHORT: "public, s-maxage=60, stale-while-revalidate=30",
+    LONG_STATIC: "public, s-maxage=86400, stale-while-revalidate=3600",
+  },
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(async () => ({
+    allowed: true,
+    remaining: 29,
+    resetMs: 60000,
+    headers: { "X-RateLimit-Limit": "30", "X-RateLimit-Remaining": "29", "X-RateLimit-Reset": "60" },
+  })),
+  getClientIP: vi.fn(() => "1.2.3.4"),
+  rateLimitResponse: vi.fn((headers: Record<string, string>) =>
+    NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers }),
+  ),
 }));
 
 import { safeFetch } from "@/lib/net/safe-fetch";
@@ -147,7 +168,7 @@ describe("GET /api/proxy/svg", () => {
       }),
     );
 
-    const req = makeRequest("/api/proxy/svg?url=https://example.com/logo.svg", {
+    const req = makeRequest("/api/proxy/svg?url=https://headers-test.example.com/logo.svg", {
       Origin: "https://bimi.quest",
     });
     const res = await GET(req);
