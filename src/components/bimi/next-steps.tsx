@@ -38,6 +38,16 @@ const CHECK_GUIDANCE: Record<string, { owner: string; guidance: string }> = {
     owner: "Web / Design Team",
     guidance: "Re-upload the exact SVG that was submitted during certificate issuance.",
   },
+  "caa-issuevmc": {
+    owner: "DNS Administrator",
+    guidance:
+      'Add a CAA record with the issuevmc property tag to explicitly authorize CAs for VMC issuance (e.g. 0 issuevmc "digicert.com").',
+  },
+  "caa-issuer-mismatch": {
+    owner: "DNS Administrator",
+    guidance:
+      "Your certificate issuer is not listed in your domain's CAA issuevmc records. Update CAA records or obtain a certificate from an authorized CA.",
+  },
 };
 
 // SVG-related check IDs use dynamic suffixes, so match by prefix

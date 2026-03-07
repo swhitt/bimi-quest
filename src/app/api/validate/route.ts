@@ -12,6 +12,8 @@ export const maxDuration = 30;
 const validateBodySchema = z.object({
   domain: z.string().trim().toLowerCase(),
   selector: z.string().trim().toLowerCase().default("default"),
+  localPart: z.string().trim().toLowerCase().optional(),
+  receiverDomains: z.array(z.string().trim().toLowerCase()).max(10).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -34,15 +36,20 @@ export async function POST(request: NextRequest) {
       );
     }
     let { domain } = parsed.data;
-    const { selector } = parsed.data;
+    const { selector, receiverDomains } = parsed.data;
+    let { localPart } = parsed.data;
 
     if (!domain) {
       return NextResponse.json({ error: "Domain is required" }, { status: 400 });
     }
 
-    // Accept email addresses by extracting the domain part
+    // Accept email addresses by extracting the domain and local-part
     if (domain.includes("@")) {
-      domain = domain.split("@").pop() || "";
+      const parts = domain.split("@");
+      if (!localPart && parts.length === 2 && parts[0]) {
+        localPart = parts[0];
+      }
+      domain = parts.pop() || "";
     }
 
     // Domain format validation: max 253 chars, each label checked individually to avoid ReDoS
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid domain format" }, { status: 400 });
     }
 
-    const result = await validateDomain(domain, selector);
+    const result = await validateDomain({ domain, selector, localPart, receiverDomains });
 
     // If we found a valid cert, try to ingest it (fire-and-forget)
     if (result.certificate.found && result.certificate.rawPem) {

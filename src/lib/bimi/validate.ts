@@ -4,9 +4,12 @@ import { parseCertBasicInfo, pemToDer } from "@/lib/ct/parser";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { toArrayBuffer } from "@/lib/pem";
 import { errorMessage } from "@/lib/utils";
+import { type CAAResult, isIssuerAuthorizedByCAA, lookupCAA } from "./caa";
 import { type DMARCRecord, getDMARCBIMIReason, isDMARCValidForBIMI, lookupDMARC } from "./dmarc";
 import { type BIMIRecord, lookupBIMIRecord } from "./dns";
 import { computeGrade } from "./grade";
+import { type LpsTieredResult, tieredLpsLookup } from "./lps";
+import { lookupReceiverTrust, type ReceiverTrustResult } from "./receiver-trust";
 import {
   categorizeSvgChecks,
   computeSvgHash,
@@ -25,6 +28,13 @@ export interface ChainValidationResult {
   chainValid: boolean;
   chainErrors: string[];
   chainLength: number;
+}
+
+export interface ValidateDomainOptions {
+  domain: string;
+  selector?: string;
+  localPart?: string;
+  receiverDomains?: string[];
 }
 
 export interface BIMIValidationResult {
@@ -68,6 +78,9 @@ export interface BIMIValidationResult {
     certSvgHash: string | null;
     svgMatch: boolean | null;
   };
+  caa: CAAResult | null;
+  lpsTrace: LpsTieredResult | null;
+  receiverTrust: ReceiverTrustResult | null;
   grade: BimiGrade;
   gradeSummary: string;
   checks: BimiCheckItem[];
@@ -80,7 +93,8 @@ export interface BIMIValidationResult {
 /** Run full BIMI validation for a domain.
  *  Uses AbortSignal.timeout to cap external fetches at 25s total, leaving
  *  headroom for the Vercel function's 30s limit. */
-export async function validateDomain(domain: string, selector: string = "default"): Promise<BIMIValidationResult> {
+export async function validateDomain(options: ValidateDomainOptions): Promise<BIMIValidationResult> {
+  const { domain, selector = "default", localPart, receiverDomains } = options;
   const errors: string[] = [];
   const now = new Date();
 
@@ -88,19 +102,45 @@ export async function validateDomain(domain: string, selector: string = "default
   // guards against accumulated latency from sequential steps.
   const signal = AbortSignal.timeout(25_000);
 
-  // 1 & 2. BIMI + DMARC DNS lookups (independent, run in parallel)
+  // 1 & 2. BIMI + DMARC + CAA DNS lookups (independent, run in parallel)
   // Each lookup may throw on resolver errors (SERVFAIL, timeouts, etc.) while
   // returning null for genuine "record not found" (ENOTFOUND/ENODATA).
-  const [bimiResult, dmarcResult] = await Promise.all([
-    lookupBIMIRecord(domain, selector).catch((err: unknown) => err as Error),
+  // When a localPart is provided, use tiered LPS lookup instead of standard BIMI lookup.
+  const bimiLookup = localPart
+    ? tieredLpsLookup(domain, selector, localPart).catch((err: unknown) => err as Error)
+    : lookupBIMIRecord(domain, selector).catch((err: unknown) => err as Error);
+
+  const [bimiResult, dmarcResult, caaResult, receiverTrustResult] = await Promise.all([
+    bimiLookup,
     lookupDMARC(domain).catch((err: unknown) => err as Error),
+    lookupCAA(domain).catch((err: unknown) => err as Error),
+    receiverDomains?.length
+      ? lookupReceiverTrust(receiverDomains, selector).catch((err: unknown) => err as Error)
+      : Promise.resolve(null),
   ]);
 
-  const bimiRecord = bimiResult instanceof Error ? null : bimiResult;
+  // Extract BIMI record — may come from standard lookup or tiered LPS result
+  let lpsTrace: LpsTieredResult | null = null;
+  let bimiRecord: BIMIRecord | null = null;
   if (bimiResult instanceof Error) {
     errors.push(`BIMI DNS lookup failed (resolver error): ${errorMessage(bimiResult)}`);
-  } else if (!bimiRecord) {
-    errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
+  } else if (bimiResult && "steps" in bimiResult) {
+    // Tiered LPS result
+    lpsTrace = bimiResult;
+    bimiRecord = bimiResult.finalRecord;
+    if (!bimiRecord) {
+      errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
+    }
+  } else {
+    bimiRecord = bimiResult;
+    if (!bimiRecord) {
+      errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
+    }
+  }
+
+  const receiverTrust = receiverTrustResult instanceof Error ? null : receiverTrustResult;
+  if (receiverTrustResult instanceof Error) {
+    errors.push(`Receiver trust lookup failed: ${errorMessage(receiverTrustResult)}`);
   }
 
   const dmarcLookup = dmarcResult instanceof Error ? null : dmarcResult;
@@ -118,6 +158,11 @@ export async function validateDomain(domain: string, selector: string = "default
     if (!dmarcValid && dmarcReason) {
       errors.push(`DMARC: ${dmarcReason}`);
     }
+  }
+
+  const caa = caaResult instanceof Error ? null : caaResult;
+  if (caaResult instanceof Error) {
+    errors.push(`CAA DNS lookup failed (resolver error): ${errorMessage(caaResult)}`);
   }
 
   // 3. SVG logo
@@ -271,6 +316,8 @@ export async function validateDomain(domain: string, selector: string = "default
     svgResult,
     svgContent,
     certResult,
+    caa,
+    lpsTrace,
     rngChecks,
     domain,
     selector,
@@ -308,6 +355,9 @@ export async function validateDomain(domain: string, selector: string = "default
     },
     svg: svgResult,
     certificate: certResult,
+    caa,
+    lpsTrace,
+    receiverTrust,
     grade,
     gradeSummary,
     checks,
@@ -331,6 +381,8 @@ interface CheckBuilderInput {
   svgResult: BIMIValidationResult["svg"];
   svgContent: string | null;
   certResult: BIMIValidationResult["certificate"];
+  caa: CAAResult | null;
+  lpsTrace: LpsTieredResult | null;
   rngChecks: BimiCheckItem[];
   domain: string;
   selector: string;
@@ -417,6 +469,19 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
           specRef: "draft-12 section 4.3",
         },
       ),
+    );
+  }
+
+  // LPS tiered lookup trace (informational)
+  if (input.lpsTrace) {
+    const matchInfo = input.lpsTrace.matchedPrefix
+      ? `Prefix "${input.lpsTrace.matchedPrefix}" matched for "${input.lpsTrace.normalizedLocalPart}"`
+      : `No prefix match for "${input.lpsTrace.normalizedLocalPart}"`;
+    checks.push(
+      check("lps-lookup", "spec", "LPS Tiered Lookup", "info", matchInfo, {
+        specRef: "draft-12 section 4.5",
+        detail: input.lpsTrace.steps.map((s) => `Step ${s.step}: ${s.description} [${s.result}]`).join("\n"),
+      }),
     );
   }
 
@@ -582,6 +647,58 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
           "Ensure the certificate URL in your BIMI record's a= tag is publicly accessible over HTTPS and returns a valid PEM certificate.",
       }),
     );
+  }
+
+  // CAA issuevmc
+  if (input.caa) {
+    if (input.caa.status === "vmc_authorized") {
+      checks.push(
+        check(
+          "caa-issuevmc",
+          "spec",
+          "CAA issuevmc",
+          "pass",
+          `issuevmc authorized: ${input.caa.authorizedCAs.join(", ")}`,
+        ),
+      );
+      // Check if the cert issuer matches an authorized CA
+      if (input.certResult.found && input.certResult.issuer) {
+        const issuerNormalized = normalizeIssuerOrg(input.certResult.issuer);
+        const authorized = isIssuerAuthorizedByCAA(issuerNormalized, input.caa.authorizedCAs);
+        if (authorized === false) {
+          checks.push(
+            check(
+              "caa-issuer-mismatch",
+              "spec",
+              "CAA Issuer Match",
+              "warn",
+              `Certificate issuer "${issuerNormalized}" not in issuevmc authorized CAs`,
+              {
+                remediation:
+                  "The certificate was issued by a CA not listed in your domain's CAA issuevmc records. " +
+                  "Either add the CA to your CAA records or obtain a certificate from an authorized CA.",
+              },
+            ),
+          );
+        } else if (authorized === true) {
+          checks.push(
+            check("caa-issuer-mismatch", "spec", "CAA Issuer Match", "pass", "Certificate issuer matches CAA issuevmc"),
+          );
+        }
+      }
+    } else if (input.caa.status === "standard_only") {
+      checks.push(
+        check("caa-issuevmc", "spec", "CAA issuevmc", "info", "CAA records exist but no issuevmc tag found", {
+          remediation:
+            "Add a CAA record with the issuevmc property tag to explicitly authorize CAs for VMC issuance. " +
+            'Example: 0 issuevmc "digicert.com"',
+        }),
+      );
+    } else {
+      checks.push(
+        check("caa-issuevmc", "spec", "CAA issuevmc", "info", "No CAA records found (any CA may issue certificates)"),
+      );
+    }
   }
 
   // -- Compatibility checks --

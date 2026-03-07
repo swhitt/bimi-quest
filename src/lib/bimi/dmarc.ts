@@ -1,20 +1,8 @@
 import { promises as dns } from "dns";
 import { getDomain } from "tldts";
 import { errorMessage } from "@/lib/utils";
+import { isDnsNotFoundError, withDnsTimeout } from "./dns-utils";
 import { parseTxtTagList } from "./txt-tags";
-
-const DNS_TIMEOUT_MS = 10_000;
-
-function withDnsTimeout<T>(promise: Promise<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () => reject(Object.assign(new Error(`DNS timed out after ${DNS_TIMEOUT_MS}ms`), { code: "ETIMEOUT" })),
-      DNS_TIMEOUT_MS,
-    );
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
 
 export interface DMARCRecord {
   raw: string;
@@ -69,8 +57,8 @@ async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
     }
     return null;
   } catch (err: unknown) {
+    if (isDnsNotFoundError(err)) return null;
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ENOTFOUND" || code === "ENODATA") return null;
     throw new Error(`DNS lookup failed for _dmarc.${domain}: ${code ?? errorMessage(err)}`);
   }
 }

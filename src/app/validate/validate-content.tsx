@@ -2,7 +2,9 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LpsTrace } from "@/components/bimi/lps-trace";
 import { NextSteps } from "@/components/bimi/next-steps";
+import { ReceiverTrustResults } from "@/components/bimi/receiver-trust-results";
 import { TechnicalDetails } from "@/components/bimi/technical-details";
 import { ValidationChecklist } from "@/components/bimi/validation-checklist";
 import { ValidationGrade } from "@/components/bimi/validation-grade";
@@ -70,6 +72,30 @@ interface ValidationResult {
     certSvgHash: string | null;
     svgMatch: boolean | null;
   };
+  caa: {
+    status: "permissive" | "standard_only" | "vmc_authorized";
+    entries: { critical: number; tag: string; value: string }[];
+    issueVmcEntries: { critical: number; tag: string; value: string }[];
+    authorizedCAs: string[];
+  } | null;
+  lpsTrace: {
+    normalizedLocalPart: string;
+    steps: {
+      step: number;
+      description: string;
+      dnsName: string;
+      result: "found" | "not_found" | "skipped";
+    }[];
+    matchedPrefix: string | null;
+  } | null;
+  receiverTrust: {
+    entries: {
+      receiverDomain: string;
+      dnsName: string;
+      found: boolean;
+      txtValue: string | null;
+    }[];
+  } | null;
   grade: BimiGrade;
   gradeSummary: string;
   checks: BimiCheckItem[];
@@ -84,6 +110,7 @@ export function ValidateContent() {
   const urlDomain = searchParams.get("domain") || "";
   const [domain, setDomain] = useState(urlDomain);
   const [selector, setSelector] = useState("default");
+  const [receiverDomainsInput, setReceiverDomainsInput] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -99,9 +126,16 @@ export function ValidateContent() {
       setResult(null);
 
       try {
-        const body: Record<string, string> = { domain: target };
+        const body: Record<string, unknown> = { domain: target };
         const s = sel || selector;
         if (s && s !== "default") body.selector = s;
+
+        // Parse receiver domains from comma-separated input
+        const receivers = receiverDomainsInput
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+        if (receivers.length > 0) body.receiverDomains = receivers;
 
         const res = await fetch("/api/validate", {
           method: "POST",
@@ -118,7 +152,7 @@ export function ValidateContent() {
         setLoading(false);
       }
     },
-    [selector],
+    [selector, receiverDomainsInput],
   );
 
   // Auto-validate when a domain is provided via URL query param (e.g. shared links).
@@ -150,7 +184,7 @@ export function ValidateContent() {
               setDomain(val);
               handleValidate(val);
             }}
-            placeholder="example.com"
+            placeholder="example.com or user@example.com"
             className="sm:max-w-md flex-1"
           />
           <Button onClick={() => handleValidate()} disabled={loading}>
@@ -161,15 +195,27 @@ export function ValidateContent() {
           <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
             Advanced options
           </summary>
-          <div className="mt-2 flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">Selector:</label>
-            <input
-              type="text"
-              value={selector}
-              onChange={(e) => setSelector(e.target.value)}
-              placeholder="default"
-              className="text-xs border rounded px-2 py-1 w-32 bg-background"
-            />
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">Selector:</label>
+              <input
+                type="text"
+                value={selector}
+                onChange={(e) => setSelector(e.target.value)}
+                placeholder="default"
+                className="text-xs border rounded px-2 py-1 w-32 bg-background"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">Receiver domains:</label>
+              <input
+                type="text"
+                value={receiverDomainsInput}
+                onChange={(e) => setReceiverDomainsInput(e.target.value)}
+                placeholder="gmail.com, yahoo.com"
+                className="text-xs border rounded px-2 py-1 w-64 bg-background"
+              />
+            </div>
           </div>
         </details>
       </div>
@@ -212,11 +258,17 @@ export function ValidateContent() {
             </CardContent>
           </Card>
 
+          {/* LPS Tiered Discovery trace (when email address was provided) */}
+          {result.lpsTrace && <LpsTrace trace={result.lpsTrace} />}
+
           {/* Next Steps: actionable guidance based on failures */}
           <NextSteps checks={result.checks} overallValid={result.overallValid} />
 
           {/* Tier 2: The Checklist (tabbed) */}
           <ValidationChecklist checks={result.checks} />
+
+          {/* Receiver Trust results */}
+          {result.receiverTrust && <ReceiverTrustResults entries={result.receiverTrust.entries} />}
 
           {/* Tier 3: Technical Deep Dive */}
           <Card>
@@ -227,6 +279,7 @@ export function ValidateContent() {
                 rngChecks={rngChecks}
                 rawBimiRecord={result.bimi.record?.raw}
                 rawDmarcRecord={result.dmarc.record?.raw}
+                caa={result.caa}
               />
             </CardContent>
           </Card>

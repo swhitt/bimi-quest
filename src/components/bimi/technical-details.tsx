@@ -4,12 +4,26 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { BimiCheckItem } from "@/lib/bimi/types";
 
+interface CAAEntry {
+  critical: number;
+  tag: string;
+  value: string;
+}
+
+interface CAAData {
+  status: "permissive" | "standard_only" | "vmc_authorized";
+  entries: CAAEntry[];
+  issueVmcEntries: CAAEntry[];
+  authorizedCAs: string[];
+}
+
 interface TechnicalDetailsProps {
   authResult?: string;
   responseHeaders?: Record<string, string>;
   rngChecks?: BimiCheckItem[];
   rawBimiRecord?: string | null;
   rawDmarcRecord?: string | null;
+  caa?: CAAData | null;
 }
 
 export function TechnicalDetails({
@@ -18,8 +32,9 @@ export function TechnicalDetails({
   rngChecks,
   rawBimiRecord,
   rawDmarcRecord,
+  caa,
 }: TechnicalDetailsProps) {
-  const hasContent = authResult || responseHeaders || rngChecks?.length || rawBimiRecord || rawDmarcRecord;
+  const hasContent = authResult || responseHeaders || rngChecks?.length || rawBimiRecord || rawDmarcRecord || caa;
 
   if (!hasContent) return null;
 
@@ -87,6 +102,19 @@ export function TechnicalDetails({
                 </pre>
               </div>
             )}
+          </section>
+        )}
+
+        {caa && caa.entries.length > 0 && (
+          <section>
+            <h4 className="text-sm font-medium mb-2">CAA Records</h4>
+            <div className="space-y-1">
+              {caa.entries.map((entry, i) => (
+                <pre key={i} className="text-xs bg-muted rounded-md p-2 break-all whitespace-pre-wrap">
+                  {entry.critical} {entry.tag} &quot;{entry.value}&quot;
+                </pre>
+              ))}
+            </div>
           </section>
         )}
       </div>

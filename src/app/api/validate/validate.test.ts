@@ -144,7 +144,7 @@ describe("POST /api/validate", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     // validateDomain should have been called with the extracted domain
-    expect(mockValidateDomain).toHaveBeenCalledWith("example.com", expect.any(String));
+    expect(mockValidateDomain).toHaveBeenCalledWith(expect.objectContaining({ domain: "example.com" }));
   });
 
   it("handles uppercase in email by lowercasing domain", async () => {
@@ -153,7 +153,7 @@ describe("POST /api/validate", () => {
     const req = makeRequest({ domain: "User@EXAMPLE.COM" });
     const res = await POST(req);
     expect(res.status).toBe(200);
-    expect(mockValidateDomain).toHaveBeenCalledWith("example.com", expect.any(String));
+    expect(mockValidateDomain).toHaveBeenCalledWith(expect.objectContaining({ domain: "example.com" }));
   });
 
   // ── Successful validation ───────────────────────────────────────
@@ -230,7 +230,9 @@ describe("POST /api/validate", () => {
 
     const req = makeRequest({ domain: "example.com", selector: "custom" });
     await POST(req);
-    expect(mockValidateDomain).toHaveBeenCalledWith("example.com", "custom");
+    expect(mockValidateDomain).toHaveBeenCalledWith(
+      expect.objectContaining({ domain: "example.com", selector: "custom" }),
+    );
   });
 
   it("defaults the selector to 'default' when not provided", async () => {
@@ -238,7 +240,9 @@ describe("POST /api/validate", () => {
 
     const req = makeRequest({ domain: "example.com" });
     await POST(req);
-    expect(mockValidateDomain).toHaveBeenCalledWith("example.com", "default");
+    expect(mockValidateDomain).toHaveBeenCalledWith(
+      expect.objectContaining({ domain: "example.com", selector: "default" }),
+    );
   });
 
   it("includes rate limit headers in a successful response", async () => {
