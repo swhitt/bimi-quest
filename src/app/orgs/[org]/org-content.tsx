@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { HostnameLink } from "@/components/hostname-link";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalFilters } from "@/lib/use-global-filters";
@@ -144,17 +145,16 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
               </h2>
               <div className="flex flex-wrap gap-2">
                 {domains.map(([domain, count]) => (
-                  <Link
+                  <span
                     key={domain}
-                    href={`/hosts/${encodeURIComponent(domain)}`}
-                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm transition-colors hover:bg-secondary"
+                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"
                     aria-label={`${domain}, ${count} ${count === 1 ? "certificate" : "certificates"}`}
                   >
-                    {domain}
+                    <HostnameLink hostname={domain} size="xs" />
                     <span className="text-xs text-muted-foreground" aria-hidden="true">
                       {count} {count === 1 ? "cert" : "certs"}
                     </span>
-                  </Link>
+                  </span>
                 ))}
               </div>
             </div>

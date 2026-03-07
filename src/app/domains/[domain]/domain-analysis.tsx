@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ExternalArrowIcon } from "@/components/ui/icons";
 import { ValidationChecklist } from "@/components/bimi/validation-checklist";
 import { ValidationGrade } from "@/components/bimi/validation-grade";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +69,18 @@ export function DomainAnalysis({ domain }: { domain: string }) {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{domain}</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            {domain}
+            <a
+              href={`https://${domain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+              title={`Open ${domain} in new tab`}
+            >
+              <ExternalArrowIcon className="size-4" />
+            </a>
+          </h1>
           <p className="text-muted-foreground">BIMI domain analysis</p>
         </div>
         {validation && (

@@ -33,6 +33,7 @@ const getLogo = cache(async (hash: string) => {
       notAfter: certificates.notAfter,
       fingerprintSha256: certificates.fingerprintSha256,
       isPrecert: certificates.isPrecert,
+      ctLogIndex: certificates.ctLogIndex,
     })
     .from(certificates)
     .where(and(sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
@@ -109,6 +110,7 @@ export default async function LogoPage({ params }: Props) {
         notAfter: logo.notAfter?.toISOString() ?? null,
         fingerprintSha256: logo.fingerprintSha256,
         isPrecert: logo.isPrecert ?? false,
+        ctLogIndex: logo.ctLogIndex != null ? String(logo.ctLogIndex) : null,
       }}
     />
   );

@@ -1,8 +1,10 @@
 "use client";
 
-import { Award, ExternalLink, Moon, Shield, Star, Sun } from "lucide-react";
+import { Award, Moon, Shield, Star, Sun } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { HostnameLink } from "@/components/hostname-link";
+import { ChainLinkIcon } from "@/components/ui/icons";
 import { LogoSvg } from "@/components/logo-svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,7 @@ interface LogoData {
   notAfter: string | null;
   fingerprintSha256: string;
   isPrecert: boolean;
+  ctLogIndex: string | null;
 }
 
 function countryFlag(code: string): string {
@@ -123,8 +126,20 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
             <Button
               variant="secondary"
               size="icon-sm"
-              onClick={() => setBgMode(bgMode === "auto" ? "light" : bgMode === "light" ? "dark" : "auto")}
-              title={`Background: ${bgMode} (click to cycle)`}
+              onClick={() => {
+                if (bgMode === "auto") {
+                  setBgMode(autoIsLight ? "dark" : "light");
+                } else if (bgMode === "light") {
+                  setBgMode("dark");
+                } else {
+                  setBgMode("light");
+                }
+              }}
+              title={
+                bgMode === "light" || (bgMode === "auto" && autoIsLight)
+                  ? "Switch to dark background"
+                  : "Switch to light background"
+              }
               className="backdrop-blur-sm bg-background/80 shadow-md"
             >
               {bgMode === "dark" || (bgMode === "auto" && !autoIsLight) ? (
@@ -208,7 +223,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="divide-y">
           <DetailRow label="Certificate" href={`/certificates/${logo.fingerprintSha256.slice(0, 12)}`}>
-            <span className="font-mono text-xs">{logo.fingerprintSha256.slice(0, 16)}&hellip;</span>
+            <span className="font-mono text-xs truncate">{logo.fingerprintSha256}</span>
           </DetailRow>
 
           {logo.issuer && (
@@ -221,10 +236,10 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
 
           {logo.primaryDomain && (
-            <DetailRow label="Domain" href={`/hosts/${encodeURIComponent(logo.primaryDomain)}`}>
-              {logo.primaryDomain}
+            <DetailRow label="Domain">
+              <HostnameLink hostname={logo.primaryDomain} size="xs" />
               {logo.domains.length > 1 && (
-                <span className="text-muted-foreground"> +{logo.domains.length - 1} more</span>
+                <span className="text-muted-foreground ml-1">+{logo.domains.length - 1} more</span>
               )}
             </DetailRow>
           )}
@@ -267,8 +282,17 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
               href={`/validate?domain=${encodeURIComponent(logo.primaryDomain)}`}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
-              <ExternalLink className="size-3.5" />
+              <Shield className="size-3.5" />
               Validate BIMI
+            </Link>
+          )}
+          {logo.ctLogIndex && (
+            <Link
+              href={`/ct/gorgon/${logo.ctLogIndex}`}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            >
+              <ChainLinkIcon className="size-3.5" />
+              CT log entry #{Number(logo.ctLogIndex).toLocaleString()}
             </Link>
           )}
         </div>

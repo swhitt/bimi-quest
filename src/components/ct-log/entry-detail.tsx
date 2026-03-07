@@ -9,6 +9,8 @@ import { HexViewer } from "./hex-viewer";
 import { LogoTab } from "./logo-tab";
 import { RawDataPanel } from "./raw-data-panel";
 
+export const ENTRY_TABS = ["overview", "binary", "chain", "logo", "raw"] as const;
+
 interface EntryDetailProps {
   entry: DecodedCTEntry;
   activeTab?: string;
@@ -58,7 +60,7 @@ export function EntryDetail({ entry, activeTab = "overview", onTabChange }: Entr
             </TabsContent>
 
             <TabsContent value="logo" className="min-h-0 mt-2">
-              <LogoTab svg={entry.cert?.logotypeSvg ?? null} />
+              <LogoTab svg={entry.cert?.logotypeSvg ?? null} fingerprint={entry.cert?.fingerprint} />
             </TabsContent>
 
             <TabsContent value="raw" className="min-h-0 mt-2">

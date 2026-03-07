@@ -17,6 +17,7 @@ declare module "@tanstack/react-table" {
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search } from "lucide-react";
 import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
+import { HostnameLink } from "@/components/hostname-link";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -233,13 +234,7 @@ export function CertificatesTable({
               </Link>
               {firstDomain && (
                 <span className="text-[11px] md:hidden block truncate">
-                  <Link
-                    href={`/hosts/${encodeURIComponent(firstDomain)}`}
-                    className="font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {firstDomain}
-                  </Link>
+                  <HostnameLink hostname={firstDomain} size="xs" compact />
                   {row.original.sanList.length > 1 && (
                     <span className="text-muted-foreground"> +{row.original.sanList.length - 1}</span>
                   )}
@@ -259,13 +254,9 @@ export function CertificatesTable({
           const extraSans = sans.slice(1);
           return (
             <div className="min-w-0">
-              <Link
-                href={`/hosts/${encodeURIComponent(sans[0])}`}
-                className="text-xs font-mono text-muted-foreground block truncate hover:text-foreground hover:underline transition-colors duration-150"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {sans[0]}
-              </Link>
+              <span className="block truncate">
+                <HostnameLink hostname={sans[0]} size="xs" compact />
+              </span>
               {extraSans.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -276,10 +267,8 @@ export function CertificatesTable({
                   <TooltipContent side="bottom" className="max-w-80">
                     <ul className="space-y-0.5">
                       {extraSans.map((san) => (
-                        <li key={san} className="font-mono text-xs">
-                          <Link href={`/hosts/${encodeURIComponent(san)}`} className="hover:underline">
-                            {san}
-                          </Link>
+                        <li key={san}>
+                          <HostnameLink hostname={san} size="xs" />
                         </li>
                       ))}
                     </ul>

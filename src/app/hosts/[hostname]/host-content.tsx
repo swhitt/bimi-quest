@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { ExternalArrowIcon } from "@/components/ui/icons";
 import { useEffect, useState } from "react";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { useGlobalFilters } from "@/lib/use-global-filters";
@@ -85,7 +86,18 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
         </nav>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{hostname}</h1>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              {hostname}
+              <a
+                href={`https://${hostname}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+                title={`Open ${hostname} in new tab`}
+              >
+                <ExternalArrowIcon className="size-4" />
+              </a>
+            </h1>
             <p className="text-muted-foreground">
               {loading
                 ? "Loading certificates..."
@@ -111,15 +123,22 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
               Run BIMI Check
             </Link>
             <a
+              href={`https://${hostname}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Visit site
+              <ExternalArrowIcon />
+            </a>
+            <a
               href={`https://crt.sh/?q=${encodeURIComponent(hostname)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               crt.sh
-              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3.5 3h5.5v5.5M9 3L3 9" />
-              </svg>
+              <ExternalArrowIcon />
             </a>
             <a
               href={`https://mxtoolbox.com/SuperTool.aspx?action=dmarc%3a${encodeURIComponent(hostname)}&run=toolpage`}
@@ -128,9 +147,7 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               MX Toolbox
-              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3.5 3h5.5v5.5M9 3L3 9" />
-              </svg>
+              <ExternalArrowIcon />
             </a>
           </div>
         </div>

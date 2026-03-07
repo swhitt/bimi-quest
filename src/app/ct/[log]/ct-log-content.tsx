@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EntryDetail } from "@/components/ct-log/entry-detail";
+import { EntryDetail, ENTRY_TABS } from "@/components/ct-log/entry-detail";
 import { EntryList } from "@/components/ct-log/entry-list";
 import { EntryNavigator } from "@/components/ct-log/entry-navigator";
 import { STHPanel, type STHResponse } from "@/components/ct-log/sth-panel";
@@ -60,7 +60,11 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
   });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(permalinkedIndex ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "overview";
+    const hash = window.location.hash.slice(1);
+    return (ENTRY_TABS as readonly string[]).includes(hash) ? hash : "overview";
+  });
   const [newEntryCount, setNewEntryCount] = useState(0);
 
   const detailRef = useRef<HTMLDivElement>(null);
@@ -73,9 +77,11 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
   const pageSizeRef = useRef(pageSize);
   const prevTreeSizeRef = useRef(0);
   const isAtLiveEdgeRef = useRef(permalinkedIndex === undefined && initialStart === undefined);
+  const activeTabRef = useRef(activeTab);
   selectedRef.current = selectedIndex;
   startRef.current = startIndex;
   pageSizeRef.current = pageSize;
+  activeTabRef.current = activeTab;
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -261,6 +267,14 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
     [buildListUrl],
   );
 
+  // Update URL hash when tab changes
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    const hash = tab === "overview" ? "" : `#${tab}`;
+    const current = window.location.pathname + window.location.search;
+    replaceUrl(`${current}${hash}`);
+  }, []);
+
   // Select/deselect an entry (updates URL to entry permalink or list view)
   const handleSelect = useCallback(
     (index: number) => {
@@ -269,7 +283,9 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
       setSelectedIndex(next);
 
       if (next !== null) {
-        replaceUrl(`${basePath}/${next}`);
+        const tab = activeTabRef.current;
+        const hash = tab !== "overview" ? `#${tab}` : "";
+        replaceUrl(`${basePath}/${next}${hash}`);
         if (isDesktop && detailRef.current) {
           if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
           scrollTimerRef.current = setTimeout(() => {
@@ -347,7 +363,7 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
             className="lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto"
           >
             {selectedEntry ? (
-              <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={setActiveTab} />
+              <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={handleTabChange} />
             ) : (
               <Card className="h-fit">
                 <CardContent>
@@ -368,7 +384,7 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
           </SheetHeader>
           {selectedEntry && (
             <div className="px-4 pb-4">
-              <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={setActiveTab} />
+              <EntryDetail entry={selectedEntry} activeTab={activeTab} onTabChange={handleTabChange} />
             </div>
           )}
         </SheetContent>

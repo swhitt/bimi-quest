@@ -1,7 +1,9 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ChainLinkIcon } from "@/components/ui/icons";
 import { LogoSvg } from "@/components/logo-svg";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,9 +11,10 @@ import { DARK_BG, isLightBg, LIGHT_BG, stripWhiteSvgBg, tileBgForSvg } from "@/l
 
 interface LogoTabProps {
   svg: string | null;
+  fingerprint?: string;
 }
 
-export function LogoTab({ svg }: LogoTabProps) {
+export function LogoTab({ svg, fingerprint }: LogoTabProps) {
   const strippedSvg = useMemo(() => (svg ? stripWhiteSvgBg(svg) : null), [svg]);
   const autoBg = useMemo(() => (strippedSvg ? tileBgForSvg(strippedSvg) : DARK_BG), [strippedSvg]);
   const autoIsLight = isLightBg(autoBg);
@@ -25,7 +28,7 @@ export function LogoTab({ svg }: LogoTabProps) {
   const currentIsLight = bgMode === "light" || (bgMode === "auto" && autoIsLight);
 
   return (
-    <div className="flex items-center justify-center py-4">
+    <div className="flex flex-col items-center gap-3 py-4">
       <div className="relative group">
         <div
           className={cn(
@@ -46,8 +49,16 @@ export function LogoTab({ svg }: LogoTabProps) {
           <Button
             variant="secondary"
             size="icon-sm"
-            onClick={() => setBgMode(bgMode === "auto" ? "light" : bgMode === "light" ? "dark" : "auto")}
-            title={`Background: ${bgMode} (click to cycle)`}
+            onClick={() => {
+              if (bgMode === "auto") {
+                setBgMode(autoIsLight ? "dark" : "light");
+              } else if (bgMode === "light") {
+                setBgMode("dark");
+              } else {
+                setBgMode("light");
+              }
+            }}
+            title={currentIsLight ? "Switch to dark background" : "Switch to light background"}
             className="backdrop-blur-sm bg-background/80 shadow-md"
           >
             {bgMode === "dark" || (bgMode === "auto" && !autoIsLight) ? (
@@ -58,6 +69,15 @@ export function LogoTab({ svg }: LogoTabProps) {
           </Button>
         </div>
       </div>
+      {fingerprint && (
+        <Link
+          href={`/logo/${fingerprint.slice(0, 16)}`}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          <ChainLinkIcon className="size-3.5" />
+          Share
+        </Link>
+      )}
     </div>
   );
 }

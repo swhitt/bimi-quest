@@ -1,11 +1,13 @@
 "use client";
 
-import { ExternalLink, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { HostnameLink } from "@/components/hostname-link";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CopyButton } from "@/components/ui/copy-button";
+import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
 import type { DecodedCert, DecodedLeaf } from "@/lib/ct/decode-entry";
 
 interface CertSummaryProps {
@@ -68,6 +70,30 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
   return (
     <div className="space-y-3">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+        {cert.isBIMI && (
+          <Field label="BIMI">
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/certificates/${cert.fingerprint.slice(0, 12)}`}
+                className="inline-flex items-center gap-1 text-emerald-500 font-medium hover:underline"
+              >
+                <Shield className="size-3.5" />
+                {cert.certType ?? "BIMI"}
+                {cert.markType != null && <span className="text-xs text-muted-foreground">({cert.markType})</span>}
+              </Link>
+              {cert.logotypeSvg && (
+                <Link
+                  href={`/logo/${cert.fingerprint.slice(0, 16)}`}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  title="Share logo"
+                >
+                  <ChainLinkIcon />
+                  Share
+                </Link>
+              )}
+            </div>
+          </Field>
+        )}
         <Field label="Subject">
           <span className="truncate block">{cert.subject}</span>
         </Field>
@@ -100,14 +126,11 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
         </Field>
         <Field label="SANs">
           {cert.sans.length > 0 ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="truncate block cursor-help">{cert.sans.join(", ")}</span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-96">
-                <p className="break-all">{cert.sans.join(", ")}</p>
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+              {cert.sans.map((san) => (
+                <HostnameLink key={san} hostname={san} size="xs" />
+              ))}
+            </div>
           ) : (
             <span className="text-muted-foreground">None</span>
           )}
@@ -130,7 +153,7 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
               className="shrink-0 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-secondary"
             >
               crt.sh
-              <ExternalLink className="size-2.5" />
+              <ExternalArrowIcon className="size-2.5" />
             </a>
           </div>
         </Field>
@@ -185,19 +208,6 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
             {leaf.entryType === "x509_entry" ? "X.509" : "Precert"}
           </Badge>
         </Field>
-        {cert.isBIMI && (
-          <Field label="BIMI">
-            <Link
-              href={`/certificates/${cert.fingerprint.slice(0, 12)}`}
-              className="inline-flex items-center gap-1 text-emerald-500 font-medium hover:underline"
-            >
-              <Shield className="size-3.5" />
-              {cert.certType ?? "BIMI"}
-              {cert.markType != null && <span className="text-xs text-muted-foreground">({cert.markType})</span>}
-              <ExternalLink className="size-3" />
-            </Link>
-          </Field>
-        )}
       </dl>
 
       <ValidityBar notBefore={cert.notBefore} notAfter={cert.notAfter} now={now} />

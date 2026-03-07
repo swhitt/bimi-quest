@@ -12,6 +12,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
 import { getMarkTypeInfo } from "@/lib/mark-types";
+import { HostnameLink } from "@/components/hostname-link";
+import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
+import { domainSlug } from "@/lib/domain-slug";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
@@ -245,8 +248,8 @@ export function CertificateDetail({ id }: { id: string }) {
             <h1 className="text-3xl font-bold tracking-tight">
               {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Certificate"}
             </h1>
-            <p className="text-muted-foreground">
-              {cert.sanList[0] || cert.subjectCn}
+            <p className="text-muted-foreground flex items-center gap-1">
+              {cert.sanList[0] ? <HostnameLink hostname={cert.sanList[0]} size="sm" /> : cert.subjectCn}
               {cert.subjectCountry && ` · ${cert.subjectCountry}`}
               {cert.issuerOrg && ` · Issued by ${cert.issuerOrg}`}
             </p>
@@ -361,9 +364,7 @@ export function CertificateDetail({ id }: { id: string }) {
             className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary"
           >
             crt.sh
-            <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3.5 3h5.5v5.5M9 3L3 9" />
-            </svg>
+            <ExternalArrowIcon />
           </a>
           {data.pairedCert && (
             <a
@@ -373,9 +374,7 @@ export function CertificateDetail({ id }: { id: string }) {
               className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               crt.sh {cert.isPrecert ? "Final" : "Precert"}
-              <svg className="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3.5 3h5.5v5.5M9 3L3 9" />
-              </svg>
+              <ExternalArrowIcon />
             </a>
           )}
         </div>
@@ -438,17 +437,10 @@ export function CertificateDetail({ id }: { id: string }) {
                       return (
                         <span key={san} className="inline-flex items-center">
                           {i > 0 && <span className="mx-1 text-muted-foreground">,</span>}
-                          <Link
-                            href={`/certificates?search=${encodeURIComponent(san)}`}
-                            className="inline-flex items-baseline gap-1 text-primary hover:underline"
-                          >
-                            {san}
-                            {totalCount > 1 && (
-                              <span className="text-xs text-muted-foreground font-normal no-underline">
-                                · {totalCount} certs
-                              </span>
-                            )}
-                          </Link>
+                          <HostnameLink hostname={san} />
+                          {totalCount > 1 && (
+                            <span className="text-xs text-muted-foreground font-normal ml-1">· {totalCount} certs</span>
+                          )}
                           <Link
                             href={`/domains/${encodeURIComponent(san)}`}
                             className="ml-1.5 inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
@@ -477,7 +469,15 @@ export function CertificateDetail({ id }: { id: string }) {
                 <span className="sm:w-40 sm:shrink-0 text-muted-foreground">CT Log</span>
                 <span>
                   Gorgon (DigiCert)
-                  {cert.ctLogIndex && <span className="text-muted-foreground"> #{cert.ctLogIndex}</span>}
+                  {cert.ctLogIndex && (
+                    <Link
+                      href={`/ct/gorgon/${cert.ctLogIndex}`}
+                      className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                    >
+                      {" "}
+                      #{cert.ctLogIndex}
+                    </Link>
+                  )}
                   {cert.ctLogTimestamp && (
                     <span className="text-muted-foreground">
                       {" · "}
@@ -501,27 +501,10 @@ export function CertificateDetail({ id }: { id: string }) {
               <div className="flex items-center gap-2">
                 {cert.fingerprintSha256 && (
                   <Link
-                    href={`/logo/${cert.fingerprintSha256.slice(0, 16)}/${
-                      (cert.sanList?.[0] || cert.subjectCn || "logo")
-                        .toLowerCase()
-                        .replace(/[^a-z0-9.\-]/g, "")
-                        .split(".")
-                        .slice(-2, -1)[0] || "logo"
-                    }`}
+                    href={`/logo/${cert.fingerprintSha256.slice(0, 16)}/${domainSlug(cert.sanList?.[0] || cert.subjectCn || "logo")}`}
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                   >
-                    <svg
-                      className="size-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
+                    <ChainLinkIcon className="size-3.5" />
                     Share
                   </Link>
                 )}
@@ -622,7 +605,7 @@ export function CertificateDetail({ id }: { id: string }) {
               return (
                 <div key={dc.domain} className="rounded-lg border p-4 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm font-medium">{dc.domain}</span>
+                    <HostnameLink hostname={dc.domain} />
                     <Badge
                       variant={failCount === 0 ? "default" : "secondary"}
                       className={
@@ -787,18 +770,12 @@ export function CertificateDetail({ id }: { id: string }) {
                     const otherCount = data.sanCertCounts[san] ?? 0;
                     const totalCount = otherCount > 0 ? otherCount + 1 : 0;
                     return (
-                      <div key={san} className="pl-[3.5rem]">
-                        <Link
-                          href={`/certificates?search=${encodeURIComponent(san)}`}
-                          className="text-primary hover:underline"
-                        >
-                          DNS:{san}
-                          {totalCount > 1 && (
-                            <span className="ml-1 text-xs text-muted-foreground font-normal no-underline">
-                              · {totalCount} certs
-                            </span>
-                          )}
-                        </Link>
+                      <div key={san} className="pl-[3.5rem] flex items-center gap-1">
+                        <span className="text-muted-foreground">DNS:</span>
+                        <HostnameLink hostname={san} />
+                        {totalCount > 1 && (
+                          <span className="text-xs text-muted-foreground font-normal">· {totalCount} certs</span>
+                        )}
                       </div>
                     );
                   })}
