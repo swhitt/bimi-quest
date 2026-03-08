@@ -1,4 +1,5 @@
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { DmarcDriftFeed } from "@/components/dashboard/dmarc-drift-feed";
 import { DmarcPolicyChart } from "@/components/dashboard/dmarc-policy-chart";
 import { ExpiryChart } from "@/components/dashboard/expiry-chart";
 import { RuaProviderChart } from "@/components/dashboard/rua-provider-chart";
@@ -156,6 +157,10 @@ export async function DashboardContent({
           initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
           initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
         />
+      </div>
+
+      <div data-dashboard-section="5">
+        <DmarcDriftFeed />
       </div>
     </div>
   );

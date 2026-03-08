@@ -303,6 +303,29 @@ export const caSyncCursors = pgTable("ca_sync_cursors", {
 });
 
 // ---------------------------------------------------------------------------
+// DMARC Policy Change Tracking
+// ---------------------------------------------------------------------------
+
+export const dmarcPolicyChanges = pgTable(
+  "dmarc_policy_changes",
+  {
+    id: serial("id").primaryKey(),
+    domain: text("domain")
+      .notNull()
+      .references(() => domainBimiState.domain),
+    previousPolicy: text("previous_policy"),
+    newPolicy: text("new_policy").notNull(),
+    previousPct: integer("previous_pct"),
+    newPct: integer("new_pct"),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_dmarc_changes_domain").on(table.domain),
+    index("idx_dmarc_changes_detected_at").on(table.detectedAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Ingestion
 // ---------------------------------------------------------------------------
 
