@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Script from "next/script";
 import { Suspense } from "react";
+import { CommandPalette } from "@/components/command-palette";
 import { Footer } from "@/components/footer";
 import { GlobalFilterBar } from "@/components/global-filter-bar";
 import { Nav } from "@/components/nav";
@@ -92,6 +93,7 @@ export default function RootLayout({
             <Footer />
             <UpdateBanner />
             <OfflineBanner />
+            <CommandPalette />
           </TooltipProvider>
           <Analytics />
           <SpeedInsights />

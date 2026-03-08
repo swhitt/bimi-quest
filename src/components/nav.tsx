@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { caNameToSlug } from "@/lib/ca-slugs";
 import { cn } from "@/lib/utils";
+import { CommandPaletteHint } from "./command-palette";
 import { ThemeToggle } from "./theme-toggle";
 import { UniversalSearch } from "./universal-search";
 
@@ -179,6 +180,7 @@ export function Nav() {
           <div className="hidden md:block">
             <UniversalSearch variant="nav" />
           </div>
+          <CommandPaletteHint />
           <ThemeToggle />
         </div>
       </div>
