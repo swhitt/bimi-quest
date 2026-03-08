@@ -579,24 +579,36 @@ function FilterBarContent() {
 
   // Read CA from /{page}/ca/{slug} pattern
   const pathMatch = pathname.match(/\/ca\/([^/]+)/);
-  const caSlug = pathMatch ? pathMatch[1].toLowerCase() : "";
-  const ca = caSlug ? (CA_SLUG_TO_NAME[caSlug] ?? "") : "";
 
   // Extract the base page path (strip /ca/slug and /page/N suffixes)
   function getBasePath(p: string): string {
     return p.replace(/\/page\/\d+$/, "").replace(/\/ca\/[^/]+$/, "") || "/";
   }
 
-  // Build a URL preserving secondary filters, with the CA in the path
+  // Pages where CA goes in query param instead of path (avoids conflict with dynamic route segments)
+  const basePath = getBasePath(pathname);
+  const useQueryCa = basePath === "/domains";
+
+  const caSlug = pathMatch ? pathMatch[1].toLowerCase() : useQueryCa ? (searchParams.get("ca") ?? "") : "";
+  const ca = caSlug ? (CA_SLUG_TO_NAME[caSlug] ?? "") : "";
+
+  // Build a URL preserving secondary filters, with the CA in the path or query param
   const buildUrl = useCallback(
     (newCaSlug: string, updates?: Record<string, string | null>) => {
       const pagePath = getBasePath(pathname);
-      const caSuffix = newCaSlug ? `/ca/${newCaSlug}` : "";
+      const queryMode = pagePath === "/domains";
+      const caSuffix = !queryMode && newCaSlug ? `/ca/${newCaSlug}` : "";
       const base = pagePath === "/" ? caSuffix || "/" : `${pagePath}${caSuffix}`;
 
       const params = new URLSearchParams(searchParams.toString());
-      params.delete("ca");
       params.delete("page");
+
+      if (queryMode) {
+        if (newCaSlug && newCaSlug !== "all") params.set("ca", newCaSlug);
+        else params.delete("ca");
+      } else {
+        params.delete("ca");
+      }
 
       if (updates) {
         for (const [key, value] of Object.entries(updates)) {

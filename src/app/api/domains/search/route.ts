@@ -1,9 +1,10 @@
-import { type SQL, and, asc, desc, or, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, gte, lte, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
+import { parseDate } from "@/lib/db/filters";
 import { domainBimiState } from "@/lib/db/schema";
 
 // ---------------------------------------------------------------------------
@@ -200,6 +201,25 @@ export async function GET(request: NextRequest) {
       const cond = buildFilterCondition(pred);
       if (cond) conditions.push(cond);
     }
+
+    // Global filter params (from the shared filter bar)
+    const caFilter = params.get("ca")?.trim();
+    const typeFilter = params.get("type")?.trim();
+    const fromDate = parseDate(params.get("from"));
+    const toDate = parseDate(params.get("to"));
+
+    if (caFilter) {
+      conditions.push(
+        sql`${domainBimiState.dnsSnapshot}->'certificate'->>'issuer' ILIKE ${
+          "%" + escapeIlike(caFilter) + "%"
+        } ESCAPE '\\'`,
+      );
+    }
+    if (typeFilter === "VMC" || typeFilter === "CMC") {
+      conditions.push(sql`${domainBimiState.dnsSnapshot}->'certificate'->>'certType' = ${typeFilter}`);
+    }
+    if (fromDate) conditions.push(gte(domainBimiState.lastChecked, fromDate));
+    if (toDate) conditions.push(lte(domainBimiState.lastChecked, toDate));
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 

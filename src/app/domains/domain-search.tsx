@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { caSlugToName } from "@/lib/ca-slugs";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -138,6 +139,12 @@ export function DomainSearch() {
   const sort = searchParams.get("sort") ?? "domain";
   const dir = searchParams.get("dir") ?? "asc";
 
+  // Global filter params (set by GlobalFilterBar)
+  const gfCa = searchParams.get("ca") ?? "";
+  const gfType = searchParams.get("type") ?? "";
+  const gfFrom = searchParams.get("from") ?? "";
+  const gfTo = searchParams.get("to") ?? "";
+
   const [inputValue, setInputValue] = useState(q);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -231,6 +238,17 @@ export function DomainSearch() {
       params.set("sort", currentSort);
       params.set("dir", currentDir);
 
+      // Forward global filter params
+      const caSlug = currentUrl.searchParams.get("ca") ?? "";
+      const caName = caSlug ? caSlugToName(caSlug) : undefined;
+      if (caName) params.set("ca", caName);
+      const currentType = currentUrl.searchParams.get("type") ?? "";
+      if (currentType) params.set("type", currentType);
+      const currentFrom = currentUrl.searchParams.get("from") ?? "";
+      if (currentFrom) params.set("from", currentFrom);
+      const currentTo = currentUrl.searchParams.get("to") ?? "";
+      if (currentTo) params.set("to", currentTo);
+
       let res = await fetch(`/api/domains/search?${params.toString()}`);
       // Retry once on transient 503 (Neon cold start)
       if (res.status === 503) {
@@ -247,10 +265,10 @@ export function DomainSearch() {
     }
   }, []);
 
-  // Fetch on mount and whenever URL params change
+  // Fetch on mount and whenever URL params change (including global filters)
   useEffect(() => {
     fetchResults();
-  }, [q, f, page, sort, dir, fetchResults]);
+  }, [q, f, page, sort, dir, gfCa, gfType, gfFrom, gfTo, fetchResults]);
 
   // Debounced search input
   function handleSearchInput(value: string) {
