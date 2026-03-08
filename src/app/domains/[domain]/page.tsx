@@ -30,9 +30,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (row?.bimiLogoUrl) parts.push("Logo published");
   else parts.push("No logo");
 
+  const ogImage = `/api/og/domain/${encodeURIComponent(domain)}`;
+
   return {
     title: `BIMI DNS for ${domain}`,
     description: parts.join(" | "),
+    openGraph: {
+      title: `BIMI DNS for ${domain}`,
+      description: parts.join(" | "),
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `BIMI DNS for ${domain}`,
+      description: parts.join(" | "),
+      images: [ogImage],
+    },
   };
 }
 
