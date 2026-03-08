@@ -77,6 +77,12 @@ const GRADE_COLORS: Record<string, string> = {
   F: "bg-red-500/15 text-red-700 dark:text-red-400",
 };
 
+const DMARC_POLICY_COLORS: Record<string, string> = {
+  reject: "bg-green-500/15 text-green-700 dark:text-green-400",
+  quarantine: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400",
+  none: "bg-red-500/15 text-red-700 dark:text-red-400",
+};
+
 const SORTABLE_COLUMNS = [
   { key: "domain", label: "Domain" },
   { key: "bimiGrade", label: "Grade" },
@@ -359,6 +365,7 @@ export function DomainSearch() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
+                  <th className="w-8 px-2 py-3" />
                   {SORTABLE_COLUMNS.map((col) => (
                     <th
                       key={col.key}
@@ -376,14 +383,14 @@ export function DomainSearch() {
               <tbody>
                 {loading && !results && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       Loading...
                     </td>
                   </tr>
                 )}
                 {results && results.data.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       No results found.
                     </td>
                   </tr>
@@ -393,6 +400,18 @@ export function DomainSearch() {
                     key={row.domain}
                     className={cn("border-b last:border-0 hover:bg-muted/50", loading && "opacity-50")}
                   >
+                    <td className="px-2 py-3">
+                      {row.bimiLogoUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={`/api/proxy/svg?url=${encodeURIComponent(row.bimiLogoUrl)}`}
+                          alt=""
+                          width={20}
+                          height={20}
+                          className="rounded object-contain"
+                        />
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/domains/${encodeURIComponent(row.domain)}`}
@@ -411,7 +430,13 @@ export function DomainSearch() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
-                      {row.dmarcPolicy ?? <span className="text-muted-foreground">&mdash;</span>}
+                      {row.dmarcPolicy ? (
+                        <Badge variant="secondary" className={cn(DMARC_POLICY_COLORS[row.dmarcPolicy] ?? "")}>
+                          {row.dmarcPolicy}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">&mdash;</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {row.lastChecked ? new Date(row.lastChecked).toLocaleDateString() : "\u2014"}
