@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -129,6 +129,7 @@ function operatorNeedsValue(op: string): boolean {
 // --- Component ---
 
 export function DomainSearch() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const q = searchParams.get("q") ?? "";
@@ -141,6 +142,7 @@ export function DomainSearch() {
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1);
 
   // Filter builder state
   const [mounted, setMounted] = useState(false);
@@ -148,7 +150,55 @@ export function DomainSearch() {
   const [newFilterOp, setNewFilterOp] = useState<string>("eq");
   const [newFilterValue, setNewFilterValue] = useState<string>("");
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => setMounted(true), []);
+
+  // Reset selection when results change
+  useEffect(() => {
+    setSelectedRowIndex(-1);
+  }, [results]);
+
+  // Global keyboard shortcuts for j/k navigation, Enter, /, Escape
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      if (e.key === "/" && !isInput) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if (e.key === "Escape") {
+        (document.activeElement as HTMLElement)?.blur();
+        setSelectedRowIndex(-1);
+        return;
+      }
+
+      // j/k/Enter only when not focused on an input
+      if (isInput) return;
+
+      const rowCount = results?.data.length ?? 0;
+      if (rowCount === 0) return;
+
+      if (e.key === "j") {
+        e.preventDefault();
+        setSelectedRowIndex((prev) => Math.min(prev + 1, rowCount - 1));
+      } else if (e.key === "k") {
+        e.preventDefault();
+        setSelectedRowIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === "Enter" && selectedRowIndex >= 0) {
+        e.preventDefault();
+        const row = results?.data[selectedRowIndex];
+        if (row) router.push(`/domains/${encodeURIComponent(row.domain)}`);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [results, selectedRowIndex, router]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const filters = parseFilters(f);
@@ -264,6 +314,7 @@ export function DomainSearch() {
     <div className="space-y-4">
       {/* Search input */}
       <Input
+        ref={searchInputRef}
         type="text"
         placeholder="Search domains..."
         value={inputValue}
@@ -395,76 +446,93 @@ export function DomainSearch() {
                     </td>
                   </tr>
                 )}
-                {results?.data.map((row) => (
-                  <tr
-                    key={row.domain}
-                    className={cn("border-b last:border-0 hover:bg-muted/50", loading && "opacity-50")}
-                  >
-                    <td className="px-2 py-3">
-                      {row.bimiLogoUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={`/api/proxy/svg?url=${encodeURIComponent(row.bimiLogoUrl)}`}
-                          alt=""
-                          width={20}
-                          height={20}
-                          className="rounded object-contain"
-                        />
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/domains/${encodeURIComponent(row.domain)}`}
-                        className="font-mono text-blue-600 hover:underline dark:text-blue-400"
-                      >
-                        {row.domain}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.bimiGrade ? (
-                        <Badge variant="secondary" className={cn("font-bold", GRADE_COLORS[row.bimiGrade] ?? "")}>
-                          {row.bimiGrade}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">&mdash;</span>
+                {results?.data.map((row, rowIndex) => {
+                  const domainPath = `/domains/${encodeURIComponent(row.domain)}`;
+                  return (
+                    <tr
+                      key={row.domain}
+                      className={cn(
+                        "border-b last:border-0 cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-muted/40 focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:ring-inset",
+                        loading && "opacity-50",
+                        selectedRowIndex === rowIndex && "ring-2 ring-primary bg-muted/40",
                       )}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {row.dmarcPolicy ? (
-                        <Badge variant="secondary" className={cn(DMARC_POLICY_COLORS[row.dmarcPolicy] ?? "")}>
-                          {row.dmarcPolicy}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">&mdash;</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {row.lastChecked ? new Date(row.lastChecked).toLocaleDateString() : "\u2014"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.bimiLogoUrl ? (
-                        <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400">
-                          Yes
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">No</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.svgTinyPsValid === null ? (
-                        <span className="text-muted-foreground">&mdash;</span>
-                      ) : row.svgTinyPsValid ? (
-                        <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400">
-                          Valid
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-red-500/15 text-red-700 dark:text-red-400">
-                          Invalid
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => router.push(domainPath)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(domainPath);
+                        }
+                      }}
+                    >
+                      <td className="px-2 py-3">
+                        {row.bimiLogoUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={`/api/proxy/svg?url=${encodeURIComponent(row.bimiLogoUrl)}`}
+                            alt=""
+                            width={20}
+                            height={20}
+                            className="rounded object-contain"
+                          />
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={domainPath}
+                          className="font-mono text-blue-600 hover:underline dark:text-blue-400"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {row.domain}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.bimiGrade ? (
+                          <Badge variant="secondary" className={cn("font-bold", GRADE_COLORS[row.bimiGrade] ?? "")}>
+                            {row.bimiGrade}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">&mdash;</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {row.dmarcPolicy ? (
+                          <Badge variant="secondary" className={cn(DMARC_POLICY_COLORS[row.dmarcPolicy] ?? "")}>
+                            {row.dmarcPolicy}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">&mdash;</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {row.lastChecked ? new Date(row.lastChecked).toLocaleDateString() : "\u2014"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.bimiLogoUrl ? (
+                          <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400">
+                            Yes
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">No</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.svgTinyPsValid === null ? (
+                          <span className="text-muted-foreground">&mdash;</span>
+                        ) : row.svgTinyPsValid ? (
+                          <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400">
+                            Valid
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-red-500/15 text-red-700 dark:text-red-400">
+                            Invalid
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
