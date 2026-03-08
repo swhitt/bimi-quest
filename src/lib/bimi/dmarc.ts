@@ -16,6 +16,8 @@ export interface DMARCRecord {
   adkim: string | null;
   /** SPF alignment mode: "r" (relaxed, default) or "s" (strict) */
   aspf: string | null;
+  /** Failure reporting options: "0" (default), "1", "d", "s", or colon-delimited combo */
+  fo: string | null;
 }
 
 /** Extract organizational domain (registered domain) from a full domain
@@ -80,6 +82,7 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
   const sp = tags["sp"]?.toLowerCase() || null;
   const adkim = tags["adkim"]?.toLowerCase() || null;
   const aspf = tags["aspf"]?.toLowerCase() || null;
+  const fo = tags["fo"] || null;
 
   return {
     raw: txt,
@@ -91,6 +94,7 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
     sp,
     adkim,
     aspf,
+    fo,
   };
 }
 

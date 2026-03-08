@@ -15,6 +15,7 @@ export function buildDnsSnapshot(params: {
     declined: boolean;
     selector: string;
     orgDomainFallback: boolean;
+    orgDomain?: string | null;
   } | null;
   dmarcRecord: {
     raw: string | null;
@@ -25,6 +26,7 @@ export function buildDnsSnapshot(params: {
     ruf: string | null;
     adkim: string | null;
     aspf: string | null;
+    fo?: string | null;
     validForBimi: boolean;
   } | null;
   svg: {

@@ -120,7 +120,9 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
               label="Org domain fallback"
               value={
                 (bimi?.orgDomainFallback ?? data.bimiOrgDomainFallback) !== null
-                  ? String(bimi?.orgDomainFallback ?? data.bimiOrgDomainFallback)
+                  ? bimi?.orgDomainFallback && bimi?.orgDomain
+                    ? `Yes (from ${bimi.orgDomain})`
+                    : String(bimi?.orgDomainFallback ?? data.bimiOrgDomainFallback)
                   : null
               }
             />
@@ -175,6 +177,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
             <KV label="ruf" value={dmarc?.ruf} mono />
             <KV label="adkim" value={dmarc?.adkim} mono />
             <KV label="aspf" value={dmarc?.aspf} mono />
+            {dmarc?.fo && <KV label="Failure options (fo)" value={dmarc.fo} mono />}
           </dl>
         </CardContent>
       </Card>

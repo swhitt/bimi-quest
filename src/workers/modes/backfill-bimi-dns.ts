@@ -140,6 +140,7 @@ async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
           declined: row.bimi_declination,
           selector: row.bimi_selector,
           orgDomainFallback: row.bimi_org_domain_fallback,
+          orgDomain: bimiRecord.orgDomain ?? null,
         }
       : null,
     dmarcRecord: dmarcResult
@@ -152,6 +153,7 @@ async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
           ruf: dmarcResult.record.ruf ?? null,
           adkim: dmarcResult.record.adkim ?? null,
           aspf: dmarcResult.record.aspf ?? null,
+          fo: dmarcResult.record.fo ?? null,
           validForBimi: row.dmarc_valid ?? false,
         }
       : null,

@@ -134,6 +134,7 @@ export interface DnsSnapshot {
     declined: boolean;
     selector: string;
     orgDomainFallback: boolean;
+    orgDomain?: string | null;
   } | null;
   dmarc: {
     raw: string | null;
@@ -144,6 +145,7 @@ export interface DnsSnapshot {
     ruf: string | null;
     adkim: string | null;
     aspf: string | null;
+    fo?: string | null;
     validForBimi: boolean;
   } | null;
   svg: {
