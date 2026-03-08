@@ -36,16 +36,38 @@ function toURLSearchParams(record: Record<string, string | string[] | undefined>
   return params;
 }
 
+/** Default date range: current calendar year if March+, otherwise previous year. */
+function getDefaultDateRange(): { from: string; to: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  if (month >= 2) {
+    // March or later → current calendar year
+    return { from: `${year}-01-01`, to: now.toISOString().slice(0, 10) };
+  }
+  // Jan/Feb → previous calendar year
+  return { from: `${year - 1}-01-01`, to: `${year - 1}-12-31` };
+}
+
 export async function DashboardContent({
   searchParams,
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const filterParams = toURLSearchParams(searchParams);
-  const apiQuery = buildApiParamsFromSearchParams(searchParams);
+  // Apply default date range when no date filters are set
+  const userSetDateFilter = !!(searchParams.from || searchParams.to);
+  const effectiveParams = { ...searchParams };
+  if (!userSetDateFilter) {
+    const defaults = getDefaultDateRange();
+    effectiveParams.from = defaults.from;
+    effectiveParams.to = defaults.to;
+  }
+
+  const filterParams = toURLSearchParams(effectiveParams);
+  const apiQuery = buildApiParamsFromSearchParams(effectiveParams);
 
   // Build params for recent certs with pagination defaults
-  const recentCertsSearchParams = toURLSearchParams(searchParams);
+  const recentCertsSearchParams = toURLSearchParams(effectiveParams);
   recentCertsSearchParams.set("page", "1");
   recentCertsSearchParams.set("limit", "7");
   recentCertsSearchParams.set("sort", "notBefore");
@@ -74,7 +96,7 @@ export async function DashboardContent({
 
   const vmcTotal = data.caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = data.caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
-  const hasDateFilter = !!(searchParams.from || searchParams.to);
+  const hasDateFilter = userSetDateFilter;
 
   return (
     <div data-testid="dashboard" className="space-y-3">
