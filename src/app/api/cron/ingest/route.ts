@@ -47,6 +47,12 @@ export async function GET(request: NextRequest) {
       onProgress: (msg) => console.log(`[cron/ingest] ${msg}`),
     });
 
+    if (result.skippedIndexes.length > 0) {
+      console.warn(
+        `[cron/ingest] Permanently skipped ${result.skippedIndexes.length} entries: ${result.skippedIndexes.join(", ")}`,
+      );
+    }
+
     return NextResponse.json({
       status: "synced",
       treeSize,
@@ -56,6 +62,7 @@ export async function GET(request: NextRequest) {
       entriesProcessed: result.lastIndex - startIndex,
       certsFound: result.certsFound,
       batchesRun: result.batchesRun,
+      skippedEntries: result.skippedIndexes.length,
     });
   } catch (error) {
     return apiError(error, "cron.ingest.failed", "/api/cron/ingest", "Ingestion failed");

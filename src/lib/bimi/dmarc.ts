@@ -49,13 +49,16 @@ export async function lookupDMARC(domain: string): Promise<DMARCLookupResult | n
 async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
   try {
     const records = await withDnsTimeout(dns.resolveTxt(`_dmarc.${domain}`));
-    for (const record of records) {
-      const txt = record.join("");
-      if (txt.toLowerCase().startsWith("v=dmarc1")) {
-        return parseDMARCRecord(txt);
-      }
+    const dmarcRecords = records.map((r) => r.join("")).filter((txt) => txt.toLowerCase().startsWith("v=dmarc1"));
+
+    // RFC 7489 Section 6.6.3: if more than one DMARC record is found,
+    // the result MUST be treated as if no record was published.
+    if (dmarcRecords.length > 1) {
+      throw new Error(`Multiple DMARC records found at _dmarc.${domain} (RFC 7489 \u00a76.6.3 violation)`);
     }
-    return null;
+
+    if (dmarcRecords.length === 0) return null;
+    return parseDMARCRecord(dmarcRecords[0]);
   } catch (err: unknown) {
     if (isDnsNotFoundError(err)) return null;
     const code = (err as NodeJS.ErrnoException).code;
@@ -67,16 +70,19 @@ async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
 export function parseDMARCRecord(txt: string): DMARCRecord {
   const { tags } = parseTxtTagList(txt);
 
-  const policy = tags["p"] as "none" | "quarantine" | "reject";
+  // Lowercase policy values for case-insensitive comparison (DNS TXT records
+  // may have inconsistent casing, e.g. "Reject" or "QUARANTINE").
+  const policy = (tags["p"]?.toLowerCase() || "none") as "none" | "quarantine" | "reject";
+  const sp = tags["sp"]?.toLowerCase() || null;
 
   return {
     raw: txt,
     version: tags["v"] || "DMARC1",
-    policy: policy || "none",
+    policy,
     pct: tags["pct"] ? parseInt(tags["pct"], 10) : 100,
     rua: tags["rua"] || null,
     ruf: tags["ruf"] || null,
-    sp: tags["sp"] || null,
+    sp,
   };
 }
 

@@ -1,6 +1,7 @@
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import { throttle } from "@/lib/ct/gorgon";
 import { scoreNotabilityBatch } from "@/lib/notability";
+import { errorMessage } from "@/lib/utils";
 import { batchUpdateScores } from "../batch-update";
 import { type BrandRow, rowToBrandInput } from "../types";
 
@@ -33,38 +34,43 @@ export async function rescore(sql: NeonQueryFunction<false, false>, maxCerts = 0
     for (let i = 0; i < rows.length; i += SCORE_BATCH) {
       if (maxCerts > 0 && scored >= maxCerts) break;
 
-      const remaining = maxCerts > 0 ? maxCerts - scored : SCORE_BATCH;
-      const chunk = rows.slice(i, i + Math.min(SCORE_BATCH, remaining));
+      try {
+        const remaining = maxCerts > 0 ? maxCerts - scored : SCORE_BATCH;
+        const chunk = rows.slice(i, i + Math.min(SCORE_BATCH, remaining));
 
-      const brands = chunk.map(rowToBrandInput).filter((b) => b.org);
-      const results = await scoreNotabilityBatch(brands);
+        const brands = chunk.map(rowToBrandInput).filter((b) => b.org);
+        const results = await scoreNotabilityBatch(brands);
 
-      // Collect updates for bulk SQL
-      const updates: {
-        id: number;
-        notabilityScore: number;
-        notabilityReason: string;
-        companyDescription: string;
-        industry: string;
-      }[] = [];
+        // Collect updates for bulk SQL
+        const updates: {
+          id: number;
+          notabilityScore: number;
+          notabilityReason: string;
+          companyDescription: string;
+          industry: string;
+        }[] = [];
 
-      for (const row of chunk) {
-        const result = results.get(String(row.id));
-        if (result) {
-          updates.push({
-            id: row.id,
-            notabilityScore: result.score,
-            notabilityReason: result.reason,
-            companyDescription: result.description,
-            industry: result.industry,
-          });
-          scored++;
-          const name = row.subject_org || row.san_list?.[0] || "unknown";
-          console.log(`  Scored ${scored}: ${name} = ${result.score}/10`);
+        for (const row of chunk) {
+          const result = results.get(String(row.id));
+          if (result) {
+            updates.push({
+              id: row.id,
+              notabilityScore: result.score,
+              notabilityReason: result.reason,
+              companyDescription: result.description,
+              industry: result.industry,
+            });
+            scored++;
+            const name = row.subject_org || row.san_list?.[0] || "unknown";
+            console.log(`  Scored ${scored}: ${name} = ${result.score}/10`);
+          }
         }
-      }
 
-      await batchUpdateScores(sql, updates);
+        await batchUpdateScores(sql, updates);
+      } catch (err) {
+        console.error(`  Scoring batch failed at offset ${i} (scored ${scored} so far): ${errorMessage(err)}`);
+        continue;
+      }
       await throttle(100);
     }
   }

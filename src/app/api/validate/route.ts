@@ -73,7 +73,11 @@ export async function POST(request: NextRequest) {
     const { rawPem: _, ...certWithoutPem } = result.certificate;
     return NextResponse.json({ ...result, certificate: certWithoutPem }, { headers: rl.headers });
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? `Validation failed: ${error.message}`
+        : "Validation failed due to an unexpected internal error";
     log("error", "validate.api.failed", { error: String(error), route: "/api/validate" });
-    return NextResponse.json({ error: "Validation failed" }, { status: 500, headers: rl.headers });
+    return NextResponse.json({ error: message }, { status: 500, headers: rl.headers });
   }
 }

@@ -189,6 +189,7 @@ describe("GET /api/cron/ingest", () => {
         lastIndex: 2000,
         certsFound: 3,
         batchesRun: 2,
+        skippedIndexes: [],
       });
 
       const req = makeRequest({ authorization: "Bearer test-secret" });
@@ -213,6 +214,7 @@ describe("GET /api/cron/ingest", () => {
         lastIndex: 5000,
         certsFound: 1,
         batchesRun: 1,
+        skippedIndexes: [],
       });
 
       const req = makeRequest({ authorization: "Bearer test-secret" });
@@ -236,6 +238,7 @@ describe("GET /api/cron/ingest", () => {
         lastIndex: 100,
         certsFound: 0,
         batchesRun: 1,
+        skippedIndexes: [],
       });
 
       const req = makeRequest({ authorization: "Bearer test-secret" });

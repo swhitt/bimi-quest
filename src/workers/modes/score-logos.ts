@@ -99,13 +99,12 @@ export async function scoreLogos(sql: NeonQueryFunction<false, false>, maxLogos 
       }
 
       await batchUpdateLogoQuality(sql, updates);
+      if (recalc) offset += rows.length;
     } catch (err) {
       console.error(`\n  Gemini API error:`, errorMessage(err));
       if (recalc) console.error(`  Resume: bun run ingest:score-logos recalc ${offset}`);
       await throttle(5000);
     }
-
-    if (recalc) offset += rows.length;
 
     if ((scored + failed) % 100 === 0) {
       console.log(`  [checkpoint] ${scored + failed} done${recalc ? `, offset ${offset}` : ""}`);

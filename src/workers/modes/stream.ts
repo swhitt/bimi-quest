@@ -4,8 +4,13 @@ import { processIngestBatch } from "@/lib/ct/ingest-batch";
 import { db } from "@/lib/db";
 import { ingestionCursors } from "@/lib/db/schema";
 
+const BASE_POLL_MS = 30_000;
+const MAX_BACKOFF_MS = 10 * 60_000; // 10 minutes
+
 export async function stream() {
   console.log("Starting stream mode (polling every 30s)...");
+  let consecutiveFailures = 0;
+
   while (true) {
     try {
       const sth = await getSTH();
@@ -23,11 +28,24 @@ export async function stream() {
         if (result.certsFound > 0) {
           console.log(`Found ${result.certsFound} new BIMI certificate(s)`);
         }
+        if (result.skippedIndexes.length > 0) {
+          console.warn(
+            `Permanently skipped ${result.skippedIndexes.length} entries: ${result.skippedIndexes.join(", ")}`,
+          );
+        }
       }
+      consecutiveFailures = 0;
     } catch (err) {
-      console.error("Stream iteration error:", err);
+      consecutiveFailures++;
+      const backoff = Math.min(BASE_POLL_MS * 2 ** consecutiveFailures, MAX_BACKOFF_MS);
+      console.error(
+        `Stream iteration error (failure #${consecutiveFailures}, next retry in ${Math.round(backoff / 1000)}s):`,
+        err,
+      );
+      await new Promise((r) => setTimeout(r, backoff));
+      continue;
     }
 
-    await new Promise((r) => setTimeout(r, 30_000));
+    await new Promise((r) => setTimeout(r, BASE_POLL_MS));
   }
 }

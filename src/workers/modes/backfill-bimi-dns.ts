@@ -4,6 +4,7 @@ import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { computeSvgHash, decompressSvgIfNeeded, validateSVGTinyPS } from "@/lib/bimi/svg";
 import { throttle } from "@/lib/ct/gorgon";
 import { safeFetch } from "@/lib/net/safe-fetch";
+import { errorMessage } from "@/lib/utils";
 
 interface BimiDnsRow {
   domain: string;
@@ -29,7 +30,7 @@ interface BimiDnsRow {
   svg_indicator_hash: string | null;
 }
 
-async function lookupDomain(domain: string): Promise<BimiDnsRow> {
+async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
   const row: BimiDnsRow = {
     domain,
     bimi_record_raw: null,
@@ -54,11 +55,29 @@ async function lookupDomain(domain: string): Promise<BimiDnsRow> {
     svg_indicator_hash: null,
   };
 
-  // Parallel DNS lookups
-  const [bimiRecord, dmarcResult] = await Promise.all([
-    lookupBIMIRecord(domain).catch(() => null),
-    lookupDMARC(domain).catch(() => null),
-  ]);
+  // Parallel DNS lookups — distinguish "no record" (null) from resolver errors
+  let bimiRecord: Awaited<ReturnType<typeof lookupBIMIRecord>> | null = null;
+  let dmarcResult: Awaited<ReturnType<typeof lookupDMARC>> | null = null;
+  let dnsError = false;
+
+  const [bimiOutcome, dmarcOutcome] = await Promise.allSettled([lookupBIMIRecord(domain), lookupDMARC(domain)]);
+
+  if (bimiOutcome.status === "fulfilled") {
+    bimiRecord = bimiOutcome.value;
+  } else {
+    console.warn(`  DNS error looking up BIMI for ${domain}: ${errorMessage(bimiOutcome.reason)}`);
+    dnsError = true;
+  }
+
+  if (dmarcOutcome.status === "fulfilled") {
+    dmarcResult = dmarcOutcome.value;
+  } else {
+    console.warn(`  DNS error looking up DMARC for ${domain}: ${errorMessage(dmarcOutcome.reason)}`);
+    dnsError = true;
+  }
+
+  // If either DNS lookup had a resolver error, skip this domain so it gets retried next run
+  if (dnsError) return null;
 
   if (bimiRecord) {
     row.bimi_record_raw = bimiRecord.raw;

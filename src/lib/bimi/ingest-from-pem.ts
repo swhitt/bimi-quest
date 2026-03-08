@@ -1,6 +1,6 @@
 import { X509Certificate } from "@peculiar/x509";
 import { and, eq } from "drizzle-orm";
-import { normalizeIssuerOrg } from "@/lib/ca-display";
+import { buildCertInsertValues } from "@/lib/ct/cert-values";
 import { extractBIMIData, hasBIMIOID } from "@/lib/ct/parser";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
@@ -31,32 +31,13 @@ export async function ingestFromPem(pem: string, source: string = "validation"):
     const [inserted] = await db
       .insert(certificates)
       .values({
-        fingerprintSha256: bimiData.fingerprintSha256,
-        serialNumber: bimiData.serialNumber,
-        notBefore: bimiData.notBefore,
-        notAfter: bimiData.notAfter,
-        subjectDn: bimiData.subjectDn,
-        subjectCn: bimiData.subjectCn,
-        subjectOrg: bimiData.subjectOrg,
-        subjectCountry: bimiData.subjectCountry,
-        subjectState: bimiData.subjectState,
-        subjectLocality: bimiData.subjectLocality,
-        issuerDn: bimiData.issuerDn,
-        issuerCn: bimiData.issuerCn,
-        issuerOrg: normalizeIssuerOrg(bimiData.issuerOrg),
-        sanList: bimiData.sanList,
-        markType: bimiData.markType,
-        certType: bimiData.certType,
-        logotypeSvgHash: bimiData.logotypeSvgHash,
-        logotypeSvg: bimiData.logotypeSvg,
-        rawPem: bimiData.rawPem,
-        isPrecert: false,
-        extensionsJson: bimiData.extensionsJson,
+        ...buildCertInsertValues(bimiData, {
+          isPrecert: false,
+          discoverySource: source,
+        }),
         notabilityScore: notability?.score,
         notabilityReason: notability?.reason,
         companyDescription: notability?.description,
-        rootCaOrg: normalizeIssuerOrg(bimiData.issuerOrg),
-        discoverySource: source,
       })
       .onConflictDoNothing({ target: certificates.fingerprintSha256 })
       .returning({ fingerprintSha256: certificates.fingerprintSha256 });

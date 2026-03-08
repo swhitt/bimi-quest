@@ -40,13 +40,16 @@ export async function lookupBIMIRecordAt(domain: string, selector: string): Prom
   try {
     const records = await withDnsTimeout(dns.resolveTxt(`${selector}._bimi.${domain}`));
     // TXT records can be split across multiple strings, concatenate them
-    for (const record of records) {
-      const txt = record.join("");
-      if (txt.toLowerCase().startsWith("v=bimi1")) {
-        return parseBIMIRecord(txt, selector);
-      }
+    const bimiRecords = records.map((r) => r.join("")).filter((txt) => txt.toLowerCase().startsWith("v=bimi1"));
+
+    // Per BIMI spec, multiple BIMI records for the same selector is an error
+    // condition — treat as if no record was published.
+    if (bimiRecords.length > 1) {
+      throw new Error(`Multiple BIMI records found at ${selector}._bimi.${domain} (ambiguous, treated as error)`);
     }
-    return null;
+
+    if (bimiRecords.length === 0) return null;
+    return parseBIMIRecord(bimiRecords[0], selector);
   } catch (err: unknown) {
     if (isDnsNotFoundError(err)) return null;
     const code = (err as NodeJS.ErrnoException).code;

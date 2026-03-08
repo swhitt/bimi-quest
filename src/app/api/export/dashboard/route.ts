@@ -155,6 +155,13 @@ export async function GET(request: NextRequest) {
 
       return csvResponse([header, ...csvRows].join("\n"), `bimi-expiry-${timestamp}.csv`);
     }
+
+    // All valid datasets are handled above; this is a safeguard in case VALID_DATASETS
+    // is expanded but the corresponding handler branch is not added.
+    return new Response(JSON.stringify({ error: `Unhandled dataset: ${dataset}` }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     return apiError(error, "export.dashboard.failed", "/api/export/dashboard", "Failed to export dashboard data");
   }

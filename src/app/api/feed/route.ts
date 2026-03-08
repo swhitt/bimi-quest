@@ -8,6 +8,11 @@ import { log } from "@/lib/logger";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest";
 
+/** Escape ]]> sequences that would break out of a CDATA section */
+function escapeCdata(text: string): string {
+  return text.replaceAll("]]>", "]]]]><![CDATA[>");
+}
+
 export async function GET() {
   try {
     const recent = await db
@@ -36,11 +41,11 @@ export async function GET() {
         const description = `${cert.certType || "BIMI"} certificate issued by ${cert.issuerOrg || "Unknown CA"} for ${domain}${cert.subjectCountry ? ` (${cert.subjectCountry})` : ""}`;
 
         return `    <item>
-      <title><![CDATA[${title}]]></title>
+      <title><![CDATA[${escapeCdata(title)}]]></title>
       <link>${link}</link>
       <guid isPermaLink="true">${link}</guid>
       <pubDate>${pubDate}</pubDate>
-      <description><![CDATA[${description}]]></description>
+      <description><![CDATA[${escapeCdata(description)}]]></description>
     </item>`;
       })
       .join("\n");

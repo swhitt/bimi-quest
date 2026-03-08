@@ -20,4 +20,7 @@ export async function backfill() {
     onProgress: (msg) => process.stdout.write(`\r  ${msg}`),
   });
   console.log(`\nBackfill complete. Found ${result.certsFound} BIMI certificates.`);
+  if (result.skippedIndexes.length > 0) {
+    console.warn(`Permanently skipped ${result.skippedIndexes.length} entries: ${result.skippedIndexes.join(", ")}`);
+  }
 }

@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
+import { buildCertInsertValues } from "@/lib/ct/cert-values";
 import { getEntries, throttle } from "@/lib/ct/gorgon";
 import {
   computePemFingerprint,
@@ -14,9 +15,6 @@ import { getDb } from "@/lib/db";
 import { certificateChainLinks, certificates, chainCerts, ingestionCursors } from "@/lib/db/schema";
 import { type BrandInput, scoreNotabilityBatch } from "@/lib/notability";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
-import { computeColorRichness } from "@/lib/svg-color-richness";
-import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
-import { slugify } from "@/lib/slugify";
 import { errorMessage } from "@/lib/utils";
 
 const BATCH_SIZE = 256;
@@ -63,6 +61,8 @@ export interface IngestBatchResult {
   batchesRun: number;
   parseFailed: number;
   scoringFailed: number;
+  /** CT log indexes that were permanently skipped due to non-transient errors */
+  skippedIndexes: number[];
 }
 
 /** Batch-score pending certs with Haiku, update DB, and send notifications for notable ones. */
@@ -140,6 +140,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
   let batchesRun = 0;
   let parseFailed = 0;
   let scoringFailed = 0;
+  const skippedIndexes: number[] = [];
   // Collect all inserted certs for post-ingestion scoring
   const allPendingScores: PendingCert[] = [];
 
@@ -162,8 +163,9 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
     }
 
     if (response.entries.length === 0) {
-      i += BATCH_SIZE;
-      continue;
+      // Empty response means the log hasn't grown this far yet;
+      // stop and let the next run retry from the same cursor.
+      break;
     }
 
     // Track which entries succeeded vs. failed for cursor advancement.
@@ -212,43 +214,15 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
         const isPrecert = parsed.entryType === "precert";
         const certInsertQuery = db
           .insert(certificates)
-          .values({
-            fingerprintSha256: bimiData.fingerprintSha256,
-            serialNumber: bimiData.serialNumber,
-            notBefore: bimiData.notBefore,
-            notAfter: bimiData.notAfter,
-            subjectDn: bimiData.subjectDn,
-            subjectCn: bimiData.subjectCn,
-            subjectOrg: bimiData.subjectOrg,
-            subjectOrgSlug: bimiData.subjectOrg ? slugify(bimiData.subjectOrg) : null,
-            subjectCountry: bimiData.subjectCountry,
-            subjectState: bimiData.subjectState,
-            subjectLocality: bimiData.subjectLocality,
-            issuerDn: bimiData.issuerDn,
-            issuerCn: bimiData.issuerCn,
-            issuerOrg: normalizeIssuerOrg(bimiData.issuerOrg),
-            rootCaOrg,
-            sanList: bimiData.sanList,
-            markType: bimiData.markType,
-            certType: bimiData.certType,
-            logotypeSvgHash: bimiData.logotypeSvgHash,
-            logotypeSvg: bimiData.logotypeSvg,
-            logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
-            logoTileBg: bimiData.logotypeSvg
-              ? isLightBg(tileBgForSvg(stripWhiteSvgBg(bimiData.logotypeSvg)))
-                ? "light"
-                : "dark"
-              : null,
-            // Visual hash is deferred to the backfillVisualHash worker to keep
-            // the ingestion hot path fast (sharp render is 50-200ms per cert)
-            logotypeVisualHash: null,
-            rawPem: bimiData.rawPem,
-            isPrecert,
-            ctLogTimestamp: new Date(parsed.timestamp),
-            ctLogIndex: entryIndex,
-            ctLogName: "gorgon",
-            extensionsJson: bimiData.extensionsJson,
-          })
+          .values(
+            buildCertInsertValues(bimiData, {
+              rootCaOrg,
+              isPrecert,
+              ctLogTimestamp: new Date(parsed.timestamp),
+              ctLogIndex: entryIndex,
+              ctLogName: "gorgon",
+            }),
+          )
           .onConflictDoNothing({ target: certificates.fingerprintSha256 })
           .returning({
             id: certificates.id,
@@ -293,6 +267,13 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
               pem,
             })),
           );
+          const chainFailures = chainResults.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+          if (chainFailures.length > 0) {
+            onProgress?.(
+              `${chainFailures.length} chain cert(s) failed to parse for entry ${entryIndex}: ${chainFailures.map((f) => errorMessage(f.reason)).join("; ")}`,
+            );
+          }
+
           const chainData = chainResults
             .filter(
               (
@@ -381,8 +362,10 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
           hadDbError = true;
           break;
         }
-        // Non-transient errors (parse/extraction bugs) — log but advance past them
-        onProgress?.(`Error processing entry ${entryIndex}: ${msg.slice(0, 200)}`);
+        // Non-transient errors (parse/extraction bugs) — log and advance past them,
+        // but track the index so callers can audit/retry later if a parser fix lands.
+        onProgress?.(`Skipping entry ${entryIndex} (non-transient error): ${msg.slice(0, 200)}`);
+        skippedIndexes.push(entryIndex);
         lastSuccessIndex = entryIndex;
         continue;
       }
@@ -438,5 +421,5 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
     }
   }
 
-  return { certsFound: found, lastIndex: processed, batchesRun, parseFailed, scoringFailed };
+  return { certsFound: found, lastIndex: processed, batchesRun, parseFailed, scoringFailed, skippedIndexes };
 }

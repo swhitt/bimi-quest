@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const format = request.nextUrl.searchParams.get("format");
 
   if (format === "svg") {
-    return new NextResponse(cert.logotypeSvg, {
+    return new NextResponse(sanitizeSvg(cert.logotypeSvg), {
       headers: {
         "Content-Type": "image/svg+xml",
         "Cache-Control": CACHE_PRESETS.IMMUTABLE,
@@ -33,13 +33,30 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
 
-  const png = await sharp(Buffer.from(cert.logotypeSvg)).resize(PNG_SIZE, PNG_SIZE).png().toBuffer();
+  try {
+    const png = await sharp(Buffer.from(cert.logotypeSvg)).resize(PNG_SIZE, PNG_SIZE).png().toBuffer();
 
-  return new NextResponse(new Uint8Array(png), {
-    headers: {
-      "Content-Type": "image/png",
-      "Cache-Control": CACHE_PRESETS.IMMUTABLE,
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+    return new NextResponse(new Uint8Array(png), {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": CACHE_PRESETS.IMMUTABLE,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to render image — the SVG may be malformed or unsupported" },
+      { status: 422 },
+    );
+  }
+}
+
+/** Strip <script> elements and on* event attributes from SVG content */
+function sanitizeSvg(svg: string): string {
+  // Remove <script>...</script> blocks (including self-closing)
+  let sanitized = svg.replace(/<script[\s>][\s\S]*?<\/script\s*>/gi, "");
+  sanitized = sanitized.replace(/<script\s*\/>/gi, "");
+  // Remove on* event handler attributes (e.g. onclick, onload, onerror)
+  sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  return sanitized;
 }

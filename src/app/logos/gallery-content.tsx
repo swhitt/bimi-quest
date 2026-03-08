@@ -279,7 +279,7 @@ function LogoTile({ logo }: { logo: Logo }) {
 
   if (linkHref) {
     return (
-      <Link href={linkHref} className="block">
+      <Link href={linkHref} className="block" aria-label={`View logo for ${logo.org || logo.domain || "unknown"}`}>
         {tile}
       </Link>
     );

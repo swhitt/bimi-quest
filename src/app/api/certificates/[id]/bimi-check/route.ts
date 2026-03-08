@@ -109,7 +109,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
                 signal: AbortSignal.timeout(10_000),
               });
               if (res.ok) {
-                webSvgContent = await res.text();
+                // Handle SVGZ (gzipped SVG) responses
+                const rawBuf = Buffer.from(await res.arrayBuffer());
+                if (rawBuf.length >= 2 && rawBuf[0] === 0x1f && rawBuf[1] === 0x8b) {
+                  // Gzip magic bytes detected — decompress
+                  const { gunzipSync } = await import("node:zlib");
+                  webSvgContent = gunzipSync(rawBuf).toString("utf-8");
+                } else {
+                  webSvgContent = rawBuf.toString("utf-8");
+                }
                 if (webSvgContent.includes("<svg") || webSvgContent.includes("<SVG")) {
                   webSvgValidation = validateSVGTinyPS(webSvgContent);
                   // Hash-based comparison: consistent with validate.ts SHA-256 approach

@@ -166,6 +166,82 @@ export const ctLogEntries = pgTable(
   (table) => [index("idx_ct_entries_log_index").on(table.logName, table.index)],
 );
 
+// ---------------------------------------------------------------------------
+// CA Trust Hierarchy (CCADB)
+// ---------------------------------------------------------------------------
+
+export const caCertificates = pgTable(
+  "ca_certificates",
+  {
+    id: serial("id").primaryKey(),
+    ccadbRecordId: text("ccadb_record_id"),
+    certificateName: text("certificate_name").notNull(),
+    recordType: text("record_type").notNull(),
+    fingerprintSha256: text("fingerprint_sha256").unique().notNull(),
+    parentFingerprintSha256: text("parent_fingerprint_sha256"),
+    subjectKeyIdentifier: text("subject_key_identifier"),
+    authorityKeyIdentifier: text("authority_key_identifier"),
+    subjectDn: text("subject_dn"),
+    issuerDn: text("issuer_dn"),
+    caOwner: text("ca_owner").notNull(),
+    subordinateCaOwner: text("subordinate_ca_owner"),
+    validFrom: timestamp("valid_from", { withTimezone: true }),
+    validTo: timestamp("valid_to", { withTimezone: true }),
+    revocationStatus: text("revocation_status"),
+    appleStatus: text("apple_status"),
+    chromeStatus: text("chrome_status"),
+    microsoftStatus: text("microsoft_status"),
+    mozillaStatus: text("mozilla_status"),
+    derivedTrustBits: text("derived_trust_bits"),
+    technicallyConstrained: boolean("technically_constrained").default(false),
+    evOids: text("ev_oids"),
+    auditorName: text("auditor_name"),
+    standardAuditUrl: text("standard_audit_url"),
+    crlUrls: text("crl_urls"),
+    cpCpsUrl: text("cp_cps_url"),
+    rawPem: text("raw_pem"),
+    crossSignGroupId: text("cross_sign_group_id"),
+    syncedAt: timestamp("synced_at", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_ca_certs_parent_fp").on(table.parentFingerprintSha256),
+    index("idx_ca_certs_ski").on(table.subjectKeyIdentifier),
+    index("idx_ca_certs_ca_owner").on(table.caOwner),
+    index("idx_ca_certs_record_type").on(table.recordType),
+    index("idx_ca_certs_cross_sign_group").on(table.crossSignGroupId),
+  ],
+);
+
+export const caCrossSigns = pgTable(
+  "ca_cross_signs",
+  {
+    id: serial("id").primaryKey(),
+    certIdA: integer("cert_id_a")
+      .notNull()
+      .references(() => caCertificates.id),
+    certIdB: integer("cert_id_b")
+      .notNull()
+      .references(() => caCertificates.id),
+    sharedSki: text("shared_ski").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index("idx_ca_cross_signs_a").on(table.certIdA), index("idx_ca_cross_signs_b").on(table.certIdB)],
+);
+
+export const caSyncCursors = pgTable("ca_sync_cursors", {
+  id: serial("id").primaryKey(),
+  sourceName: text("source_name").unique().notNull(),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  recordCount: integer("record_count"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Ingestion
+// ---------------------------------------------------------------------------
+
 export const ingestionCursors = pgTable("ingestion_cursors", {
   id: serial("id").primaryKey(),
   logName: text("log_name").unique().notNull(),
