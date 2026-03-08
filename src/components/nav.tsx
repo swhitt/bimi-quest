@@ -1,11 +1,17 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { caNameToSlug } from "@/lib/ca-slugs";
 import { cn } from "@/lib/utils";
@@ -17,10 +23,13 @@ const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/certificates", label: "Certificates" },
   { href: "/logos", label: "Logos" },
-  { href: "/ct/gorgon", label: "Log" },
-  { href: "/validate", label: "Validate" },
-  { href: "/domains", label: "Domains" },
   { href: "/leaderboard", label: "Leaderboard" },
+];
+
+const toolsItems = [
+  { href: "/validate", label: "Validate" },
+  { href: "/ct/gorgon", label: "CT Log" },
+  { href: "/domains", label: "Domains" },
   { href: "/map", label: "Map" },
   { href: "/tools/asn1", label: "ASN.1" },
 ];
@@ -82,6 +91,7 @@ function useNavHelpers() {
 
 function NavLinks() {
   const { buildHref, isActive } = useNavHelpers();
+  const toolsActive = toolsItems.some((item) => isActive(item.href));
 
   return (
     <nav aria-label="Main" className="flex items-center gap-1 text-sm">
@@ -99,6 +109,28 @@ function NavLinks() {
           {item.label}
         </Link>
       ))}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className={cn(
+            "flex items-center gap-0.5 px-2 py-1 text-sm transition-colors outline-none",
+            toolsActive
+              ? "border-b-2 border-primary text-foreground font-medium rounded-none"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Tools
+          <ChevronDown className="size-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {toolsItems.map((item) => (
+            <DropdownMenuItem key={item.href} asChild>
+              <Link href={buildHref(item.href)} className={cn(isActive(item.href) && "font-medium")}>
+                {item.label}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   );
 }
@@ -106,24 +138,38 @@ function NavLinks() {
 function MobileNavLinks({ onNavigate }: { onNavigate: () => void }) {
   const { buildHref, isActive } = useNavHelpers();
 
+  const allItems = [...navItems, { href: "divider", label: "Tools" }, ...toolsItems];
+
   return (
     <nav aria-label="Mobile navigation" className="flex flex-col">
-      {navItems.map((item) => (
-        <SheetClose key={item.href} asChild>
-          <Link
-            href={buildHref(item.href)}
-            onClick={onNavigate}
-            className={cn(
-              "py-3 px-4 text-base transition-colors min-h-[44px] flex items-center",
-              isActive(item.href)
-                ? "text-foreground font-medium bg-accent"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
-            )}
-          >
-            {item.label}
-          </Link>
-        </SheetClose>
-      ))}
+      {allItems.map((item) => {
+        if (item.href === "divider") {
+          return (
+            <div
+              key="tools-divider"
+              className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
+              {item.label}
+            </div>
+          );
+        }
+        return (
+          <SheetClose key={item.href} asChild>
+            <Link
+              href={buildHref(item.href)}
+              onClick={onNavigate}
+              className={cn(
+                "py-3 px-4 text-base transition-colors min-h-[44px] flex items-center",
+                isActive(item.href)
+                  ? "text-foreground font-medium bg-accent"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+              )}
+            >
+              {item.label}
+            </Link>
+          </SheetClose>
+        );
+      })}
     </nav>
   );
 }
