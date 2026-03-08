@@ -2,46 +2,28 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { domainBimiState } from "@/lib/db/schema";
-import { isNotNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export async function GET() {
   try {
-    // Extract rua mailto: domains from DMARC records using SQL string functions.
-    // The rua tag may contain multiple comma-separated mailto: URIs.
-    // We use regexp_split_to_table to split on commas, then extract the domain
-    // after the @ sign from each mailto: URI.
-    const rows = await db
-      .select({
-        provider: sql<string>`provider`.as("provider"),
-        domainCount: sql<number>`count(DISTINCT ${domainBimiState.domain})`.as("domain_count"),
-      })
-      .from(
-        sql`(
-          SELECT
-            ${domainBimiState.domain},
-            LOWER(TRIM(
-              SUBSTRING(
-                addr FROM POSITION('@' IN addr) + 1
-              )
-            )) AS provider
-          FROM ${domainBimiState},
-          LATERAL regexp_split_to_table(${domainBimiState.dmarcRecordRaw}, ',') AS part,
-          LATERAL (
-            SELECT TRIM(
-              SUBSTRING(part FROM 'mailto:([^;,!\\s]+)')
-            ) AS addr
-          ) extracted
-          WHERE ${isNotNull(domainBimiState.dmarcRecordRaw)}
-            AND addr IS NOT NULL
-            AND addr LIKE '%@%'
-        ) sub`,
-      )
-      .groupBy(sql`provider`)
-      .orderBy(sql`count(DISTINCT ${domainBimiState.domain}) DESC`)
-      .limit(50);
+    const result = await db.execute<{ provider: string; domainCount: number }>(sql`
+      SELECT
+        LOWER(TRIM(SUBSTRING(addr FROM POSITION('@' IN addr) + 1))) AS "provider",
+        COUNT(DISTINCT dbs.domain)::int AS "domainCount"
+      FROM domain_bimi_state dbs,
+      LATERAL regexp_split_to_table(dbs.dmarc_record_raw, ',') AS part,
+      LATERAL (
+        SELECT TRIM(SUBSTRING(part FROM 'mailto:([^;,!\\s]+)')) AS addr
+      ) extracted
+      WHERE dbs.dmarc_record_raw IS NOT NULL
+        AND addr IS NOT NULL
+        AND addr LIKE '%@%'
+      GROUP BY "provider"
+      ORDER BY "domainCount" DESC
+      LIMIT 50
+    `);
 
-    return NextResponse.json({ data: rows }, { headers: { "Cache-Control": CACHE_PRESETS.MEDIUM } });
+    return NextResponse.json({ data: result.rows }, { headers: { "Cache-Control": CACHE_PRESETS.MEDIUM } });
   } catch (error) {
     return apiError(
       error,

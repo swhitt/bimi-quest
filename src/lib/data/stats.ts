@@ -141,7 +141,7 @@ export async function fetchDmarcPolicyDistribution(params: URLSearchParams): Pro
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const policyCol = sql<string>`COALESCE(${domainBimiState.dmarcPolicy}, 'unknown')`;
+  const policyCol = sql<string>`COALESCE(LOWER(${domainBimiState.dmarcPolicy}), 'unknown')`;
 
   const rows = await db
     .select({
