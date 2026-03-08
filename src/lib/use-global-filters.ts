@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { caSlugToName } from "./ca-slugs";
 import { buildApiParamsFromSearchParams } from "./global-filter-params";
@@ -30,23 +31,26 @@ export function useGlobalFilters() {
   const expiresFrom = searchParams.get("expiresFrom") || null;
   const expiresTo = searchParams.get("expiresTo") || null;
 
-  function buildApiParams(extra?: Record<string, string>) {
-    const merged: Record<string, string | undefined> = {
-      ca: ca ?? undefined,
-      root: root ?? undefined,
-      type: type ?? undefined,
-      mark: mark ?? undefined,
-      validity: validity ?? undefined,
-      from: from ?? undefined,
-      to: to ?? undefined,
-      expiresFrom: expiresFrom ?? undefined,
-      expiresTo: expiresTo ?? undefined,
-      country: country ?? undefined,
-      precert: precert ?? undefined,
-      industry: industry ?? undefined,
-    };
-    return buildApiParamsFromSearchParams(merged, extra);
-  }
+  const buildApiParams = useCallback(
+    (extra?: Record<string, string>) => {
+      const merged: Record<string, string | undefined> = {
+        ca: ca ?? undefined,
+        root: root ?? undefined,
+        type: type ?? undefined,
+        mark: mark ?? undefined,
+        validity: validity ?? undefined,
+        from: from ?? undefined,
+        to: to ?? undefined,
+        expiresFrom: expiresFrom ?? undefined,
+        expiresTo: expiresTo ?? undefined,
+        country: country ?? undefined,
+        precert: precert ?? undefined,
+        industry: industry ?? undefined,
+      };
+      return buildApiParamsFromSearchParams(merged, extra);
+    },
+    [ca, root, type, mark, validity, from, to, expiresFrom, expiresTo, country, precert, industry],
+  );
 
   return {
     ca,

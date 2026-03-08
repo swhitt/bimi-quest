@@ -196,12 +196,70 @@ function ReadinessScoreCard({ result }: { result: ReadinessResult }) {
   );
 }
 
+/**
+ * Synthesize a DnsSnapshot from flat domain_bimi_state columns so that
+ * Grade Breakdown and Readiness Score cards render for DNS-backfilled domains
+ * that don't have a full dnsSnapshot JSON blob.
+ */
+function synthesizeSnapshot(data: DomainDetailProps["data"]): DnsSnapshot {
+  const dmarcPolicy = data.dmarcPolicy?.toLowerCase() ?? null;
+  const isRejectOrQuarantine = dmarcPolicy === "reject" || dmarcPolicy === "quarantine";
+  const pct = data.dmarcPct;
+  const dmarcValidForBimi = isRejectOrQuarantine && (pct === null || pct === 100);
+
+  return {
+    bimi: {
+      raw: data.bimiRecordRaw,
+      version: data.bimiVersion,
+      logoUrl: data.bimiLogoUrl,
+      authorityUrl: data.bimiAuthorityUrl,
+      lps: data.bimiLpsTag,
+      avp: data.bimiAvpTag,
+      declined: data.bimiDeclination ?? false,
+      selector: data.bimiSelector ?? "default",
+      orgDomainFallback: data.bimiOrgDomainFallback ?? false,
+    },
+    dmarc: data.dmarcRecordRaw
+      ? {
+          raw: data.dmarcRecordRaw,
+          policy: dmarcPolicy,
+          sp: null,
+          pct,
+          rua: null,
+          ruf: null,
+          adkim: null,
+          aspf: null,
+          validForBimi: data.dmarcValid ?? dmarcValidForBimi,
+        }
+      : null,
+    svg: data.svgFetched
+      ? {
+          found: true,
+          sizeBytes: data.svgSizeBytes,
+          contentType: data.svgContentType,
+          tinyPsValid: data.svgTinyPsValid,
+          indicatorHash: data.svgIndicatorHash,
+          validationErrors: data.svgValidationErrors,
+        }
+      : null,
+    certificate: data.bimiAuthorityUrl
+      ? { found: false, authorityUrl: data.bimiAuthorityUrl, certType: null, issuer: null }
+      : null,
+    meta: {
+      checkedAt: data.lastChecked ?? new Date().toISOString(),
+      grade: data.bimiGrade,
+    },
+  };
+}
+
 export function DomainDetail({ domain, data }: DomainDetailProps) {
-  // Prefer dnsSnapshot fields when available, fall back to flat columns
-  const bimi = data.dnsSnapshot?.bimi;
-  const dmarc = data.dnsSnapshot?.dmarc;
-  const svg = data.dnsSnapshot?.svg;
-  const cert = data.dnsSnapshot?.certificate;
+  // Use real dnsSnapshot when available, otherwise synthesize from flat columns
+  const snapshot = data.dnsSnapshot ?? synthesizeSnapshot(data);
+
+  const bimi = snapshot.bimi;
+  const dmarc = snapshot.dmarc;
+  const svg = snapshot.svg;
+  const cert = snapshot.certificate;
 
   const bimiRaw = bimi?.raw ?? data.bimiRecordRaw;
   const dmarcRaw = dmarc?.raw ?? data.dmarcRecordRaw;
@@ -209,20 +267,27 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
   const logoUrl = bimi?.logoUrl ?? data.bimiLogoUrl;
   const authorityUrl = bimi?.authorityUrl ?? data.bimiAuthorityUrl;
 
-  const gradeChecks = data.dnsSnapshot ? deriveGradeChecks(data.dnsSnapshot) : null;
-  const grade = data.dnsSnapshot?.meta.grade ?? data.bimiGrade;
-  const readiness = data.dnsSnapshot ? computeReadinessScore(data.dnsSnapshot) : null;
+  const gradeChecks = deriveGradeChecks(snapshot);
+  const grade = snapshot.meta.grade ?? data.bimiGrade;
+  const readiness = computeReadinessScore(snapshot);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-mono text-2xl font-bold">{domain}</h1>
-        {data.bimiGrade && (
-          <Badge className={cn("text-base px-3 py-0.5", GRADE_COLORS[data.bimiGrade] ?? "bg-muted")}>
-            {data.bimiGrade}
-          </Badge>
+        {logoUrl && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
+            alt=""
+            className="size-10 shrink-0 rounded border object-contain"
+          />
         )}
+        <h1 className="font-mono text-2xl font-bold">{domain}</h1>
+        {grade && <Badge className={cn("text-base px-3 py-0.5", GRADE_COLORS[grade] ?? "bg-muted")}>{grade}</Badge>}
+        <Badge className={cn("text-xs", TIER_COLORS[readiness.tier])}>
+          {readiness.tier} ({readiness.score})
+        </Badge>
         <div className="flex-1" />
         {data.lastChecked && (
           <span className="text-muted-foreground text-sm">Checked {new Date(data.lastChecked).toLocaleString()}</span>

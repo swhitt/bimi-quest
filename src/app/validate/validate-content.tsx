@@ -220,6 +220,28 @@ export function ValidateContent() {
         </details>
       </div>
 
+      {!result && !loading && !error && (
+        <div className="mt-6 space-y-3">
+          <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">quick check</p>
+          <div className="flex flex-wrap gap-2">
+            {["paypal.com", "linkedin.com", "cnn.com", "amazon.com", "ups.com", "stripe.com"].map((d) => (
+              <Button
+                key={d}
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs"
+                onClick={() => {
+                  setDomain(d);
+                  handleValidate(d);
+                }}
+              >
+                {d}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {error && (
         <Card className="border-destructive" role="alert">
           <CardContent className="pt-6 text-destructive">{error}</CardContent>

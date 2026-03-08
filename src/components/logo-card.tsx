@@ -65,7 +65,8 @@ function LogoCardInner({
   fingerprint,
   showToggle,
   showShare,
-}: Omit<LogoCardProps, "asLink" | "domain">) {
+  isWrappedInLink,
+}: Omit<LogoCardProps, "asLink" | "domain"> & { isWrappedInLink?: boolean }) {
   const defaultToggle = size === "md" || size === "lg";
   const shouldToggle = showToggle ?? defaultToggle;
 
@@ -137,17 +138,24 @@ function LogoCardInner({
         </div>
       )}
 
-      {/* Share link */}
+      {/* Share link – use <span> when already inside an <a> to avoid nested anchors */}
       {showShare && fingerprint && (
         <div className="flex justify-center mt-2">
-          <Link
-            href={logoUrl(fingerprint)}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ChainLinkIcon className="size-3.5" />
-            Share
-          </Link>
+          {isWrappedInLink ? (
+            <span className="inline-flex items-center gap-1 text-xs text-primary">
+              <ChainLinkIcon className="size-3.5" />
+              Share
+            </span>
+          ) : (
+            <Link
+              href={logoUrl(fingerprint)}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ChainLinkIcon className="size-3.5" />
+              Share
+            </Link>
+          )}
         </div>
       )}
     </div>
@@ -196,7 +204,7 @@ export function LogoCard(props: LogoCardProps) {
   const href = fingerprint ? logoUrl(fingerprint) : null;
   const needsTooltip = (size === "xs" || size === "sm") && svgUrl;
 
-  const inner = <LogoCardInner {...props} />;
+  const inner = <LogoCardInner {...props} isWrappedInLink={shouldLink && !!href} />;
 
   // xs/sm: wrap with tooltip for hover preview
   const withTooltip = needsTooltip ? (

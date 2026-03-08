@@ -139,28 +139,39 @@ export async function DashboardContent({
       </div>
 
       <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <IndustryChart initialData={industryData ?? undefined} />
-        <ExpiryChart initialData={expiryData ?? undefined} />
-        <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
+        <div className="rounded-lg border border-border p-2">
+          <IndustryChart initialData={industryData ?? undefined} />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <ExpiryChart initialData={expiryData ?? undefined} />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
+        </div>
       </div>
 
       <div data-dashboard-section="3b" className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <RuaProviderChart />
+        <div className="rounded-lg border border-border p-2">
+          <RuaProviderChart />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <DmarcDriftFeed />
+        </div>
       </div>
 
       <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-3">
-        <TopOrgs
-          initialData={topOrgsData?.data ?? undefined}
-          initialTotalPages={topOrgsData?.totalPages ?? undefined}
-        />
-        <RecentCerts
-          initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
-          initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
-        />
-      </div>
-
-      <div data-dashboard-section="5">
-        <DmarcDriftFeed />
+        <div className="rounded-lg border border-border p-2">
+          <TopOrgs
+            initialData={topOrgsData?.data ?? undefined}
+            initialTotalPages={topOrgsData?.totalPages ?? undefined}
+          />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <RecentCerts
+            initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
+            initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
+          />
+        </div>
       </div>
     </div>
   );

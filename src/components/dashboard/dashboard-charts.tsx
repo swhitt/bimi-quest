@@ -58,7 +58,7 @@ export function DashboardCharts({
   hasDateFilter,
 }: DashboardChartsProps) {
   return (
-    <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
+    <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border rounded-lg border border-border">
       <div className="flex-1 min-w-0">
         <ChartErrorBoundary>
           <MarketShareChart data={caBreakdown} selectedCA={selectedCA} apiQuery={apiQuery} />
