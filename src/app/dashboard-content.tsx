@@ -1,6 +1,7 @@
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { DmarcPolicyChart } from "@/components/dashboard/dmarc-policy-chart";
 import { ExpiryChart } from "@/components/dashboard/expiry-chart";
+import { RuaProviderChart } from "@/components/dashboard/rua-provider-chart";
 import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
@@ -140,6 +141,10 @@ export async function DashboardContent({
         <IndustryChart initialData={industryData ?? undefined} />
         <ExpiryChart initialData={expiryData ?? undefined} />
         <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
+      </div>
+
+      <div data-dashboard-section="3b" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <RuaProviderChart />
       </div>
 
       <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-3">
