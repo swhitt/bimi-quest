@@ -28,6 +28,15 @@ vi.mock("@/lib/logger", () => ({
   log: vi.fn(),
 }));
 
+// Mock DB so the fire-and-forget upsert doesn't hit a real database
+const mockDbChain = {
+  values: vi.fn(() => mockDbChain),
+  onConflictDoUpdate: vi.fn(() => mockDbChain),
+  catch: vi.fn(() => mockDbChain),
+};
+vi.mock("@/lib/db", () => ({ db: { insert: vi.fn(() => mockDbChain) } }));
+vi.mock("@/lib/db/schema", () => ({ domainBimiState: {} }));
+
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 import { checkRateLimit } from "@/lib/rate-limit";
 // Import route after all mocks are registered
@@ -48,9 +57,21 @@ function makeValidateResult(overrides: Record<string, unknown> = {}) {
   return {
     domain: "example.com",
     selector: "default",
-    bimi: { found: false },
-    dmarc: { found: false },
+    bimi: {
+      found: false,
+      record: null,
+      lps: null,
+      avp: null,
+      declined: false,
+      selector: "default",
+      orgDomainFallback: false,
+    },
+    dmarc: { found: false, record: null, validForBIMI: false },
+    svg: { found: false, sizeBytes: null, validation: null, indicatorHash: null },
     certificate: { found: false },
+    grade: "F",
+    timestamp: new Date().toISOString(),
+    dnsSnapshot: { bimi: null, dmarc: null, svg: null, certificate: null, meta: { grade: "F" } },
     ...overrides,
   };
 }
