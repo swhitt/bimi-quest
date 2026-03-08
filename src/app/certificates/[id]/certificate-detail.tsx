@@ -294,13 +294,13 @@ export function CertificateDetail({ id }: { id: string }) {
   }, [selectedAsn1Node]);
 
   // Once the ASN.1 tree is parsed and visible, resolve any hash path and scroll into view.
-  const [asn1HashResolved, setAsn1HashResolved] = useState(false);
+  const asn1HashResolved = useRef(false);
 
   useEffect(() => {
-    if (!asn1Parsed || !showAsn1 || asn1HashResolved) return;
+    if (!asn1Parsed || !showAsn1 || asn1HashResolved.current) return;
     const hash = window.location.hash;
     if (!hash.startsWith("#asn1")) return;
-    setAsn1HashResolved(true);
+    asn1HashResolved.current = true;
 
     asn1SectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -308,9 +308,9 @@ export function CertificateDetail({ id }: { id: string }) {
     if (hash.startsWith(prefix) && hash.length > prefix.length) {
       const pathPart = hash.slice(prefix.length);
       const node = resolveAsn1NodePath(asn1Parsed.tree, pathPart);
-      if (node) handleAsn1NodeSelect(node);
+      if (node) requestAnimationFrame(() => handleAsn1NodeSelect(node));
     }
-  }, [asn1Parsed, showAsn1, asn1HashResolved, handleAsn1NodeSelect]);
+  }, [asn1Parsed, showAsn1, handleAsn1NodeSelect]);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificate...</div>;
