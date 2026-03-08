@@ -20,6 +20,7 @@ const navItems = [
   { href: "/ct/gorgon", label: "Log" },
   { href: "/validate", label: "Validate" },
   { href: "/domains", label: "Domains" },
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/map", label: "Map" },
   { href: "/tools/asn1", label: "ASN.1" },
 ];
