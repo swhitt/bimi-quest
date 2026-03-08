@@ -1,7 +1,10 @@
+import { sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ingestFromPem } from "@/lib/bimi/ingest-from-pem";
 import { validateDomain } from "@/lib/bimi/validate";
+import { db } from "@/lib/db";
+import { domainBimiState } from "@/lib/db/schema";
 import { log } from "@/lib/logger";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -68,6 +71,61 @@ export async function POST(request: NextRequest) {
     if (result.certificate.found && result.certificate.rawPem) {
       ingestFromPem(result.certificate.rawPem, "validation").catch((err) => console.warn("ingestFromPem failed:", err));
     }
+
+    // Persist DNS snapshot and validation state (fire-and-forget)
+    db.insert(domainBimiState)
+      .values({
+        domain: result.domain,
+        bimiRecordRaw: result.bimi.record?.raw ?? null,
+        bimiVersion: result.bimi.record?.version ?? null,
+        bimiLogoUrl: result.bimi.record?.logoUrl ?? null,
+        bimiAuthorityUrl: result.bimi.record?.authorityUrl ?? null,
+        bimiLpsTag: result.bimi.lps,
+        bimiAvpTag: result.bimi.avp,
+        bimiDeclination: result.bimi.declined,
+        bimiSelector: result.bimi.selector,
+        bimiOrgDomainFallback: result.bimi.orgDomainFallback,
+        dmarcRecordRaw: result.dmarc.record?.raw ?? null,
+        dmarcPolicy: result.dmarc.record?.policy ?? null,
+        dmarcPct: result.dmarc.record?.pct ?? null,
+        dmarcValid: result.dmarc.validForBIMI,
+        svgFetched: result.svg.found,
+        svgSizeBytes: result.svg.sizeBytes,
+        svgTinyPsValid: result.svg.validation?.valid ?? null,
+        svgValidationErrors: result.svg.validation?.errors ?? null,
+        svgIndicatorHash: result.svg.indicatorHash,
+        bimiGrade: result.grade,
+        dnsSnapshot: result.dnsSnapshot,
+        lastChecked: result.timestamp,
+      })
+      .onConflictDoUpdate({
+        target: domainBimiState.domain,
+        set: {
+          bimiRecordRaw: result.bimi.record?.raw ?? null,
+          bimiVersion: result.bimi.record?.version ?? null,
+          bimiLogoUrl: result.bimi.record?.logoUrl ?? null,
+          bimiAuthorityUrl: result.bimi.record?.authorityUrl ?? null,
+          bimiLpsTag: result.bimi.lps,
+          bimiAvpTag: result.bimi.avp,
+          bimiDeclination: result.bimi.declined,
+          bimiSelector: result.bimi.selector,
+          bimiOrgDomainFallback: result.bimi.orgDomainFallback,
+          dmarcRecordRaw: result.dmarc.record?.raw ?? null,
+          dmarcPolicy: result.dmarc.record?.policy ?? null,
+          dmarcPct: result.dmarc.record?.pct ?? null,
+          dmarcValid: result.dmarc.validForBIMI,
+          svgFetched: result.svg.found,
+          svgSizeBytes: result.svg.sizeBytes,
+          svgTinyPsValid: result.svg.validation?.valid ?? null,
+          svgValidationErrors: result.svg.validation?.errors ?? null,
+          svgIndicatorHash: result.svg.indicatorHash,
+          bimiGrade: result.grade,
+          dnsSnapshot: result.dnsSnapshot,
+          lastChecked: result.timestamp,
+          updatedAt: sql`now()`,
+        },
+      })
+      .catch((err) => console.warn("domainBimiState upsert failed:", err));
 
     // Strip rawPem from the response (internal use only)
     const { rawPem: _, ...certWithoutPem } = result.certificate;

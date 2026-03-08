@@ -7,6 +7,8 @@ import { errorMessage } from "@/lib/utils";
 import { type CAAResult, isIssuerAuthorizedByCAA, lookupCAA } from "./caa";
 import { type DMARCRecord, getDMARCBIMIReason, isDMARCValidForBIMI, lookupDMARC } from "./dmarc";
 import { type BIMIRecord, lookupBIMIRecord } from "./dns";
+import type { DnsSnapshot } from "@/lib/db/schema";
+import { buildDnsSnapshot } from "./dns-snapshot";
 import { computeGrade } from "./grade";
 import { type LpsTieredResult, tieredLpsLookup } from "./lps";
 import { lookupReceiverTrust, type ReceiverTrustResult } from "./receiver-trust";
@@ -92,6 +94,7 @@ export interface BIMIValidationResult {
   checks: BimiCheckItem[];
   authResult: string;
   responseHeaders: Record<string, string>;
+  dnsSnapshot: DnsSnapshot;
   overallValid: boolean;
   errors: string[];
 }
@@ -345,7 +348,58 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
   const declined = bimiRecord?.declined ?? false;
   const { grade, summary: gradeSummary } = computeGrade(checks, declined);
 
-  // 8. Generate auth result and response headers
+  // 8. Build structured DNS snapshot for domain detail pages
+  const dnsSnapshot = buildDnsSnapshot({
+    bimiRecord: bimiRecord
+      ? {
+          raw: bimiRecord.raw,
+          version: bimiRecord.version,
+          logoUrl: bimiRecord.logoUrl,
+          authorityUrl: bimiRecord.authorityUrl,
+          lps: bimiRecord.lps,
+          avp: bimiRecord.avp,
+          declined: bimiRecord.declined,
+          selector: bimiRecord.selector,
+          orgDomainFallback: bimiRecord.orgDomainFallback,
+          orgDomain: bimiRecord.orgDomain ?? null,
+        }
+      : null,
+    dmarcRecord: dmarcRecord
+      ? {
+          raw: dmarcRecord.raw,
+          policy: dmarcRecord.policy,
+          sp: dmarcRecord.sp ?? null,
+          pct: dmarcRecord.pct,
+          rua: dmarcRecord.rua ?? null,
+          ruf: dmarcRecord.ruf ?? null,
+          adkim: dmarcRecord.adkim ?? null,
+          aspf: dmarcRecord.aspf ?? null,
+          fo: dmarcRecord.fo ?? null,
+          validForBimi: dmarcValid,
+        }
+      : null,
+    svg: svgResult.found
+      ? {
+          found: true,
+          sizeBytes: svgResult.sizeBytes,
+          contentType: null,
+          tinyPsValid: svgResult.validation?.valid ?? null,
+          indicatorHash: svgResult.indicatorHash,
+          validationErrors: svgResult.validation?.errors ?? null,
+        }
+      : null,
+    certificate: certResult.found
+      ? {
+          found: true,
+          authorityUrl: certResult.authorityUrl,
+          certType: certResult.certType,
+          issuer: certResult.issuer,
+        }
+      : null,
+    grade,
+  });
+
+  // 9. Generate auth result and response headers
   const authResult = buildAuthResult(domain, selector, bimiRecord, svgResult, certResult, dmarcValid, declined);
   const responseHeaders = buildResponseHeaders(bimiRecord, svgContent);
 
@@ -381,6 +435,7 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     checks,
     authResult,
     responseHeaders,
+    dnsSnapshot,
     overallValid,
     errors,
   };
