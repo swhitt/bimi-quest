@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { DnsSnapshot } from "@/lib/db/schema";
+import { hostUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -231,32 +232,37 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           <CardHeader>
             <CardTitle>Certificate</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {cert ? (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
-                <KV label="Type" value={cert.certType} mono />
-                <KV label="Issuer" value={cert.issuer} />
-                {cert.authorityUrl && (
-                  <KV
-                    label="Authority URL"
-                    value={
-                      cert.authorityUrl.startsWith("https://") ? (
-                        <a
-                          href={cert.authorityUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary underline break-all"
-                        >
-                          {cert.authorityUrl}
-                        </a>
-                      ) : (
-                        <span className="font-mono break-all">{cert.authorityUrl}</span>
-                      )
-                    }
-                  />
-                )}
-              </dl>
+              <>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                  <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
+                  <KV label="Type" value={cert.certType ? <Badge variant="secondary">{cert.certType}</Badge> : null} />
+                  <KV label="Issuer" value={cert.issuer} />
+                  {cert.authorityUrl && (
+                    <KV
+                      label="Authority URL"
+                      value={
+                        cert.authorityUrl.startsWith("https://") ? (
+                          <a
+                            href={cert.authorityUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline break-all"
+                          >
+                            {cert.authorityUrl}
+                          </a>
+                        ) : (
+                          <span className="font-mono break-all">{cert.authorityUrl}</span>
+                        )
+                      }
+                    />
+                  )}
+                </dl>
+                <Link href={hostUrl(domain)} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                  View certificates for {domain}
+                </Link>
+              </>
             ) : (
               <div className="space-y-3">
                 {data.bimiAuthorityUrl && (

@@ -18,7 +18,7 @@ import { ExternalArrowIcon } from "@/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
-import { certUrl } from "@/lib/entity-urls";
+import { certUrl, domainUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { errorMessage } from "@/lib/utils";
@@ -548,6 +548,26 @@ export function CertificateDetail({ id }: { id: string }) {
                         <span key={san} className="inline-flex items-center">
                           {i > 0 && <span className="mx-1 text-muted-foreground">,</span>}
                           <HostChip hostname={san} showBimiCheck />
+                          <Link
+                            href={domainUrl(san)}
+                            className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
+                            title={`BIMI DNS for ${san}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <svg
+                              className="size-3.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M2 12h20" />
+                              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                            </svg>
+                          </Link>
                           {totalCount > 1 && (
                             <span className="text-xs text-muted-foreground font-normal ml-1">· {totalCount} certs</span>
                           )}
@@ -852,7 +872,12 @@ export function CertificateDetail({ id }: { id: string }) {
                     return (
                       <div key={san} className="pl-[3.5rem] flex items-center gap-1">
                         <span className="text-muted-foreground">DNS:</span>
-                        <HostnameLink hostname={san} />
+                        <Link
+                          href={domainUrl(san)}
+                          className="font-mono text-sm text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          {san}
+                        </Link>
                         {totalCount > 1 && (
                           <span className="text-xs text-muted-foreground font-normal">· {totalCount} certs</span>
                         )}
