@@ -1,4 +1,5 @@
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { DmarcPolicyChart } from "@/components/dashboard/dmarc-policy-chart";
 import { ExpiryChart } from "@/components/dashboard/expiry-chart";
 import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
@@ -7,7 +8,12 @@ import { TopOrgs } from "@/components/dashboard/top-orgs";
 import { displayIntermediateCa } from "@/lib/ca-display";
 import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { fetchDashboardData } from "@/lib/data/dashboard";
-import { fetchExpiryTimeline, fetchIndustryBreakdown, fetchTopOrgs } from "@/lib/data/stats";
+import {
+  fetchDmarcPolicyDistribution,
+  fetchExpiryTimeline,
+  fetchIndustryBreakdown,
+  fetchTopOrgs,
+} from "@/lib/data/stats";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 
 /**
@@ -74,12 +80,13 @@ export async function DashboardContent({
   recentCertsSearchParams.set("dir", "desc");
 
   // Fetch all data in parallel directly from the database (no loopback HTTP calls)
-  const [dashboardData, industryData, expiryData, topOrgsData, recentCertsData] = await Promise.all([
+  const [dashboardData, industryData, expiryData, topOrgsData, recentCertsData, dmarcPolicyData] = await Promise.all([
     fetchDashboardData(filterParams).catch(() => null),
     fetchIndustryBreakdown(filterParams).catch(() => null),
     fetchExpiryTimeline(filterParams).catch(() => null),
     fetchTopOrgs(filterParams).catch(() => null),
     fetchCertificates(recentCertsSearchParams, { page: 1, limit: 7, sort: "notBefore", dir: "desc" }).catch(() => null),
+    fetchDmarcPolicyDistribution(filterParams).catch(() => null),
   ]);
 
   if (!dashboardData) {
@@ -129,9 +136,10 @@ export async function DashboardContent({
         />
       </div>
 
-      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <IndustryChart initialData={industryData ?? undefined} />
         <ExpiryChart initialData={expiryData ?? undefined} />
+        <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
       </div>
 
       <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-3">

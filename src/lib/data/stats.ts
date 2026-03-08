@@ -1,8 +1,9 @@
 import { and, count, desc, gte, isNotNull, lte, max, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { buildStatsConditions } from "@/lib/db/filters";
+import { parseDate } from "@/lib/db/filters";
 import { cmcCount, vmcCount } from "@/lib/db/query-fragments";
-import { certificates } from "@/lib/db/schema";
+import { certificates, domainBimiState } from "@/lib/db/schema";
 
 export interface IndustryRow {
   industry: string | null;
@@ -109,4 +110,48 @@ export async function fetchTopOrgs(
   const data = rows.map(({ _groupCount, ...rest }) => rest);
 
   return { data, totalPages: Math.ceil(totalGroups / limit) };
+}
+
+export interface DmarcPolicyRow {
+  policy: string;
+  count: number;
+}
+
+/**
+ * Fetch DMARC policy distribution from domain_bimi_state.
+ * Groups by dmarc_policy, coalescing NULL to "unknown".
+ * Applies global filter params (ca, type, from, to) when present.
+ */
+export async function fetchDmarcPolicyDistribution(params: URLSearchParams): Promise<DmarcPolicyRow[]> {
+  const conditions: ReturnType<typeof sql>[] = [];
+
+  const caFilter = params.get("ca")?.trim();
+  const typeFilter = params.get("type")?.trim();
+  const fromDate = parseDate(params.get("from"));
+  const toDate = parseDate(params.get("to"));
+
+  if (caFilter) {
+    conditions.push(sql`${domainBimiState.dnsSnapshot}->'certificate'->>'issuer' ILIKE ${"%" + caFilter + "%"}`);
+  }
+  if (typeFilter === "VMC" || typeFilter === "CMC") {
+    conditions.push(sql`${domainBimiState.dnsSnapshot}->'certificate'->>'certType' = ${typeFilter}`);
+  }
+  if (fromDate) conditions.push(sql`${domainBimiState.lastChecked} >= ${fromDate}`);
+  if (toDate) conditions.push(sql`${domainBimiState.lastChecked} <= ${toDate}`);
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const policyCol = sql<string>`COALESCE(${domainBimiState.dmarcPolicy}, 'unknown')`;
+
+  const rows = await db
+    .select({
+      policy: policyCol.as("policy"),
+      count: count(),
+    })
+    .from(domainBimiState)
+    .where(where)
+    .groupBy(policyCol)
+    .orderBy(desc(count()));
+
+  return rows;
 }
