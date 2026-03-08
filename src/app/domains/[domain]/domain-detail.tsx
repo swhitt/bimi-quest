@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { DnsSnapshot } from "@/lib/db/schema";
+import { computeReadinessScore, type ReadinessResult, type ReadinessTier } from "@/lib/bimi/readiness-score";
 import { hostUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -126,6 +127,74 @@ function deriveGradeChecks(snap: DnsSnapshot): GradeCheck[] {
   return checks;
 }
 
+const TIER_COLORS: Record<ReadinessTier, string> = {
+  Excellent: "bg-green-600 text-white",
+  Good: "bg-lime-600 text-white",
+  Fair: "bg-yellow-500 text-black",
+  Poor: "bg-orange-500 text-white",
+  None: "bg-red-600 text-white",
+};
+
+const TIER_BAR_COLORS: Record<ReadinessTier, string> = {
+  Excellent: "bg-green-600",
+  Good: "bg-lime-600",
+  Fair: "bg-yellow-500",
+  Poor: "bg-orange-500",
+  None: "bg-red-600",
+};
+
+function ReadinessScoreCard({ result }: { result: ReadinessResult }) {
+  const pct = Math.round((result.score / result.maxScore) * 100);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3">
+          BIMI Readiness Score
+          <Badge className={cn(TIER_COLORS[result.tier])}>{result.tier}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Score bar */}
+        <div className="flex items-center gap-4">
+          <span className="text-3xl font-bold tabular-nums">{result.score}</span>
+          <span className="text-muted-foreground text-lg">/&thinsp;{result.maxScore}</span>
+          <div className="bg-muted relative h-3 flex-1 overflow-hidden rounded-full">
+            <div
+              className={cn("h-full rounded-full transition-all", TIER_BAR_COLORS[result.tier])}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Check list */}
+        <ul className="space-y-2">
+          {result.checks.map((check) => (
+            <li key={check.label} className="flex items-start gap-2 text-sm">
+              <span
+                className={cn(
+                  "mt-0.5 shrink-0 font-mono text-base leading-none",
+                  check.passed ? "text-green-600" : "text-red-600",
+                )}
+              >
+                {check.passed ? "\u2713" : "\u2717"}
+              </span>
+              <div className="flex-1">
+                <span className="font-medium">{check.label}</span>
+                <span className="text-muted-foreground ml-2">{check.detail}</span>
+              </div>
+              <span
+                className={cn("shrink-0 tabular-nums", check.points > 0 ? "text-green-600" : "text-muted-foreground")}
+              >
+                {check.points}/{check.maxPoints}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DomainDetail({ domain, data }: DomainDetailProps) {
   // Prefer dnsSnapshot fields when available, fall back to flat columns
   const bimi = data.dnsSnapshot?.bimi;
@@ -141,6 +210,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
 
   const gradeChecks = data.dnsSnapshot ? deriveGradeChecks(data.dnsSnapshot) : null;
   const grade = data.dnsSnapshot?.meta.grade ?? data.bimiGrade;
+  const readiness = data.dnsSnapshot ? computeReadinessScore(data.dnsSnapshot) : null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
@@ -192,6 +262,9 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* BIMI Readiness Score */}
+      {readiness && <ReadinessScoreCard result={readiness} />}
 
       {/* BIMI Record */}
       <Card>
