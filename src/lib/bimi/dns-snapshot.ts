@@ -42,6 +42,14 @@ export function buildDnsSnapshot(params: {
     authorityUrl: string | null;
     certType: string | null;
     issuer: string | null;
+    serialNumber?: string | null;
+    subject?: string | null;
+    notBefore?: string | null;
+    notAfter?: string | null;
+    subjectAltNames?: string[] | null;
+    markType?: string | null;
+    logoHashAlgorithm?: string | null;
+    logoHashValue?: string | null;
   } | null;
   grade: string | null;
 }): DnsSnapshot {

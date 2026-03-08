@@ -69,6 +69,8 @@ export interface BIMIValidationResult {
     authorityUrl: string | null;
     certType: string | null;
     issuer: string | null;
+    serialNumber: string | null;
+    subject: string | null;
     validFrom: Date | null;
     validTo: Date | null;
     isExpired: boolean | null;
@@ -77,6 +79,10 @@ export interface BIMIValidationResult {
     authorizedCa: boolean | null;
     certSvgHash: string | null;
     svgMatch: boolean | null;
+    subjectAltNames: string[] | null;
+    markType: string | null;
+    logoHashAlgorithm: string | null;
+    logoHashValue: string | null;
   };
   caa: CAAResult | null;
   lpsTrace: LpsTieredResult | null;
@@ -212,6 +218,8 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     authorityUrl: null,
     certType: null,
     issuer: null,
+    serialNumber: null,
+    subject: null,
     validFrom: null,
     validTo: null,
     isExpired: null,
@@ -220,6 +228,10 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     authorizedCa: null,
     certSvgHash: null,
     svgMatch: null,
+    subjectAltNames: null,
+    markType: null,
+    logoHashAlgorithm: null,
+    logoHashValue: null,
   };
 
   if (bimiRecord?.authorityUrl) {
@@ -249,6 +261,8 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
             authorityUrl: bimiRecord.authorityUrl,
             certType: certInfo.certType,
             issuer: certInfo.issuer,
+            serialNumber: certInfo.serialNumber,
+            subject: certInfo.subject,
             validFrom: certInfo.notBefore,
             validTo: certInfo.notAfter,
             isExpired: certInfo.notAfter < now,
@@ -257,6 +271,10 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
             authorizedCa,
             certSvgHash: certInfo.logotypeSvgHash,
             svgMatch,
+            subjectAltNames: certInfo.sans.length > 0 ? certInfo.sans : null,
+            markType: certInfo.markType,
+            logoHashAlgorithm: certInfo.logotypeSvgHash ? "SHA-256" : null,
+            logoHashValue: certInfo.logotypeSvgHash,
           };
           if (certInfo.notAfter < now) {
             errors.push("BIMI certificate is expired");

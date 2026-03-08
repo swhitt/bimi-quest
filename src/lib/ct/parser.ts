@@ -373,6 +373,8 @@ function extractLogotypeSvgHash(cert: X509Certificate): string | null {
 }
 
 export interface CertBasicInfo {
+  serialNumber: string;
+  subject: string;
   issuer: string;
   issuerOrg: string | null;
   notBefore: Date;
@@ -391,6 +393,8 @@ export function parseCertBasicInfo(pem: string): CertBasicInfo | null {
     const cert = new X509Certificate(toArrayBuffer(der));
     const markType = extractMarkType(cert);
     return {
+      serialNumber: cert.serialNumber,
+      subject: cert.subject,
       issuer: cert.issuer,
       issuerOrg: extractDnField(cert.issuer, "O") ?? extractDnField(cert.issuer, "2.5.4.10"),
       notBefore: cert.notBefore,

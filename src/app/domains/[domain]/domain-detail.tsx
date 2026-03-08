@@ -65,6 +65,66 @@ function BoolBadge({ value, trueLabel, falseLabel }: { value: boolean | null; tr
   );
 }
 
+interface GradeCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+/** Derive grade-relevant checks from the DnsSnapshot data. */
+function deriveGradeChecks(snap: DnsSnapshot): GradeCheck[] {
+  const checks: GradeCheck[] = [];
+
+  // DMARC policy must be reject or quarantine with pct=100
+  const dmarcPolicy = snap.dmarc?.policy?.toLowerCase();
+  const dmarcPct = snap.dmarc?.pct;
+  const dmarcOk = snap.dmarc?.validForBimi ?? false;
+  checks.push({
+    label: "DMARC policy is reject or quarantine (pct=100)",
+    passed: dmarcOk,
+    detail: dmarcPolicy ? `p=${dmarcPolicy}, pct=${dmarcPct ?? "not set"}` : "No DMARC record found",
+  });
+
+  // BIMI record found
+  const bimiFound = snap.bimi?.raw != null && !snap.bimi?.declined;
+  checks.push({
+    label: "BIMI record found",
+    passed: bimiFound,
+    detail: snap.bimi?.declined
+      ? "Domain has explicitly declined BIMI"
+      : snap.bimi?.raw
+        ? `v=${snap.bimi.version ?? "BIMI1"}`
+        : "No BIMI TXT record",
+  });
+
+  // SVG logo found and Tiny PS compliant
+  const svgFound = snap.svg?.found ?? false;
+  const svgValid = snap.svg?.tinyPsValid ?? false;
+  checks.push({
+    label: "SVG logo found and valid (Tiny PS compliant)",
+    passed: svgFound && svgValid,
+    detail: !svgFound
+      ? "SVG not fetched"
+      : svgValid
+        ? `${(snap.svg?.sizeBytes ?? 0).toLocaleString()} bytes, Tiny PS valid`
+        : "SVG fetched but Tiny PS validation failed",
+  });
+
+  // VMC/CMC certificate present
+  const certFound = snap.certificate?.found ?? false;
+  checks.push({
+    label: "VMC/CMC certificate present",
+    passed: certFound,
+    detail: certFound
+      ? `${snap.certificate?.certType ?? "Certificate"} from ${snap.certificate?.issuer ?? "unknown"}`
+      : snap.bimi?.authorityUrl
+        ? "Certificate could not be fetched"
+        : "No authority URL specified",
+  });
+
+  return checks;
+}
+
 export function DomainDetail({ domain, data }: DomainDetailProps) {
   // Prefer dnsSnapshot fields when available, fall back to flat columns
   const bimi = data.dnsSnapshot?.bimi;
@@ -77,6 +137,9 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
 
   const logoUrl = bimi?.logoUrl ?? data.bimiLogoUrl;
   const authorityUrl = bimi?.authorityUrl ?? data.bimiAuthorityUrl;
+
+  const gradeChecks = data.dnsSnapshot ? deriveGradeChecks(data.dnsSnapshot) : null;
+  const grade = data.dnsSnapshot?.meta.grade ?? data.bimiGrade;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
@@ -96,6 +159,38 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           <Link href={`/validate?q=${encodeURIComponent(domain)}`}>Re-check</Link>
         </Button>
       </div>
+
+      {/* Grade Breakdown */}
+      {gradeChecks && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              Grade Breakdown
+              {grade && <Badge className={cn("text-lg px-3 py-0.5", GRADE_COLORS[grade] ?? "bg-muted")}>{grade}</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {gradeChecks.map((check) => (
+                <li key={check.label} className="flex items-start gap-2 text-sm">
+                  <span
+                    className={cn(
+                      "mt-0.5 shrink-0 font-mono text-base leading-none",
+                      check.passed ? "text-green-600" : "text-red-600",
+                    )}
+                  >
+                    {check.passed ? "\u2713" : "\u2717"}
+                  </span>
+                  <div>
+                    <span className="font-medium">{check.label}</span>
+                    <span className="text-muted-foreground ml-2">{check.detail}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* BIMI Record */}
       <Card>
@@ -239,6 +334,21 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
                   <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
                   <KV label="Type" value={cert.certType ? <Badge variant="secondary">{cert.certType}</Badge> : null} />
                   <KV label="Issuer" value={cert.issuer} />
+                  <KV label="Subject" value={cert.subject} />
+                  <KV label="Serial Number" value={cert.serialNumber} mono />
+                  <KV label="Not Before" value={cert.notBefore} />
+                  <KV label="Not After" value={cert.notAfter} />
+                  {cert.subjectAltNames && cert.subjectAltNames.length > 0 && (
+                    <KV label="SANs" value={cert.subjectAltNames.join(", ")} mono />
+                  )}
+                  <KV label="Mark Type" value={cert.markType} />
+                  {cert.logoHashValue && (
+                    <KV
+                      label="Logo Hash"
+                      value={`${cert.logoHashAlgorithm ?? "SHA-256"}: ${cert.logoHashValue}`}
+                      mono
+                    />
+                  )}
                   {cert.authorityUrl && (
                     <KV
                       label="Authority URL"
