@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
+import { UtcTime } from "@/components/ui/utc-time";
 import { logoUrl } from "@/lib/entity-urls";
 import type { DecodedCert, DecodedLeaf } from "@/lib/ct/decode-entry";
 
@@ -120,10 +121,10 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
           </div>
         </Field>
         <Field label="Not Before">
-          <span className="tabular-nums">{formatDate(cert.notBefore)}</span>
+          <UtcTime date={cert.notBefore} showTime />
         </Field>
         <Field label="Not After">
-          <span className="tabular-nums">{formatDate(cert.notAfter)}</span>
+          <UtcTime date={cert.notAfter} showTime />
         </Field>
         <Field label="SANs">
           {cert.sans.length > 0 ? (
@@ -202,7 +203,7 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
           </details>
         </Field>
         <Field label="Timestamp">
-          <span className="tabular-nums">{leaf.timestampDate}</span>
+          <UtcTime date={leaf.timestampDate} showTime />
         </Field>
         <Field label="Entry Type">
           <Badge variant={leaf.entryType === "x509_entry" ? "secondary" : "outline"} className="text-[10px] px-1.5">

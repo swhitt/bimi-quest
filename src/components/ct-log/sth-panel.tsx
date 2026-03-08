@@ -69,16 +69,9 @@ export function STHPanel({ sth, loading, lastPolled }: STHPanelProps) {
           {loading || !sth ? (
             <Skeleton className="h-4 w-16" />
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="text-sm font-semibold tabular-nums cursor-help">
-                  <UtcTime date={new Date(sth.timestamp)} compact />
-                </p>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="font-mono">{new Date(sth.timestamp).toISOString().slice(0, 19).replace("T", " ")} UTC</p>
-              </TooltipContent>
-            </Tooltip>
+            <p className="text-sm font-semibold tabular-nums">
+              <UtcTime date={new Date(sth.timestamp)} compact />
+            </p>
           )}
         </div>
 
