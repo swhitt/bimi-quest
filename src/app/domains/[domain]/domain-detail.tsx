@@ -226,36 +226,70 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
       )}
 
       {/* Certificate */}
-      {cert && (
+      {(cert || data.bimiAuthorityUrl) && (
         <Card>
           <CardHeader>
             <CardTitle>Certificate</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
-              <KV label="Type" value={cert.certType} mono />
-              <KV label="Issuer" value={cert.issuer} />
-              {cert.authorityUrl && (
-                <KV
-                  label="Authority URL"
-                  value={
-                    cert.authorityUrl.startsWith("https://") ? (
-                      <a
-                        href={cert.authorityUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline break-all"
-                      >
-                        {cert.authorityUrl}
-                      </a>
-                    ) : (
-                      <span className="font-mono break-all">{cert.authorityUrl}</span>
-                    )
-                  }
-                />
-              )}
-            </dl>
+            {cert ? (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
+                <KV label="Type" value={cert.certType} mono />
+                <KV label="Issuer" value={cert.issuer} />
+                {cert.authorityUrl && (
+                  <KV
+                    label="Authority URL"
+                    value={
+                      cert.authorityUrl.startsWith("https://") ? (
+                        <a
+                          href={cert.authorityUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline break-all"
+                        >
+                          {cert.authorityUrl}
+                        </a>
+                      ) : (
+                        <span className="font-mono break-all">{cert.authorityUrl}</span>
+                      )
+                    }
+                  />
+                )}
+              </dl>
+            ) : (
+              <div className="space-y-3">
+                {data.bimiAuthorityUrl && (
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <KV
+                      label="Authority URL"
+                      value={
+                        data.bimiAuthorityUrl.startsWith("https://") ? (
+                          <a
+                            href={data.bimiAuthorityUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline break-all"
+                          >
+                            {data.bimiAuthorityUrl}
+                          </a>
+                        ) : (
+                          <span className="font-mono break-all">{data.bimiAuthorityUrl}</span>
+                        )
+                      }
+                    />
+                  </dl>
+                )}
+                <p className="text-muted-foreground text-sm">
+                  Certificate details were not captured during initial ingestion.
+                </p>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/validate?q=${encodeURIComponent(domain)}`}>
+                    Run a full check to see certificate details
+                  </Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
