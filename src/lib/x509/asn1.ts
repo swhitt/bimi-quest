@@ -99,7 +99,7 @@ export function decodeOid(bytes: Uint8Array): string {
   parts.push(bytes[0] % 40);
   let value = 0;
   for (let i = 1; i < bytes.length; i++) {
-    value = (value << 7) | (bytes[i] & 0x7f);
+    value = value * 128 + (bytes[i] & 0x7f);
     if ((bytes[i] & 0x80) === 0) {
       parts.push(value);
       value = 0;
@@ -126,11 +126,11 @@ export function encodeOid(oid: string): Uint8Array {
       // Multi-byte base-128 encoding with continuation bits
       const encoded: number[] = [];
       let v = val;
-      encoded.push(v & 0x7f);
-      v >>= 7;
+      encoded.push(v % 128);
+      v = Math.floor(v / 128);
       while (v > 0) {
-        encoded.push((v & 0x7f) | 0x80);
-        v >>= 7;
+        encoded.push((v % 128) | 0x80);
+        v = Math.floor(v / 128);
       }
       encoded.reverse();
       bytes.push(...encoded);

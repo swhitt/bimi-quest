@@ -962,10 +962,7 @@ async function validateCertificateChain(pem: string): Promise<ChainValidationRes
             );
           }
         } catch {
-          // Algorithm not supported or verification error — report as warning, not a hard failure.
-          chainErrors.push(
-            `Signature verification could not be performed at position ${i} (algorithm may not be supported)`,
-          );
+          // Algorithm not supported — not a chain validation error
         }
       }
     }

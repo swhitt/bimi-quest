@@ -6,6 +6,7 @@ export interface ReceiverTrustEntry {
   dnsName: string;
   found: boolean;
   txtValue: string | null;
+  error?: string; // DNS error message, if any (non-NXDOMAIN errors)
 }
 
 export interface ReceiverTrustResult {
@@ -36,6 +37,7 @@ async function lookupReceiverTrustAt(receiverDomain: string, selector: string): 
     if (isDnsNotFoundError(err)) {
       return { receiverDomain, dnsName, found: false, txtValue: null };
     }
-    return { receiverDomain, dnsName, found: false, txtValue: null };
+    const msg = err instanceof Error ? err.message : String(err);
+    return { receiverDomain, dnsName, found: false, txtValue: null, error: `DNS error: ${msg}` };
   }
 }

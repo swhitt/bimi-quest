@@ -228,6 +228,7 @@ export async function scoreNotabilityBatch(brands: BrandInput[]): Promise<Map<st
     }
   } catch (err) {
     console.warn("scoreNotabilityBatch failed:", errorMessage(err));
+    throw err; // Let caller handle — silent empty results hide failures
   }
 
   return results;

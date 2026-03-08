@@ -24,9 +24,12 @@ export function isTransientError(msg: string): boolean {
   return (
     msg.includes("fetch failed") ||
     msg.includes("CONNECT_TIMEOUT") ||
-    msg.includes("connection") ||
+    msg.includes("connection refused") ||
+    msg.includes("connection reset") ||
+    msg.includes("connection closed") ||
     msg.includes("too many clients") ||
     msg.includes("ECONNRESET") ||
+    msg.includes("ECONNREFUSED") ||
     msg.includes("ETIMEDOUT") ||
     msg.includes("socket hang up")
   );
@@ -119,7 +122,7 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
         notabilityReason: notability?.reason,
         companyDescription: notability?.description,
         hasLogo: cert.hasLogo,
-      }).catch((err) => console.warn("Notification dispatch failed:", err));
+      }).catch((err) => console.error("[ingest] Notification dispatch failed:", errorMessage(err)));
     }
   }
 }

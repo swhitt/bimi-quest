@@ -36,10 +36,19 @@ describe("isPrivateIP", () => {
     expect(isPrivateIP("0.1.2.3")).toBe(true);
   });
 
+  it("detects reserved and documentation ranges", () => {
+    expect(isPrivateIP("240.0.0.1")).toBe(true);
+    expect(isPrivateIP("255.255.255.255")).toBe(true);
+    expect(isPrivateIP("192.0.0.1")).toBe(true);
+    expect(isPrivateIP("192.0.2.1")).toBe(true);
+    expect(isPrivateIP("198.51.100.1")).toBe(true);
+    expect(isPrivateIP("203.0.113.1")).toBe(true);
+  });
+
   it("allows public IPs", () => {
     expect(isPrivateIP("8.8.8.8")).toBe(false);
     expect(isPrivateIP("1.1.1.1")).toBe(false);
-    expect(isPrivateIP("203.0.113.1")).toBe(false);
+    expect(isPrivateIP("203.0.114.1")).toBe(false);
     expect(isPrivateIP("172.15.0.1")).toBe(false);
     expect(isPrivateIP("172.32.0.1")).toBe(false);
     expect(isPrivateIP("100.63.255.255")).toBe(false);

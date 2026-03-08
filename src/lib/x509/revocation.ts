@@ -14,7 +14,9 @@ import { pemToDer } from "@/lib/pem";
 function encodeLength(len: number): number[] {
   if (len < 0x80) return [len];
   if (len < 0x100) return [0x81, len];
-  return [0x82, (len >> 8) & 0xff, len & 0xff];
+  if (len < 0x10000) return [0x82, (len >> 8) & 0xff, len & 0xff];
+  if (len < 0x1000000) return [0x83, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff];
+  return [0x84, (len >> 24) & 0xff, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff];
 }
 
 function encodeSequence(contents: number[]): number[] {
@@ -30,11 +32,11 @@ function encodeOid(oid: string): number[] {
       encoded.push(val);
     } else {
       const bytes: number[] = [];
-      bytes.push(val & 0x7f);
-      val >>= 7;
+      bytes.push(val % 128);
+      val = Math.floor(val / 128);
       while (val > 0) {
-        bytes.push((val & 0x7f) | 0x80);
-        val >>= 7;
+        bytes.push((val % 128) | 0x80);
+        val = Math.floor(val / 128);
       }
       encoded.push(...bytes.reverse());
     }
@@ -111,7 +113,7 @@ function decodeOidFromBytes(bytes: Uint8Array): string {
   const parts: number[] = [Math.floor(bytes[0] / 40), bytes[0] % 40];
   let value = 0;
   for (let i = 1; i < bytes.length; i++) {
-    value = (value << 7) | (bytes[i] & 0x7f);
+    value = value * 128 + (bytes[i] & 0x7f);
     if ((bytes[i] & 0x80) === 0) {
       parts.push(value);
       value = 0;
@@ -147,6 +149,8 @@ export function buildOcspRequest(input: OcspRequestInput): Uint8Array {
   if (spkiChildren.length < 2) throw new Error("Invalid SubjectPublicKeyInfo");
   const bitString = spkiChildren[1];
   // BIT STRING: first byte is unused-bits count, rest is the key data
+  const unusedBits = bitString.value[0];
+  if (unusedBits !== 0) throw new Error(`Unexpected unused bits in SPKI BIT STRING: ${unusedBits}`);
   const keyBits = bitString.value.slice(1);
   const issuerKeyHash = createHash("sha1").update(keyBits).digest();
 
@@ -219,7 +223,12 @@ function parseGeneralizedTime(bytes: Uint8Array): string {
  *   nextUpdate [0] EXPLICIT GeneralizedTime OPTIONAL
  * }
  */
-export function parseOcspResponse(der: Uint8Array): { status: OcspStatus; thisUpdate?: string; nextUpdate?: string } {
+export function parseOcspResponse(der: Uint8Array): {
+  status: OcspStatus;
+  thisUpdate?: string;
+  nextUpdate?: string;
+  serialNumber?: string;
+} {
   const root = readDerTlv(der, 0);
   const rootChildren = parseChildren(root.value);
 
@@ -283,13 +292,21 @@ export function parseOcspResponse(der: Uint8Array): { status: OcspStatus; thisUp
   // singleResp[0] = certID (SEQUENCE), singleResp[1] = certStatus, singleResp[2] = thisUpdate
   if (singleResp.length < 3) throw new Error("Invalid SingleResponse structure");
 
+  // TODO: Verify CertID in SingleResponse matches the request (issuerNameHash, issuerKeyHash, serialNumber)
+  const certIdChildren = parseChildren(singleResp[0].value);
+  const responseSerial = certIdChildren.length >= 4 ? bytesToHex(certIdChildren[3].value) : undefined;
+
   const certStatusTlv = singleResp[1];
   let status: OcspStatus;
   // certStatus is a CHOICE with context tags:
   // [0] IMPLICIT NULL = good (tag 0x80, length 0)
   // [1] CONSTRUCTED = revoked (tag 0xa1)
   // [2] IMPLICIT NULL = unknown (tag 0x82, length 0)
-  const statusTag = certStatusTlv.tag & 0x1f; // strip class bits
+  // certStatus must be context-class tagged (0x80 bit set)
+  if ((certStatusTlv.tag & 0xc0) !== 0x80) {
+    throw new Error(`Unexpected tag class for certStatus: 0x${certStatusTlv.tag.toString(16)}`);
+  }
+  const statusTag = certStatusTlv.tag & 0x1f;
   if (statusTag === 0) {
     status = "good";
   } else if (statusTag === 1) {
@@ -313,7 +330,7 @@ export function parseOcspResponse(der: Uint8Array): { status: OcspStatus; thisUp
     }
   }
 
-  return { status, thisUpdate, nextUpdate };
+  return { status, thisUpdate, nextUpdate, serialNumber: responseSerial };
 }
 
 // Re-export for consumers that import pemToDer from this module
@@ -415,7 +432,7 @@ export interface CrlResult {
 export function parseCrl(
   der: Uint8Array,
   serialNumberHex: string,
-): { revoked: boolean; thisUpdate?: string; nextUpdate?: string } {
+): { revoked: boolean; thisUpdate?: string; nextUpdate?: string; stale: boolean } {
   const root = readDerTlv(der, 0);
   const rootChildren = parseChildren(root.value);
   const tbsCertList = rootChildren[0];
@@ -460,12 +477,14 @@ export function parseCrl(
       if (entryChildren.length === 0 || entryChildren[0].tag !== 0x02) continue;
       const entrySerial = normalizeSerialHex(bytesToHex(entryChildren[0].value));
       if (entrySerial === targetSerial) {
-        return { revoked: true, thisUpdate, nextUpdate };
+        const stale = nextUpdate ? new Date(nextUpdate) < new Date() : false;
+        return { revoked: true, thisUpdate, nextUpdate, stale };
       }
     }
   }
 
-  return { revoked: false, thisUpdate, nextUpdate };
+  const stale = nextUpdate ? new Date(nextUpdate) < new Date() : false;
+  return { revoked: false, thisUpdate, nextUpdate, stale };
 }
 
 function parseTime(tlv: DerTlv): string {

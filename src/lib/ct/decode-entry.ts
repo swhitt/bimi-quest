@@ -78,6 +78,7 @@ export interface DecodedCert {
   keyUsage: string[];
   extKeyUsage: string[];
   extensions: Array<{ oid: string; name: string | null; critical: boolean }>;
+  hasUnknownCriticalExtensions: boolean;
   logotypeSvg: string | null;
   certPem: string;
 }
@@ -165,17 +166,29 @@ function parseKeyUsage(cert: X509Certificate): string[] {
     const ext = cert.extensions.find((e) => e.type === "2.5.29.15");
     if (!ext) return [];
     const bytes = new Uint8Array(ext.value);
-    // Key Usage is a BIT STRING: tag 03, length, padding-bits, then the bits
-    if (bytes.length < 4 || bytes[0] !== 0x03) return [];
-    const padding = bytes[2];
-    const bits = bytes[3];
+    // Key Usage extension value is a BIT STRING
+    if (bytes.length < 3 || bytes[0] !== 0x03) return [];
+    // Parse DER length
+    let pos = 1;
+    let len = bytes[pos++];
+    if (len & 0x80) {
+      const numLenBytes = len & 0x7f;
+      len = 0;
+      for (let k = 0; k < numLenBytes; k++) {
+        len = (len << 8) | bytes[pos++];
+      }
+    }
+    if (pos >= bytes.length) return [];
+    const padding = bytes[pos++];
+    if (pos >= bytes.length) return [];
+    const bits = bytes[pos];
     const result: string[] = [];
     for (let i = 0; i < 8 - padding; i++) {
       if (bits & (0x80 >> i)) result.push(KU_BITS[i]);
     }
     // Second byte of bits if present
-    if (bytes.length > 4) {
-      const bits2 = bytes[4];
+    if (pos + 1 < bytes.length) {
+      const bits2 = bytes[pos + 1];
       for (let i = 0; i < 8; i++) {
         if (bits2 & (0x80 >> i)) {
           const idx = 8 + i;
@@ -221,7 +234,7 @@ function derOidToString(bytes: Uint8Array): string {
   const parts: number[] = [Math.floor(bytes[0] / 40), bytes[0] % 40];
   let val = 0;
   for (let i = 1; i < bytes.length; i++) {
-    val = (val << 7) | (bytes[i] & 0x7f);
+    val = val * 128 + (bytes[i] & 0x7f);
     if (!(bytes[i] & 0x80)) {
       parts.push(val);
       val = 0;
@@ -259,6 +272,7 @@ async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | nul
         name: OID_NAMES[ext.type] ?? null,
         critical: ext.critical,
       })),
+      hasUnknownCriticalExtensions: cert.extensions.some((ext) => ext.critical && !OID_NAMES[ext.type]),
       logotypeSvg: extractLogotypeSvg(cert).svgContent,
       certPem: derToPem(certDer),
     };
@@ -282,13 +296,28 @@ async function parseChainCerts(extraBuf: Uint8Array, entryType: number): Promise
       const fingerprint = await sha256(der);
       const isCA = cert.extensions.some((ext) => {
         if (ext.type !== "2.5.29.19") return false;
-        // Basic Constraints: SEQUENCE { BOOLEAN (cA) ... }
+        // BasicConstraints ::= SEQUENCE { cA BOOLEAN DEFAULT FALSE, pathLenConstraint INTEGER OPTIONAL }
         const bytes = new Uint8Array(ext.value);
-        // Look for TRUE (0x01 0x01 0xFF) inside the SEQUENCE
-        for (let i = 0; i < bytes.length - 2; i++) {
-          if (bytes[i] === 0x01 && bytes[i + 1] === 0x01 && bytes[i + 2] === 0xff) return true;
+        if (bytes.length < 2 || bytes[0] !== 0x30) return false; // Must be SEQUENCE
+        // Parse SEQUENCE length
+        let pos = 1;
+        let seqLen = bytes[pos++];
+        if (seqLen & 0x80) {
+          const numLenBytes = seqLen & 0x7f;
+          seqLen = 0;
+          for (let k = 0; k < numLenBytes; k++) {
+            seqLen = (seqLen << 8) | bytes[pos++];
+          }
         }
-        return false;
+        // Empty sequence means cA defaults to FALSE
+        if (seqLen === 0) return false;
+        // First element should be BOOLEAN (tag 0x01) for cA
+        if (pos >= bytes.length || bytes[pos] !== 0x01) return false;
+        pos++; // skip tag
+        if (pos >= bytes.length) return false;
+        const boolLen = bytes[pos++]; // should be 1
+        if (boolLen !== 1 || pos >= bytes.length) return false;
+        return bytes[pos] !== 0x00; // DER: 0x00 = FALSE, any non-zero = TRUE (typically 0xFF)
       });
       certs.push({
         subject: extractDnField(cert.subject, "CN") ?? cert.subject,

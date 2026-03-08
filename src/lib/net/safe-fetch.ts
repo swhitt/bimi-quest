@@ -1,5 +1,6 @@
 import { promises as dns } from "dns";
 import { Agent } from "undici";
+import { withDnsTimeout } from "@/lib/bimi/dns-utils";
 import { isPrivateHostname, isPrivateIP } from "./hostname";
 
 /**
@@ -67,7 +68,10 @@ async function resolveAndValidateIPs(hostname: string): Promise<string | null> {
     return null; // IP literal, no pinning needed
   }
 
-  const results = await Promise.allSettled([dns.resolve4(hostname), dns.resolve6(hostname)]);
+  const results = await Promise.allSettled([
+    withDnsTimeout(dns.resolve4(hostname)),
+    withDnsTimeout(dns.resolve6(hostname)),
+  ]);
 
   const ips: string[] = [];
   for (const result of results) {

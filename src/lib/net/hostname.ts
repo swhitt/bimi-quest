@@ -32,7 +32,7 @@ export function isPrivateIP(ip: string): boolean {
   // IPv4
   const ipv4Match = lower.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4Match) {
-    const [, a, b] = ipv4Match.map(Number);
+    const [, a, b, c] = ipv4Match.map(Number);
 
     if (a === 127) return true; // 127.0.0.0/8 loopback
     if (a === 10) return true; // 10.0.0.0/8
@@ -42,6 +42,11 @@ export function isPrivateIP(ip: string): boolean {
     if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 CGNAT
     if (a === 198 && (b === 18 || b === 19)) return true; // 198.18.0.0/15 benchmark
     if (a === 0) return true; // 0.0.0.0/8
+    if (a >= 240) return true; // 240.0.0.0/4 reserved + broadcast
+    if (a === 192 && b === 0 && c === 0) return true; // 192.0.0.0/24 IETF protocol assignments
+    if (a === 192 && b === 0 && c === 2) return true; // 192.0.2.0/24 TEST-NET-1 (documentation)
+    if (a === 198 && b === 51 && c === 100) return true; // 198.51.100.0/24 TEST-NET-2 (documentation)
+    if (a === 203 && b === 0 && c === 113) return true; // 203.0.113.0/24 TEST-NET-3 (documentation)
   }
 
   return false;

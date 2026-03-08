@@ -89,6 +89,12 @@ export const certificates = pgTable(
     index("idx_certs_notability_score").on(table.notabilityScore),
     // Partial index: backfill queries that find un-scored certs
     index("idx_certs_notability_null").on(table.id).where(sql`${table.notabilityScore} IS NULL`),
+    // Composite indexes for dashboard GROUP BY queries
+    index("idx_certs_org_notbefore").on(table.subjectOrg, table.notBefore),
+    index("idx_certs_industry_notbefore").on(table.industry, table.notBefore),
+    index("idx_certs_marktype_notbefore").on(table.markType, table.notBefore),
+    // Functional index for case-insensitive serial number lookups (normalization across sources)
+    index("idx_certs_serial_lower").using("btree", sql`LOWER(${table.serialNumber})`),
   ],
 );
 

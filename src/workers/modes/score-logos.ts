@@ -30,6 +30,8 @@ export async function scoreLogos(sql: NeonQueryFunction<false, false>, maxLogos 
   let scored = 0;
   let failed = 0;
   let offset = startOffset;
+  let consecutiveApiFailures = 0;
+  const MAX_API_FAILURES = 3;
 
   while (true) {
     if (maxLogos > 0 && scored + failed >= maxLogos) break;
@@ -91,19 +93,31 @@ export async function scoreLogos(sql: NeonQueryFunction<false, false>, maxLogos 
 
       for (const logo of logos) {
         const result = results.get(logo.svgHash);
-        const score = result?.score ?? 5;
-        const reason = result?.reason || null;
+        if (!result) {
+          console.warn(`  No Gemini result for ${logo.label} (${logo.svgHash.slice(0, 12)}), skipping`);
+          failed++;
+          continue;
+        }
+        const score = result.score;
+        const reason = result.reason || null;
         updates.push({ hash: logo.svgHash, score, reason });
         scored++;
         console.log(`  ${scored}: ${logo.label} = ${score}/10 (${reason || "no reason"})`);
       }
 
       await batchUpdateLogoQuality(sql, updates);
+      consecutiveApiFailures = 0;
       if (recalc) offset += rows.length;
     } catch (err) {
-      console.error(`\n  Gemini API error:`, errorMessage(err));
-      if (recalc) console.error(`  Resume: bun run ingest:score-logos recalc ${offset}`);
+      consecutiveApiFailures++;
+      console.error(`\n  Gemini API error (attempt ${consecutiveApiFailures}/${MAX_API_FAILURES}):`, errorMessage(err));
+      if (consecutiveApiFailures >= MAX_API_FAILURES) {
+        console.error(`  ${MAX_API_FAILURES} consecutive API failures, stopping.`);
+        if (recalc) console.error(`  Resume: bun run ingest:score-logos recalc ${offset}`);
+        break;
+      }
       await throttle(5000);
+      continue;
     }
 
     if ((scored + failed) % 100 === 0) {
