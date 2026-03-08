@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, index, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import type { ExtensionEntry } from "@/lib/ct/parser";
 
 /**
@@ -337,3 +348,18 @@ export const ingestionCursors = pgTable("ingestion_cursors", {
   lastRun: timestamp("last_run", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Domain Change Alerting
+// ---------------------------------------------------------------------------
+
+export const domainWatches = pgTable(
+  "domain_watches",
+  {
+    id: serial("id").primaryKey(),
+    domain: text("domain").notNull(),
+    webhookUrl: text("webhook_url").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [uniqueIndex("idx_domain_watches_domain_webhook").on(table.domain, table.webhookUrl)],
+);

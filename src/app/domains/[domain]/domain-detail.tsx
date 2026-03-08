@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BimiInboxPreview } from "@/components/bimi-inbox-preview";
+import { DomainWatchButton } from "@/components/domain-watch-button";
 
 interface DomainDetailProps {
   domain: string;
@@ -226,6 +227,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
         {data.lastChecked && (
           <span className="text-muted-foreground text-sm">Checked {new Date(data.lastChecked).toLocaleString()}</span>
         )}
+        <DomainWatchButton domain={domain} />
         <Button asChild size="sm" variant="outline">
           <Link href={`/validate?q=${encodeURIComponent(domain)}`}>Re-check</Link>
         </Button>
