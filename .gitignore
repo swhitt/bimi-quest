@@ -48,3 +48,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .worktrees/
+
+# scripts
+scripts/capture-screenshots.mjs
+
+# internal tracking
+TODO.md
+AUDIT-REPORT.md
+docs/plans/
