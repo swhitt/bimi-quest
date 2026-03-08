@@ -43,6 +43,13 @@
       "when": 1772329427256,
       "tag": "0005_fancy_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772954348518,
+      "tag": "0006_cooing_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

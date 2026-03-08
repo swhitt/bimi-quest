@@ -123,36 +123,84 @@ export const certificateChainLinks = pgTable(
   (table) => [index("idx_chain_links_leaf_cert_id").on(table.leafCertId)],
 );
 
-export const domainBimiState = pgTable("domain_bimi_state", {
-  id: serial("id").primaryKey(),
-  domain: text("domain").unique().notNull(),
-  bimiRecordRaw: text("bimi_record_raw"),
-  bimiVersion: text("bimi_version"),
-  bimiLogoUrl: text("bimi_logo_url"),
-  bimiAuthorityUrl: text("bimi_authority_url"),
-  dmarcRecordRaw: text("dmarc_record_raw"),
-  dmarcPolicy: text("dmarc_policy"),
-  dmarcPct: integer("dmarc_pct"),
-  dmarcValid: boolean("dmarc_valid"),
-  svgFetched: boolean("svg_fetched").default(false),
-  svgContent: text("svg_content"),
-  svgContentType: text("svg_content_type"),
-  svgSizeBytes: integer("svg_size_bytes"),
-  svgTinyPsValid: boolean("svg_tiny_ps_valid"),
-  svgValidationErrors: text("svg_validation_errors").array(),
-  bimiLpsTag: text("bimi_lps_tag"),
-  bimiAvpTag: text("bimi_avp_tag"),
-  bimiDeclination: boolean("bimi_declination").default(false),
-  bimiSelector: text("bimi_selector").default("default"),
-  bimiOrgDomainFallback: boolean("bimi_org_domain_fallback").default(false),
-  svgIndicatorHash: text("svg_indicator_hash"),
-  bimiGrade: text("bimi_grade"),
-  lastChecked: timestamp("last_checked", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  // TODO: Drizzle ORM (pg) does not support $onUpdate; callers must include
-  // `updatedAt: sql`now()`` in .set({}) calls, or a DB trigger should be added.
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
+export interface DnsSnapshot {
+  bimi: {
+    raw: string | null;
+    version: string | null;
+    logoUrl: string | null;
+    authorityUrl: string | null;
+    lps: string | null;
+    avp: string | null;
+    declined: boolean;
+    selector: string;
+    orgDomainFallback: boolean;
+  } | null;
+  dmarc: {
+    raw: string | null;
+    policy: string | null;
+    sp: string | null;
+    pct: number | null;
+    rua: string | null;
+    ruf: string | null;
+    adkim: string | null;
+    aspf: string | null;
+    validForBimi: boolean;
+  } | null;
+  svg: {
+    found: boolean;
+    sizeBytes: number | null;
+    contentType: string | null;
+    tinyPsValid: boolean | null;
+    indicatorHash: string | null;
+    validationErrors: string[] | null;
+  } | null;
+  certificate: {
+    found: boolean;
+    authorityUrl: string | null;
+    certType: string | null;
+    issuer: string | null;
+  } | null;
+  meta: {
+    checkedAt: string;
+    grade: string | null;
+  };
+}
+
+export const domainBimiState = pgTable(
+  "domain_bimi_state",
+  {
+    id: serial("id").primaryKey(),
+    domain: text("domain").unique().notNull(),
+    bimiRecordRaw: text("bimi_record_raw"),
+    bimiVersion: text("bimi_version"),
+    bimiLogoUrl: text("bimi_logo_url"),
+    bimiAuthorityUrl: text("bimi_authority_url"),
+    dmarcRecordRaw: text("dmarc_record_raw"),
+    dmarcPolicy: text("dmarc_policy"),
+    dmarcPct: integer("dmarc_pct"),
+    dmarcValid: boolean("dmarc_valid"),
+    svgFetched: boolean("svg_fetched").default(false),
+    svgContent: text("svg_content"),
+    svgContentType: text("svg_content_type"),
+    svgSizeBytes: integer("svg_size_bytes"),
+    svgTinyPsValid: boolean("svg_tiny_ps_valid"),
+    svgValidationErrors: text("svg_validation_errors").array(),
+    bimiLpsTag: text("bimi_lps_tag"),
+    bimiAvpTag: text("bimi_avp_tag"),
+    bimiDeclination: boolean("bimi_declination").default(false),
+    bimiSelector: text("bimi_selector").default("default"),
+    bimiOrgDomainFallback: boolean("bimi_org_domain_fallback").default(false),
+    svgIndicatorHash: text("svg_indicator_hash"),
+    bimiGrade: text("bimi_grade"),
+    dnsSnapshot: jsonb("dns_snapshot").$type<DnsSnapshot>(),
+    lastChecked: timestamp("last_checked", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    // TODO: Drizzle ORM (pg) does not support $onUpdate; callers must include
+    // `updatedAt: sql`now()`` in .set({}) calls, or a DB trigger should be added.
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index("idx_domain_bimi_dns_snapshot").using("gin", table.dnsSnapshot)],
+);
 
 export const ogCache = pgTable("og_cache", {
   key: text("key").primaryKey(),

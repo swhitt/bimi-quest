@@ -245,12 +245,12 @@ function LogoTile({ logo }: { logo: Logo }) {
       </div>
       {/* Tooltip */}
       <div className="pointer-events-none absolute left-1/2 bottom-full z-40 mb-2 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-        <div className="rounded bg-black/90 px-2 py-1.5 backdrop-blur-sm text-[10px] leading-tight whitespace-nowrap">
-          <div className="flex items-center gap-1">
+        <div className="rounded-md bg-black/90 px-3 py-2 backdrop-blur-sm text-xs leading-snug whitespace-nowrap shadow-lg">
+          <div className="flex items-center gap-1.5">
             <span className="font-semibold text-white">{(logo.org || logo.domain || "?").slice(0, 28)}</span>
             {logo.certType && (
               <span
-                className={`px-1 py-px rounded text-[9px] font-medium ${
+                className={`px-1 py-px rounded text-[10px] font-medium ${
                   logo.certType === "VMC" ? "bg-blue-500/40 text-blue-200" : "bg-purple-500/40 text-purple-200"
                 }`}
               >
@@ -263,7 +263,7 @@ function LogoTile({ logo }: { logo: Logo }) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5 text-gray-400 max-w-64 sm:max-w-80">
+          <div className="flex items-center gap-1 text-gray-400 max-w-72 sm:max-w-96">
             <span className="truncate">{[logo.domain, logo.issuer].filter(Boolean).join(" · ")}</span>
             {logo.ctLogTimestamp && (
               <span className="shrink-0 text-gray-500">

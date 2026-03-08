@@ -18,7 +18,9 @@ const navItems = [
   { href: "/logos", label: "Logos" },
   { href: "/ct/gorgon", label: "Log" },
   { href: "/validate", label: "Validate" },
+  { href: "/domains", label: "Domains" },
   { href: "/map", label: "Map" },
+  { href: "/tools/asn1", label: "ASN.1" },
 ];
 
 // Secondary filter keys that travel as query params

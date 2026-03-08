@@ -4,7 +4,9 @@ import { formatDistanceToNow } from "date-fns";
 import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Asn1Tree } from "@/components/x509/asn1-tree";
+import { DerHexViewer } from "@/components/x509/der-hex-viewer";
 import { HostChip } from "@/components/host-chip";
 import { HostnameLink } from "@/components/hostname-link";
 import { LogoCard } from "@/components/logo-card";
@@ -21,6 +23,8 @@ import { getMarkTypeInfo } from "@/lib/mark-types";
 import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { errorMessage } from "@/lib/utils";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
+import type { Asn1Node } from "@/lib/x509/asn1-tree";
+import { buildAsn1Tree, pemToDerBytes } from "@/lib/x509/asn1-tree";
 
 // Extension entry: new format has { v, c }, old format is a plain hex string
 type ExtensionValue = string | { v: string; c: boolean };
@@ -136,6 +140,42 @@ function chainLabel(chainCert: { chainPosition: number; subjectDn: string; issue
   return `Intermediate CA (${chainCert.chainPosition})`;
 }
 
+/** Resolve a path like "0/0/2" to the corresponding Asn1Node in the tree. */
+function resolveAsn1NodePath(tree: Asn1Node, pathStr: string): Asn1Node | null {
+  const indices = pathStr.split("/").map(Number);
+  if (indices.length === 0 || indices[0] !== 0) return null;
+  let current = tree;
+  for (let i = 1; i < indices.length; i++) {
+    const idx = indices[i];
+    if (idx < 0 || idx >= current.children.length) return null;
+    current = current.children[idx];
+  }
+  return current;
+}
+
+/** Find the deepest ASN.1 node containing the given byte offset. */
+function findAsn1NodeAtOffset(tree: Asn1Node, offset: number): Asn1Node | null {
+  if (offset < tree.headerOffset || offset >= tree.headerOffset + tree.totalLength) return null;
+  for (const child of tree.children) {
+    const found = findAsn1NodeAtOffset(child, offset);
+    if (found) return found;
+  }
+  return tree;
+}
+
+/** Build the tree path string (e.g. "0/0/2") for a node by searching the tree. */
+function buildAsn1NodePath(tree: Asn1Node, target: Asn1Node): string | null {
+  function walk(node: Asn1Node, path: string): string | null {
+    if (node === target) return path;
+    for (let i = 0; i < node.children.length; i++) {
+      const result = walk(node.children[i], `${path}/${i}`);
+      if (result) return result;
+    }
+    return null;
+  }
+  return walk(tree, "0");
+}
+
 export function CertificateDetail({ id }: { id: string }) {
   const [data, setData] = useState<CertData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +189,11 @@ export function CertificateDetail({ id }: { id: string }) {
   const [revocationLoading, setRevocationLoading] = useState(false);
   const [bimiError, setBimiError] = useState<string | null>(null);
   const [revocationError, setRevocationError] = useState<string | null>(null);
+  const [showAsn1, setShowAsn1] = useState(
+    () => typeof window !== "undefined" && window.location.hash.startsWith("#asn1"),
+  );
+  const [selectedAsn1Node, setSelectedAsn1Node] = useState<Asn1Node | null>(null);
+  const asn1SectionRef = useRef<HTMLDivElement>(null);
 
   const runBimiCheck = useCallback(() => {
     setBimiLoading(true);
@@ -200,6 +245,72 @@ export function CertificateDetail({ id }: { id: string }) {
 
   const logotypeSvg = data?.certificate.logotypeSvg ?? null;
   const sanitizedSvg = useMemo<string | null>(() => (logotypeSvg ? sanitizeSvg(logotypeSvg) : null), [logotypeSvg]);
+
+  // Lazily parse the ASN.1 tree only when the section is expanded
+  const rawPem = data?.certificate.rawPem ?? null;
+  const asn1Parsed = useMemo(() => {
+    if (!showAsn1 || !rawPem) return null;
+    try {
+      const derBytes = pemToDerBytes(rawPem);
+      const tree = buildAsn1Tree(derBytes);
+      return { tree, derBytes };
+    } catch {
+      return null;
+    }
+  }, [showAsn1, rawPem]);
+
+  // Handle selecting a node: update state and URL hash
+  const handleAsn1NodeSelect = useCallback(
+    (node: Asn1Node) => {
+      setSelectedAsn1Node(node);
+      if (asn1Parsed) {
+        const path = buildAsn1NodePath(asn1Parsed.tree, node);
+        if (path) {
+          window.history.replaceState(null, "", `#asn1/${path}`);
+        }
+      }
+    },
+    [asn1Parsed],
+  );
+
+  // Handle byte click in hex viewer: find the containing node
+  const handleAsn1ByteClick = useCallback(
+    (offset: number) => {
+      if (!asn1Parsed) return;
+      const node = findAsn1NodeAtOffset(asn1Parsed.tree, offset);
+      if (node) handleAsn1NodeSelect(node);
+    },
+    [asn1Parsed, handleAsn1NodeSelect],
+  );
+
+  // Compute highlight range for the hex viewer
+  const asn1HighlightRange = useMemo(() => {
+    if (!selectedAsn1Node) return null;
+    return {
+      start: selectedAsn1Node.headerOffset,
+      end: selectedAsn1Node.headerOffset + selectedAsn1Node.totalLength,
+      headerEnd: selectedAsn1Node.valueOffset,
+    };
+  }, [selectedAsn1Node]);
+
+  // Once the ASN.1 tree is parsed and visible, resolve any hash path and scroll into view.
+  const [asn1HashResolved, setAsn1HashResolved] = useState(false);
+
+  useEffect(() => {
+    if (!asn1Parsed || !showAsn1 || asn1HashResolved) return;
+    const hash = window.location.hash;
+    if (!hash.startsWith("#asn1")) return;
+    setAsn1HashResolved(true);
+
+    asn1SectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const prefix = "#asn1/";
+    if (hash.startsWith(prefix) && hash.length > prefix.length) {
+      const pathPart = hash.slice(prefix.length);
+      const node = resolveAsn1NodePath(asn1Parsed.tree, pathPart);
+      if (node) handleAsn1NodeSelect(node);
+    }
+  }, [asn1Parsed, showAsn1, asn1HashResolved, handleAsn1NodeSelect]);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificate...</div>;
@@ -895,6 +1006,83 @@ export function CertificateDetail({ id }: { id: string }) {
           </CardContent>
         </Card>
       )}
+
+      {/* ASN.1 Structure */}
+      <Card ref={asn1SectionRef}>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>ASN.1 Structure</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const next = !showAsn1;
+              setShowAsn1(next);
+              if (next) {
+                window.history.replaceState(null, "", "#asn1");
+              } else {
+                window.history.replaceState(null, "", window.location.pathname);
+                setSelectedAsn1Node(null);
+              }
+            }}
+          >
+            {showAsn1 ? "Hide" : "Show"}
+          </Button>
+        </CardHeader>
+        {showAsn1 && asn1Parsed && (
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ minHeight: 400 }}>
+              <Asn1Tree
+                root={asn1Parsed.tree}
+                selectedNode={selectedAsn1Node}
+                onSelectNode={handleAsn1NodeSelect}
+                className="max-h-[600px] border rounded-md p-1"
+              />
+              <DerHexViewer
+                bytes={asn1Parsed.derBytes}
+                highlightRange={asn1HighlightRange}
+                onByteClick={handleAsn1ByteClick}
+                className="max-h-[600px]"
+              />
+            </div>
+            {selectedAsn1Node && (
+              <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm font-mono space-y-1">
+                <div>
+                  <span className="text-muted-foreground">Tag: </span>
+                  {selectedAsn1Node.tagName}
+                  <span className="text-muted-foreground ml-2">
+                    (0x{selectedAsn1Node.tag.toString(16).padStart(2, "0")})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Offset: </span>
+                  {selectedAsn1Node.headerOffset}
+                  <span className="text-muted-foreground ml-2">
+                    (header: {selectedAsn1Node.headerLength}B, value: {selectedAsn1Node.valueLength}B, total:{" "}
+                    {selectedAsn1Node.totalLength}B)
+                  </span>
+                </div>
+                {selectedAsn1Node.decoded && (
+                  <div>
+                    <span className="text-muted-foreground">Value: </span>
+                    <span className="break-all">{selectedAsn1Node.decoded}</span>
+                  </div>
+                )}
+                {selectedAsn1Node.oidName && (
+                  <div>
+                    <span className="text-muted-foreground">OID: </span>
+                    {selectedAsn1Node.oidName}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        )}
+        {showAsn1 && !asn1Parsed && (
+          <CardContent>
+            <p className="text-sm text-destructive">Failed to parse ASN.1 structure from certificate PEM.</p>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Raw PEM */}
       <Card>

@@ -1,10 +1,12 @@
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import { isDMARCValidForBIMI, lookupDMARC } from "@/lib/bimi/dmarc";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
+import { buildDnsSnapshot } from "@/lib/bimi/dns-snapshot";
 import { computeSvgHash, decompressSvgIfNeeded, validateSVGTinyPS } from "@/lib/bimi/svg";
 import { throttle } from "@/lib/ct/gorgon";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { errorMessage } from "@/lib/utils";
+import type { DnsSnapshot } from "@/lib/db/schema";
 
 interface BimiDnsRow {
   domain: string;
@@ -28,6 +30,7 @@ interface BimiDnsRow {
   svg_tiny_ps_valid: boolean | null;
   svg_validation_errors: string[] | null;
   svg_indicator_hash: string | null;
+  dns_snapshot: DnsSnapshot | null;
 }
 
 async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
@@ -53,6 +56,7 @@ async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     svg_tiny_ps_valid: null,
     svg_validation_errors: null,
     svg_indicator_hash: null,
+    dns_snapshot: null,
   };
 
   // Parallel DNS lookups — distinguish "no record" (null) from resolver errors
@@ -123,6 +127,49 @@ async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     }
   }
 
+  // Build structured DNS snapshot from the flat fields we just populated
+  row.dns_snapshot = buildDnsSnapshot({
+    bimiRecord: bimiRecord
+      ? {
+          raw: row.bimi_record_raw,
+          version: row.bimi_version,
+          logoUrl: row.bimi_logo_url,
+          authorityUrl: row.bimi_authority_url,
+          lps: row.bimi_lps_tag,
+          avp: row.bimi_avp_tag,
+          declined: row.bimi_declination,
+          selector: row.bimi_selector,
+          orgDomainFallback: row.bimi_org_domain_fallback,
+        }
+      : null,
+    dmarcRecord: dmarcResult
+      ? {
+          raw: row.dmarc_record_raw,
+          policy: row.dmarc_policy,
+          sp: dmarcResult.record.sp ?? null,
+          pct: row.dmarc_pct,
+          rua: dmarcResult.record.rua ?? null,
+          ruf: dmarcResult.record.ruf ?? null,
+          adkim: dmarcResult.record.adkim ?? null,
+          aspf: dmarcResult.record.aspf ?? null,
+          validForBimi: row.dmarc_valid ?? false,
+        }
+      : null,
+    svg: row.svg_fetched
+      ? {
+          found: true,
+          sizeBytes: row.svg_size_bytes,
+          contentType: row.svg_content_type,
+          tinyPsValid: row.svg_tiny_ps_valid,
+          indicatorHash: row.svg_indicator_hash,
+          validationErrors: row.svg_validation_errors,
+        }
+      : null,
+    // The backfill worker doesn't fetch authority certificates, so this stays null
+    certificate: null,
+    grade: null,
+  });
+
   return row;
 }
 
@@ -184,7 +231,7 @@ export async function backfillBimiDns(sql: NeonQueryFunction<false, false>, limi
           dmarc_record_raw, dmarc_policy, dmarc_pct, dmarc_valid,
           svg_fetched, svg_content, svg_content_type, svg_size_bytes,
           svg_tiny_ps_valid, svg_validation_errors, svg_indicator_hash,
-          last_checked
+          dns_snapshot, last_checked
         ) VALUES (
           ${row.domain}, ${row.bimi_record_raw}, ${row.bimi_version},
           ${row.bimi_logo_url}, ${row.bimi_authority_url},
@@ -193,7 +240,7 @@ export async function backfillBimiDns(sql: NeonQueryFunction<false, false>, limi
           ${row.dmarc_record_raw}, ${row.dmarc_policy}, ${row.dmarc_pct}, ${row.dmarc_valid},
           ${row.svg_fetched}, ${row.svg_content}, ${row.svg_content_type}, ${row.svg_size_bytes},
           ${row.svg_tiny_ps_valid}, ${row.svg_validation_errors}, ${row.svg_indicator_hash},
-          now()
+          ${row.dns_snapshot ? JSON.stringify(row.dns_snapshot) : null}::jsonb, now()
         )
         ON CONFLICT (domain) DO UPDATE SET
           bimi_record_raw = EXCLUDED.bimi_record_raw,
@@ -216,6 +263,7 @@ export async function backfillBimiDns(sql: NeonQueryFunction<false, false>, limi
           svg_tiny_ps_valid = EXCLUDED.svg_tiny_ps_valid,
           svg_validation_errors = EXCLUDED.svg_validation_errors,
           svg_indicator_hash = EXCLUDED.svg_indicator_hash,
+          dns_snapshot = EXCLUDED.dns_snapshot,
           last_checked = now(),
           updated_at = now()
       `;

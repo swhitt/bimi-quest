@@ -12,6 +12,10 @@ export interface DMARCRecord {
   rua: string | null;
   ruf: string | null;
   sp: string | null;
+  /** DKIM alignment mode: "r" (relaxed, default) or "s" (strict) */
+  adkim: string | null;
+  /** SPF alignment mode: "r" (relaxed, default) or "s" (strict) */
+  aspf: string | null;
 }
 
 /** Extract organizational domain (registered domain) from a full domain
@@ -74,6 +78,8 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
   // may have inconsistent casing, e.g. "Reject" or "QUARANTINE").
   const policy = (tags["p"]?.toLowerCase() || "none") as "none" | "quarantine" | "reject";
   const sp = tags["sp"]?.toLowerCase() || null;
+  const adkim = tags["adkim"]?.toLowerCase() || null;
+  const aspf = tags["aspf"]?.toLowerCase() || null;
 
   return {
     raw: txt,
@@ -83,6 +89,8 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
     rua: tags["rua"] || null,
     ruf: tags["ruf"] || null,
     sp,
+    adkim,
+    aspf,
   };
 }
 
