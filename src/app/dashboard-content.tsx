@@ -1,5 +1,6 @@
-import dynamic from "next/dynamic";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { ExpiryChart } from "@/components/dashboard/expiry-chart";
+import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { TopOrgs } from "@/components/dashboard/top-orgs";
@@ -8,14 +9,6 @@ import { fetchCertificates, type CertificatesResult } from "@/lib/data/certifica
 import { fetchDashboardData } from "@/lib/data/dashboard";
 import { fetchExpiryTimeline, fetchIndustryBreakdown, fetchTopOrgs } from "@/lib/data/stats";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
-
-const IndustryChart = dynamic(() => import("@/components/dashboard/industry-chart").then((m) => m.IndustryChart), {
-  ssr: false,
-});
-
-const ExpiryChart = dynamic(() => import("@/components/dashboard/expiry-chart").then((m) => m.ExpiryChart), {
-  ssr: false,
-});
 
 /**
  * Serialize Date fields to ISO strings for the RecentCerts client component,
