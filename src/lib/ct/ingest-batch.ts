@@ -146,6 +146,8 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
   const skippedIndexes: number[] = [];
   // Collect all inserted certs for post-ingestion scoring
   const allPendingScores: PendingCert[] = [];
+  let consecutiveFetchFailures = 0;
+  const MAX_FETCH_FAILURES = 5;
 
   for (let i = startIndex; i < endIndex; ) {
     if (maxBatches > 0 && batchesRun >= maxBatches) break;
@@ -161,6 +163,11 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
     } catch (err) {
       onProgress?.(`Failed to fetch batch at ${i}: ${errorMessage(err)}`);
       if (maxBatches > 0) break;
+      consecutiveFetchFailures++;
+      if (consecutiveFetchFailures >= MAX_FETCH_FAILURES) {
+        onProgress?.(`${MAX_FETCH_FAILURES} consecutive fetch failures, stopping.`);
+        break;
+      }
       await throttle(2000);
       continue;
     }
@@ -170,6 +177,8 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       // stop and let the next run retry from the same cursor.
       break;
     }
+
+    consecutiveFetchFailures = 0;
 
     // Track which entries succeeded vs. failed for cursor advancement.
     // The cursor should only advance past entries that were actually processed
@@ -211,11 +220,9 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
         }
         if (!rootCaOrg) rootCaOrg = normalizeIssuerOrg(bimiData.issuerOrg);
 
-        // Insert cert + handle precert supersession atomically via db.batch().
-        // (neon-http does not support interactive transactions, but batch()
-        // executes all queries in a single HTTP transaction.)
+        // Insert cert, then handle precert/final-cert supersession separately.
         const isPrecert = parsed.entryType === "precert";
-        const certInsertQuery = db
+        const insertResult = await db
           .insert(certificates)
           .values(
             buildCertInsertValues(bimiData, {
@@ -232,15 +239,22 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
             fingerprintSha256: certificates.fingerprintSha256,
           });
 
-        // Supersession query: for a final cert, mark matching precerts as
-        // superseded; for a precert, check if a final cert already exists.
-        const supersessionQuery = isPrecert
-          ? db
+        const inserted = insertResult[0];
+
+        if (inserted) {
+          if (isPrecert) {
+            // Check if a final cert already exists; if so, mark this precert superseded
+            const existing = await db
               .select({ id: certificates.id })
               .from(certificates)
               .where(and(eq(certificates.serialNumber, bimiData.serialNumber), eq(certificates.isPrecert, false)))
-              .limit(1)
-          : db
+              .limit(1);
+            if (existing.length > 0) {
+              await db.update(certificates).set({ isSuperseded: true }).where(eq(certificates.id, inserted.id));
+            }
+          } else {
+            // Final cert: mark any matching precerts as superseded
+            await db
               .update(certificates)
               .set({ isSuperseded: true })
               .where(
@@ -250,15 +264,6 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
                   eq(certificates.isSuperseded, false),
                 ),
               );
-
-        const [insertResult, supersessionResult] = await db.batch([certInsertQuery, supersessionQuery]);
-
-        const inserted = insertResult[0];
-
-        if (inserted) {
-          // For precerts: if a final cert already exists, mark this precert superseded
-          if (isPrecert && (supersessionResult as { id: number }[]).length > 0) {
-            await db.update(certificates).set({ isSuperseded: true }).where(eq(certificates.id, inserted.id));
           }
 
           // Parse chain cert data (fingerprints + metadata) in parallel.
@@ -335,7 +340,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
               .filter((link): link is NonNullable<typeof link> => link != null);
 
             if (chainLinks.length > 0) {
-              await db.insert(certificateChainLinks).values(chainLinks);
+              await db.insert(certificateChainLinks).values(chainLinks).onConflictDoNothing();
             }
           }
 

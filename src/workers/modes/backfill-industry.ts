@@ -13,8 +13,11 @@ export async function backfillIndustry(sql: NeonQueryFunction<false, false>) {
 
   const BATCH = 50;
   let classified = 0;
+  let unchangedIterations = 0;
 
   while (true) {
+    const prevClassified = classified;
+
     const rows = (await sql`
       SELECT id, subject_org, san_list, subject_country
       FROM certificates
@@ -41,6 +44,17 @@ export async function backfillIndustry(sql: NeonQueryFunction<false, false>) {
     }
 
     await batchUpdateIndustry(sql, updates);
+
+    if (classified === prevClassified) {
+      unchangedIterations++;
+      if (unchangedIterations >= 3) {
+        console.warn("No progress after 3 iterations, stopping.");
+        break;
+      }
+    } else {
+      unchangedIterations = 0;
+    }
+
     await throttle(100);
   }
 

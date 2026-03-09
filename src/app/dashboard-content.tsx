@@ -1,12 +1,10 @@
+import dynamic from "next/dynamic";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { DmarcDriftFeed } from "@/components/dashboard/dmarc-drift-feed";
-import { DmarcPolicyChart } from "@/components/dashboard/dmarc-policy-chart";
-import { ExpiryChart } from "@/components/dashboard/expiry-chart";
-import { RuaProviderChart } from "@/components/dashboard/rua-provider-chart";
-import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { TopOrgs } from "@/components/dashboard/top-orgs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { displayIntermediateCa } from "@/lib/ca-display";
 import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { fetchDashboardData } from "@/lib/data/dashboard";
@@ -17,6 +15,23 @@ import {
   fetchTopOrgs,
 } from "@/lib/data/stats";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
+
+const IndustryChart = dynamic(
+  () => import("@/components/dashboard/industry-chart").then((m) => ({ default: m.IndustryChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
+const ExpiryChart = dynamic(
+  () => import("@/components/dashboard/expiry-chart").then((m) => ({ default: m.ExpiryChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
+const DmarcPolicyChart = dynamic(
+  () => import("@/components/dashboard/dmarc-policy-chart").then((m) => ({ default: m.DmarcPolicyChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
+const RuaProviderChart = dynamic(
+  () => import("@/components/dashboard/rua-provider-chart").then((m) => ({ default: m.RuaProviderChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
 
 /**
  * Serialize Date fields to ISO strings for the RecentCerts client component,

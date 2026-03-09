@@ -8,8 +8,10 @@ import { sanitizeSvgForProxy } from "@/lib/sanitize-svg";
 // In-memory LRU cache for SVG content
 const cache = new Map<string, { content: string; contentType: string; timestamp: number }>();
 const CACHE_TTL = 86400_000; // 24 hours
-const MAX_CACHE_SIZE = 500;
+const MAX_CACHE_SIZE = 200;
 const MAX_SVG_SIZE = 1_048_576; // 1 MB
+const SWEEP_INTERVAL = 50; // purge expired entries every N writes
+let writeCounter = 0;
 
 function isAllowedOrigin(origin: string): boolean {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
@@ -164,6 +166,18 @@ export async function GET(request: NextRequest) {
       if (oldestKey) cache.delete(oldestKey);
     }
     cache.set(url, { content, contentType: "image/svg+xml", timestamp: Date.now() });
+
+    // Periodic sweep: purge expired entries to reclaim memory
+    writeCounter++;
+    if (writeCounter >= SWEEP_INTERVAL) {
+      writeCounter = 0;
+      const now = Date.now();
+      for (const [key, entry] of cache) {
+        if (now - entry.timestamp >= CACHE_TTL) {
+          cache.delete(key);
+        }
+      }
+    }
 
     return new NextResponse(content, {
       headers: {

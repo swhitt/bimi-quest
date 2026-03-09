@@ -8,16 +8,12 @@ const TAG_BOOLEAN = 0x01;
 const TAG_INTEGER = 0x02;
 const TAG_BIT_STRING = 0x03;
 const TAG_OCTET_STRING = 0x04;
-const _TAG_NULL = 0x05;
 const TAG_OID = 0x06;
 const TAG_UTF8_STRING = 0x0c;
-const _TAG_SEQUENCE = 0x30;
-const _TAG_SET = 0x31;
 const TAG_PRINTABLE_STRING = 0x13;
 const TAG_IA5_STRING = 0x16;
 
 // Context-specific tags (used in extensions for implicit/explicit tagging)
-const _TAG_CONTEXT_0 = 0xa0;
 const TAG_CONTEXT_PRIM_0 = 0x80;
 const TAG_CONTEXT_PRIM_1 = 0x81;
 const TAG_CONTEXT_PRIM_2 = 0x82;

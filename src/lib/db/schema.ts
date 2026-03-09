@@ -133,7 +133,10 @@ export const certificateChainLinks = pgTable(
       .references(() => chainCerts.id),
     chainPosition: integer("chain_position").notNull(),
   },
-  (table) => [index("idx_chain_links_leaf_cert_id").on(table.leafCertId)],
+  (table) => [
+    index("idx_chain_links_leaf_cert_id").on(table.leafCertId),
+    uniqueIndex("idx_chain_links_unique").on(table.leafCertId, table.chainCertId),
+  ],
 );
 
 export interface DnsSnapshot {
@@ -222,7 +225,12 @@ export const domainBimiState = pgTable(
     // `updatedAt: sql`now()`` in .set({}) calls, or a DB trigger should be added.
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
-  (table) => [index("idx_domain_bimi_dns_snapshot").using("gin", table.dnsSnapshot)],
+  (table) => [
+    index("idx_domain_bimi_dns_snapshot").using("gin", table.dnsSnapshot),
+    index("idx_domain_bimi_last_checked").on(table.lastChecked),
+    index("idx_domain_bimi_grade").on(table.bimiGrade),
+    index("idx_domain_bimi_dmarc_policy").on(table.dmarcPolicy),
+  ],
 );
 
 export const ogCache = pgTable("og_cache", {

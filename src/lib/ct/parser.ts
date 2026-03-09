@@ -359,13 +359,32 @@ export function extractLogotypeSvg(cert: X509Certificate): { svgHash: string | n
 }
 
 /** Extract the SHA-256 hash from the logotype extension (OID 1.3.6.1.5.5.7.1.12).
- *  The hash is embedded as a 32-byte OCTET STRING (DER tag 04, length 20h) in the ASN.1 structure. */
+ *
+ *  Per RFC 3709, the LogotypeExtnValue contains a LogotypeData with a sequence of
+ *  LogotypeImage entries. Each image's LogotypeDetails includes a logotypeHash field:
+ *    logotypeHash  SEQUENCE OF HashAlgAndValue
+ *    HashAlgAndValue ::= SEQUENCE {
+ *      hashAlgorithm  AlgorithmIdentifier,  -- OID + NULL params for SHA-256
+ *      hashValue      OCTET STRING
+ *    }
+ *
+ *  In DER, the SHA-256 OID (2.16.840.1.101.3.4.2.1) encodes as:
+ *    06 09 60 86 48 01 65 03 04 02 01
+ *  followed by NULL params (05 00), then the 32-byte OCTET STRING (04 20 <64 hex chars>).
+ *
+ *  We anchor on the SHA-256 OID to avoid matching an unrelated OCTET STRING
+ *  that happens to be 32 bytes (e.g. an issuer key hash in another extension field).
+ */
 function extractLogotypeSvgHash(cert: X509Certificate): string | null {
   try {
     const ext = cert.getExtension(LOGOTYPE_OID);
     if (!ext) return null;
     const rawHex = Buffer.from(ext.value).toString("hex");
-    const hashMatch = rawHex.match(/0420([0-9a-f]{64})/);
+    // SHA-256 OID in DER: 0609608648016503040201, then NULL params (0500),
+    // then OCTET STRING tag+length (0420) followed by the 32-byte hash.
+    // Allow optional bytes between the OID+NULL and the OCTET STRING to
+    // account for SEQUENCE wrappers the CA may emit.
+    const hashMatch = rawHex.match(/0609608648016503040201(?:0500)?[0-9a-f]{0,8}?0420([0-9a-f]{64})/);
     return hashMatch ? hashMatch[1] : null;
   } catch {
     return null;

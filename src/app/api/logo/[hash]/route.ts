@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
+import { sanitizeSvgForProxy } from "@/lib/sanitize-svg";
 
 const PNG_SIZE = 256;
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const format = request.nextUrl.searchParams.get("format");
 
   if (format === "svg") {
-    return new NextResponse(sanitizeSvg(cert.logotypeSvg), {
+    return new NextResponse(sanitizeSvgForProxy(cert.logotypeSvg), {
       headers: {
         "Content-Type": "image/svg+xml",
         "Cache-Control": CACHE_PRESETS.IMMUTABLE,
@@ -49,14 +50,4 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       { status: 422 },
     );
   }
-}
-
-/** Strip <script> elements and on* event attributes from SVG content */
-function sanitizeSvg(svg: string): string {
-  // Remove <script>...</script> blocks (including self-closing)
-  let sanitized = svg.replace(/<script[\s>][\s\S]*?<\/script\s*>/gi, "");
-  sanitized = sanitized.replace(/<script\s*\/>/gi, "");
-  // Remove on* event handler attributes (e.g. onclick, onload, onerror)
-  sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
-  return sanitized;
 }

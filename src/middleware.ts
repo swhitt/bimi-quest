@@ -13,7 +13,7 @@ const CA_SLUGS: Record<string, string> = {
 const isDev = process.env.NODE_ENV === "development";
 
 /**
- * Proxy handles URL rewrites, request ID injection, and CSP nonce generation.
+ * Next.js middleware for URL rewrites, request ID injection, and CSP nonce generation.
  *
  * URL rewrites:
  *  1. /certificates/ca/digicert -> /certificates?ca=DigiCert
@@ -25,7 +25,7 @@ const isDev = process.env.NODE_ENV === "development";
  * framework scripts automatically. Pages must be dynamically rendered for this
  * to work (see Next.js CSP docs).
  */
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 

@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+src/coverage/
 src/node_modules
 
 # Playwright

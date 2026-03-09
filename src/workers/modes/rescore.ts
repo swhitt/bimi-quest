@@ -38,6 +38,15 @@ export async function rescore(sql: NeonQueryFunction<false, false>, maxCerts = 0
         const remaining = maxCerts > 0 ? maxCerts - scored : SCORE_BATCH;
         const chunk = rows.slice(i, i + Math.min(SCORE_BATCH, remaining));
 
+        // Score certs without an org as 0 so they don't block the loop
+        const noOrgRows = chunk.filter((r) => !r.subject_org);
+        if (noOrgRows.length > 0) {
+          for (const r of noOrgRows) {
+            await sql`UPDATE certificates SET notability_score = 0, notability_reason = 'no org' WHERE id = ${r.id}`;
+          }
+          scored += noOrgRows.length;
+        }
+
         const brands = chunk.map(rowToBrandInput).filter((b) => b.org);
         const results = await scoreNotabilityBatch(brands);
 

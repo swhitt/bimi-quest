@@ -7,11 +7,20 @@ import { ingestionCursors } from "@/lib/db/schema";
 const BASE_POLL_MS = 30_000;
 const MAX_BACKOFF_MS = 10 * 60_000; // 10 minutes
 
+let shutdown = false;
+
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    console.log(`\nReceived ${signal}, finishing current batch and shutting down...`);
+    shutdown = true;
+  });
+}
+
 export async function stream() {
   console.log("Starting stream mode (polling every 30s)...");
   let consecutiveFailures = 0;
 
-  while (true) {
+  while (!shutdown) {
     try {
       const sth = await getSTH();
       const cursor = await db.select().from(ingestionCursors).where(eq(ingestionCursors.logName, "gorgon")).limit(1);
@@ -48,4 +57,6 @@ export async function stream() {
 
     await new Promise((r) => setTimeout(r, BASE_POLL_MS));
   }
+
+  console.log("Stream mode shut down cleanly.");
 }

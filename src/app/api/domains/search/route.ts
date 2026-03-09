@@ -111,13 +111,34 @@ const FLAT_COLUMN_MAP: Record<string, SQL> = {
 };
 
 /**
+ * Pre-built JSONB extraction expressions for paths not covered by flat columns.
+ * Uses static SQL fragments instead of sql.raw() to avoid any interpolation risk.
+ */
+const JSONB_PATH_MAP: Record<string, SQL> = {
+  "bimi.raw": sql`${domainBimiState.dnsSnapshot}->'bimi'->>'raw'`,
+  "bimi.orgDomainFallback": sql`${domainBimiState.dnsSnapshot}->'bimi'->>'orgDomainFallback'`,
+  "dmarc.raw": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'raw'`,
+  "dmarc.sp": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'sp'`,
+  "dmarc.pct": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'pct'`,
+  "dmarc.rua": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'rua'`,
+  "dmarc.ruf": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'ruf'`,
+  "dmarc.adkim": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'adkim'`,
+  "dmarc.aspf": sql`${domainBimiState.dnsSnapshot}->'dmarc'->>'aspf'`,
+  "certificate.found": sql`${domainBimiState.dnsSnapshot}->'certificate'->>'found'`,
+  "certificate.certType": sql`${domainBimiState.dnsSnapshot}->'certificate'->>'certType'`,
+  "certificate.issuer": sql`${domainBimiState.dnsSnapshot}->'certificate'->>'issuer'`,
+  "certificate.authorityUrl": sql`${domainBimiState.dnsSnapshot}->'certificate'->>'authorityUrl'`,
+};
+
+/**
  * Resolve a dot-path to a SQL expression — flat column if available,
- * otherwise JSONB extraction from dns_snapshot.
+ * otherwise pre-built JSONB extraction from dns_snapshot.
  */
 function pathToSql(path: string): SQL {
   if (FLAT_COLUMN_MAP[path]) return FLAT_COLUMN_MAP[path];
-  const [section, field] = path.split(".");
-  return sql`${domainBimiState.dnsSnapshot}->${sql.raw(`'${section}'`)}->>${sql.raw(`'${field}'`)}`;
+  if (JSONB_PATH_MAP[path]) return JSONB_PATH_MAP[path];
+  // Should be unreachable since paths are validated against ALLOWED_PATHS first
+  throw new Error(`No SQL mapping for path: ${path}`);
 }
 
 /**

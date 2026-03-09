@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { displayIntermediateCa, displayRootCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
+import { fetchCertificateDetail } from "@/lib/db/certificate-detail";
 import { resolveCertParam } from "@/lib/db/filters";
 import { certificates } from "@/lib/db/schema";
 import { CertificateDetail } from "./certificate-detail";
@@ -97,14 +98,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/** Deduplicated full certificate detail fetch (by numeric ID). */
+const getCertificateDetail = cache((certId: number) => fetchCertificateDetail(certId));
+
 export default async function CertificateDetailPage({ params }: Props) {
   const { id } = await params;
 
   // Redirect non-canonical URLs (numeric IDs or short prefixes) to full fingerprint
-  const { fingerprint, error } = await cachedResolveCertParam(id);
+  const { id: certId, fingerprint, error } = await cachedResolveCertParam(id);
   if (error) notFound();
-  if (!fingerprint) notFound();
+  if (!fingerprint || !certId) notFound();
   if (id !== fingerprint) permanentRedirect(`/certificates/${fingerprint}`);
 
-  return <CertificateDetail id={fingerprint} />;
+  const detail = await getCertificateDetail(certId);
+  if (!detail) notFound();
+
+  // Serialize to JSON-compatible shape (converts Date objects to ISO strings)
+  // to match the format the client component expects from the API
+  const initialData = JSON.parse(JSON.stringify(detail));
+
+  return <CertificateDetail id={fingerprint} initialData={initialData} />;
 }

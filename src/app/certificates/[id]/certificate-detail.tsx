@@ -2,11 +2,11 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { HelpCircle } from "lucide-react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Asn1Tree } from "@/components/x509/asn1-tree";
-import { DerHexViewer } from "@/components/x509/der-hex-viewer";
+import { Skeleton } from "@/components/ui/skeleton";
 import { HostChip } from "@/components/host-chip";
 import { HostnameLink } from "@/components/hostname-link";
 import { LogoCard } from "@/components/logo-card";
@@ -25,6 +25,15 @@ import { errorMessage } from "@/lib/utils";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 import type { Asn1Node } from "@/lib/x509/asn1-tree";
 import { buildAsn1Tree, pemToDerBytes } from "@/lib/x509/asn1-tree";
+
+const Asn1Tree = dynamic(() => import("@/components/x509/asn1-tree").then((m) => ({ default: m.Asn1Tree })), {
+  ssr: false,
+  loading: () => <Skeleton className="h-48" />,
+});
+const DerHexViewer = dynamic(
+  () => import("@/components/x509/der-hex-viewer").then((m) => ({ default: m.DerHexViewer })),
+  { ssr: false, loading: () => <Skeleton className="h-48" /> },
+);
 
 // Extension entry: new format has { v, c }, old format is a plain hex string
 type ExtensionValue = string | { v: string; c: boolean };
@@ -176,10 +185,8 @@ function buildAsn1NodePath(tree: Asn1Node, target: Asn1Node): string | null {
   return walk(tree, "0");
 }
 
-export function CertificateDetail({ id }: { id: string }) {
-  const [data, setData] = useState<CertData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function CertificateDetail({ id, initialData }: { id: string; initialData: CertData }) {
+  const [data] = useState<CertData>(initialData);
   const [showPem, setShowPem] = useState(false);
   const [bimiCheck, setBimiCheck] = useState<BimiCheckResult | null>(null);
   const [bimiLoading, setBimiLoading] = useState(false);
@@ -221,21 +228,11 @@ export function CertificateDetail({ id }: { id: string }) {
       .finally(() => setRevocationLoading(false));
   }, [id]);
 
+  // Kick off live DNS/OCSP checks on mount (cert data is already available via props)
   useEffect(() => {
-    fetch(`/api/certificates/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Certificate not found");
-        return res.json();
-      })
-      .then((d) => {
-        setData(d);
-        // Kick off secondary checks from the async callback (not synchronous in effect body)
-        runBimiCheck();
-        runRevocationCheck();
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id, runBimiCheck, runRevocationCheck]);
+    runBimiCheck();
+    runRevocationCheck();
+  }, [runBimiCheck, runRevocationCheck]);
 
   const copyToClipboard = useCallback((text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -308,16 +305,6 @@ export function CertificateDetail({ id }: { id: string }) {
       if (node) requestAnimationFrame(() => handleAsn1NodeSelect(node));
     }
   }, [asn1Parsed, showAsn1, handleAsn1NodeSelect]);
-
-  if (loading) {
-    return <div className="flex h-64 items-center justify-center text-muted-foreground">Loading certificate...</div>;
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex h-64 items-center justify-center text-destructive">{error || "Certificate not found"}</div>
-    );
-  }
 
   const cert = data.certificate;
   const isExpired = new Date(cert.notAfter) < new Date();

@@ -12,15 +12,17 @@ export async function reparse(sql: NeonQueryFunction<false, false>) {
   console.log("Re-parsing stored certificates for SVG and mark type...\n");
 
   const BATCH = 100;
-  let offset = 0;
+  let lastId = 0;
+  let scanned = 0;
   let updated = 0;
 
   while (true) {
     const rows = (await sql`
       SELECT id, raw_pem, logotype_svg, mark_type
       FROM certificates
+      WHERE id > ${lastId}
       ORDER BY id
-      LIMIT ${BATCH} OFFSET ${offset}
+      LIMIT ${BATCH}
     `) as ReparseRow[];
     if (rows.length === 0) break;
 
@@ -62,8 +64,9 @@ export async function reparse(sql: NeonQueryFunction<false, false>) {
       }
     }
 
-    offset += BATCH;
-    process.stdout.write(`\r  Scanned ${offset} certs, updated ${updated}...`);
+    lastId = rows[rows.length - 1].id;
+    scanned += rows.length;
+    process.stdout.write(`\r  Scanned ${scanned} certs, updated ${updated}...`);
   }
 
   console.log(`\n\nRe-parse complete. Updated ${updated} certificates.`);
