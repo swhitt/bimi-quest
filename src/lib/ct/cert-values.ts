@@ -1,5 +1,6 @@
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import type { BIMICertData } from "@/lib/ct/parser";
+import { isTestCert } from "@/lib/ct/test-detection";
 import { slugify } from "@/lib/slugify";
 import { computeColorRichness } from "@/lib/svg-color-richness";
 import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
@@ -60,6 +61,7 @@ export function buildCertInsertValues(
     // the ingestion hot path fast (sharp render is 50-200ms per cert)
     logotypeVisualHash: null,
     rawPem: bimiData.rawPem,
+    isTest: isTestCert(bimiData.sanList),
     isPrecert,
     extensionsJson: bimiData.extensionsJson,
     ...(ctLogTimestamp != null ? { ctLogTimestamp } : {}),

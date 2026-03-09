@@ -80,7 +80,7 @@ function LogoCardInner({
 
   const content =
     isInline && displaySvg ? (
-      <LogoSvg svg={displaySvg} alt={alt} className="h-full w-full [&>svg]:h-full [&>svg]:w-full" />
+      <LogoSvg svg={displaySvg} alt={alt} className="h-full w-full" />
     ) : svgUrl ? (
       <Image
         src={svgUrl}

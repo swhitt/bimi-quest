@@ -65,6 +65,8 @@ export const certificates = pgTable(
     logoTileBg: text("logo_tile_bg"),
     // Perceptual dHash of the rendered SVG, invariant to XML formatting/padding/zoom
     logotypeVisualHash: text("logotype_visual_hash"),
+    // True when all SANs point to known test/demo domains (CA testing infrastructure)
+    isTest: boolean("is_test").default(false),
     // True when a precert has been superseded by its matching final certificate
     isSuperseded: boolean("is_superseded").default(false),
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.

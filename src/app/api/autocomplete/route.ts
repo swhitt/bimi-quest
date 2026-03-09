@@ -26,8 +26,7 @@ export async function GET(request: NextRequest) {
         SELECT s.domain AS label, 'domain' AS type, COUNT(*)::int AS count
         FROM certificates, unnest(san_list) AS s(domain)
         WHERE lower(s.domain) LIKE ${pattern}
-          AND s.domain NOT LIKE '%testcertificates.com'
-          AND s.domain NOT LIKE '%grapefruitdesk.com'
+          AND is_test = false
         GROUP BY s.domain
         ORDER BY count DESC
         LIMIT 8
@@ -37,6 +36,7 @@ export async function GET(request: NextRequest) {
         SELECT subject_org AS label, 'org' AS type, COUNT(*)::int AS count
         FROM certificates
         WHERE subject_org ILIKE ${pattern}
+          AND is_test = false
         GROUP BY subject_org
         ORDER BY count DESC
         LIMIT 4

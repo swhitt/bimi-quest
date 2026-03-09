@@ -3,7 +3,7 @@
 import { ListFilter } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PaginationBar } from "@/components/pagination-bar";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useSmartBg } from "@/hooks/use-smart-bg";
 import { domainSlug } from "@/lib/domain-slug";
 import { errorMessage } from "@/lib/utils";
-import { sanitizeSvg } from "@/lib/sanitize-svg";
+import { LogoSvg } from "@/components/logo-svg";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { useLazyRender } from "@/lib/use-lazy-render";
 
@@ -172,10 +172,7 @@ function LogoTile({ logo }: { logo: Logo }) {
     displaySvg,
   } = useSmartBg(logo.svg ?? null, logo.tileBg as "light" | "dark" | null);
 
-  const sanitizedHtml = useMemo(() => {
-    if (!isVisible || !displaySvg) return null;
-    return sanitizeSvg(displaySvg);
-  }, [isVisible, displaySvg]);
+  const hasSvg = isVisible && !!displaySvg;
 
   const handleCopyLink = useCallback(
     (e: React.MouseEvent) => {
@@ -198,11 +195,8 @@ function LogoTile({ logo }: { logo: Logo }) {
       style={bgColor ? { backgroundColor: bgColor } : undefined}
     >
       {isVisible ? (
-        sanitizedHtml ? (
-          <div
-            className="flex h-full w-full items-center justify-center [&>svg]:h-full [&>svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-          />
+        hasSvg ? (
+          <LogoSvg svg={displaySvg!} className="flex h-full w-full items-center justify-center" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-muted/30 text-xs text-muted-foreground">
             No image

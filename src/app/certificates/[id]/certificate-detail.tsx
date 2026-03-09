@@ -10,6 +10,7 @@ import { DerHexViewer } from "@/components/x509/der-hex-viewer";
 import { HostChip } from "@/components/host-chip";
 import { HostnameLink } from "@/components/hostname-link";
 import { LogoCard } from "@/components/logo-card";
+import { LogoSvg } from "@/components/logo-svg";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
 import { certUrl, domainUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
-import { sanitizeSvg } from "@/lib/sanitize-svg";
 import { errorMessage } from "@/lib/utils";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
 import type { Asn1Node } from "@/lib/x509/asn1-tree";
@@ -242,9 +242,6 @@ export function CertificateDetail({ id }: { id: string }) {
     setCopied(label);
     setTimeout(() => setCopied(null), 2000);
   }, []);
-
-  const logotypeSvg = data?.certificate.logotypeSvg ?? null;
-  const sanitizedSvg = useMemo<string | null>(() => (logotypeSvg ? sanitizeSvg(logotypeSvg) : null), [logotypeSvg]);
 
   // Lazily parse the ASN.1 tree only when the section is expanded
   const rawPem = data?.certificate.rawPem ?? null;
@@ -775,10 +772,9 @@ export function CertificateDetail({ id }: { id: string }) {
 
                     {dc.webSvgFound && cert.logotypeSvg && (
                       <LogoComparison
-                        certSvgHtml={sanitizedSvg!}
+                        certSvg={cert.logotypeSvg}
                         certSvgSizeBytes={bimiCheck.certSvgSizeBytes}
                         certSvgValidation={bimiCheck.certSvgValidation}
-                        certSvgSource={cert.logotypeSvg}
                         logoUrl={dc.logoUrl}
                         webSvgSizeBytes={dc.webSvgSizeBytes}
                         webSvgValidation={dc.webSvgValidation}
@@ -1465,10 +1461,9 @@ interface SvgValidation {
 }
 
 function LogoComparison({
-  certSvgHtml,
+  certSvg,
   certSvgSizeBytes,
   certSvgValidation,
-  certSvgSource,
   logoUrl,
   webSvgSizeBytes,
   webSvgValidation,
@@ -1477,10 +1472,9 @@ function LogoComparison({
   showDiff,
   onToggleDiff,
 }: {
-  certSvgHtml: string;
+  certSvg: string;
   certSvgSizeBytes: number | null;
   certSvgValidation: SvgValidation | null;
-  certSvgSource: string;
   logoUrl: string | null;
   webSvgSizeBytes: number | null;
   webSvgValidation: SvgValidation | null;
@@ -1502,10 +1496,9 @@ function LogoComparison({
               </Badge>
             )}
           </div>
-          <div
-            className="flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden [&>svg]:max-h-full [&>svg]:max-w-full"
-            dangerouslySetInnerHTML={{ __html: certSvgHtml }}
-          />
+          <div className="aspect-square rounded-md border bg-white p-2 overflow-hidden">
+            <LogoSvg svg={certSvg} alt="Certificate SVG" className="h-full w-full" />
+          </div>
           <span className="text-[10px] text-muted-foreground mt-1 block text-center">
             {certSvgSizeBytes ? `${(certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
           </span>
@@ -1553,7 +1546,7 @@ function LogoComparison({
           </Button>
           {showDiff && (
             <div className="mt-2">
-              <SVGDiffViewer certSvg={certSvgSource} webSvg={webSvgSource} />
+              <SVGDiffViewer certSvg={certSvg} webSvg={webSvgSource} />
             </div>
           )}
         </div>

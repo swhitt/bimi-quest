@@ -96,22 +96,35 @@ export function buildPrecertCondition(precertParam: string | null) {
   return excludeDuplicatePrecerts();
 }
 
+/** Default lookback window when no explicit `from` date is provided. */
+const DEFAULT_LOOKBACK_MONTHS = 12;
+
 /**
  * Shared filter conditions for all list/stats endpoints.
  * Handles: type, mark, from, to, expiresFrom, expiresTo, validity,
- * precert, country, industry.
+ * precert, country, industry, test.
  * Deliberately excludes `ca` and `root` so callers can layer those
  * on for market-share semantics (global → base → CA tiers).
+ *
+ * By default, excludes test certificates and applies a 12-month lookback.
+ * Pass `test=include` to show test certs, `from=all` to remove the time window.
  */
 export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
   const conditions: SQL[] = [buildPrecertCondition(params.get("precert"))];
+
+  // Exclude test certs unless explicitly included
+  const testParam = params.get("test");
+  if (testParam !== "include") {
+    conditions.push(eq(certificates.isTest, false));
+  }
 
   const certType = params.get("type");
   const mark = params.get("mark");
   const country = params.get("country");
   const industry = params.get("industry");
   const validity = params.get("validity");
-  const fromDate = parseDate(params.get("from"));
+  const fromRaw = params.get("from");
+  const fromDate = fromRaw === "all" ? null : parseDate(fromRaw);
   const toDate = parseDate(params.get("to"));
   const expiresFromDate = parseDate(params.get("expiresFrom"));
   const expiresToDate = parseDate(params.get("expiresTo"));
@@ -120,8 +133,17 @@ export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
   if (mark) conditions.push(eq(certificates.markType, mark));
   if (country) conditions.push(eq(certificates.subjectCountry, country));
   if (industry) conditions.push(eq(certificates.industry, industry));
-  if (fromDate) conditions.push(gte(certificates.notBefore, fromDate));
+
+  // Apply explicit from/to or default 12-month lookback
+  if (fromDate) {
+    conditions.push(gte(certificates.notBefore, fromDate));
+  } else if (!fromRaw) {
+    const defaultFrom = new Date();
+    defaultFrom.setMonth(defaultFrom.getMonth() - DEFAULT_LOOKBACK_MONTHS);
+    conditions.push(gte(certificates.notBefore, defaultFrom));
+  }
   if (toDate) conditions.push(lte(certificates.notBefore, toDate));
+
   if (expiresFromDate) conditions.push(gte(certificates.notAfter, expiresFromDate));
   if (expiresToDate) conditions.push(lte(certificates.notAfter, expiresToDate));
   if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
