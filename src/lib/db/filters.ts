@@ -1,6 +1,9 @@
 import { and, eq, gte, like, lte, type SQL } from "drizzle-orm";
+import { getDefaultFromDate } from "../default-dates";
 import { db } from "./index";
 import { certificates } from "./schema";
+
+export { getDefaultFromDate, getDefaultFromDateISO } from "../default-dates";
 
 /**
  * Safely parse a date string, returning null for invalid/missing values.
@@ -96,9 +99,6 @@ export function buildPrecertCondition(precertParam: string | null) {
   return excludeDuplicatePrecerts();
 }
 
-/** Default lookback window when no explicit `from` date is provided. */
-const DEFAULT_LOOKBACK_MONTHS = 12;
-
 /**
  * Shared filter conditions for all list/stats endpoints.
  * Handles: type, mark, from, to, expiresFrom, expiresTo, validity,
@@ -138,9 +138,7 @@ export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
   if (fromDate) {
     conditions.push(gte(certificates.notBefore, fromDate));
   } else if (!fromRaw) {
-    const defaultFrom = new Date();
-    defaultFrom.setMonth(defaultFrom.getMonth() - DEFAULT_LOOKBACK_MONTHS);
-    conditions.push(gte(certificates.notBefore, defaultFrom));
+    conditions.push(gte(certificates.notBefore, getDefaultFromDate()));
   }
   if (toDate) conditions.push(lte(certificates.notBefore, toDate));
 

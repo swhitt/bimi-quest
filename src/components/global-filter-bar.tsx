@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ALL_CA_SLUGS, CA_DISPLAY_NAMES, CA_SLUG_TO_NAME, ROOT_CA_OPTIONS } from "@/lib/ca-slugs";
+import { getDefaultFromDateISO } from "@/lib/default-dates";
 import { ALL_MARK_TYPES } from "@/lib/mark-types";
 
 function formatDateISO(d: Date): string {
@@ -509,8 +510,22 @@ function SecondaryFilters({
           toKey="to"
           fromLabel="Issued from date"
           toLabel="Issued to date"
-          onCommit={onFilterChange}
-          onMultiUpdate={onMultiUpdate}
+          onCommit={(key, value) => {
+            // Clearing the from date input should bypass the default, not reapply it
+            if (key === "from" && !value) {
+              onMultiUpdate({ from: "all" });
+            } else {
+              onFilterChange(key, value);
+            }
+          }}
+          onMultiUpdate={(updates) => {
+            // When clearing issued date presets, use "all" to bypass the default lookback
+            if ("from" in updates && !updates.from) {
+              onMultiUpdate({ ...updates, from: "all" });
+            } else {
+              onMultiUpdate(updates);
+            }
+          }}
           fullWidth={fullWidth}
         />
       </div>
@@ -612,7 +627,11 @@ function FilterBarContent() {
 
       if (updates) {
         for (const [key, value] of Object.entries(updates)) {
-          if (value === null || value === "" || value === "all") {
+          if (value === null || value === "") {
+            params.delete(key);
+          } else if (value === "all" && key !== "from") {
+            // Select-type filters use "all" to mean default/unset.
+            // "from=all" is special: it means "show all time" (bypass default lookback).
             params.delete(key);
           } else {
             params.set(key, value);
@@ -651,11 +670,14 @@ function FilterBarContent() {
   const precert = searchParams.get("precert") ?? "all";
   const industry = searchParams.get("industry") ?? "all";
   const country = searchParams.get("country") ?? "";
-  const dateFrom = searchParams.get("from") ?? "";
+  const fromRaw = searchParams.get("from"); // null = default lookback, "all" = no bound, string = explicit date
+  const dateFrom = fromRaw === "all" ? "" : (fromRaw ?? getDefaultFromDateISO());
   const dateTo = searchParams.get("to") ?? "";
   const expiresFrom = searchParams.get("expiresFrom") ?? "";
   const expiresTo = searchParams.get("expiresTo") ?? "";
 
+  // Only count explicit user-set filters (not the implicit default from date)
+  const hasExplicitFrom = fromRaw !== null && fromRaw !== "all";
   const hasFilters =
     ca ||
     rootCa !== "all" ||
@@ -665,7 +687,7 @@ function FilterBarContent() {
     precert !== "all" ||
     industry !== "all" ||
     country ||
-    dateFrom ||
+    hasExplicitFrom ||
     dateTo ||
     expiresFrom ||
     expiresTo;
@@ -680,7 +702,7 @@ function FilterBarContent() {
     (precert !== "all" ? 1 : 0) +
     (industry !== "all" ? 1 : 0) +
     (country ? 1 : 0) +
-    (dateFrom || dateTo ? 1 : 0) +
+    (hasExplicitFrom || dateTo ? 1 : 0) +
     (expiresFrom || expiresTo ? 1 : 0);
 
   // Count only filters that live inside the "More Filters" popover
@@ -689,7 +711,7 @@ function FilterBarContent() {
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
     (industry !== "all" ? 1 : 0) +
-    (dateFrom || dateTo ? 1 : 0) +
+    (hasExplicitFrom || dateTo ? 1 : 0) +
     (expiresFrom || expiresTo ? 1 : 0);
 
   // Build chips for all active filters
@@ -755,7 +777,7 @@ function FilterBarContent() {
       key: "from",
       label: "Issued from",
       value: dateFrom,
-      onRemove: () => updateSecondaryFilter("from", ""),
+      onRemove: () => updateMultipleFilters({ from: "all" }),
     });
   if (dateTo)
     chips.push({
