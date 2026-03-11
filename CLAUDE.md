@@ -25,6 +25,7 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 
 - `bun run dev` - Development server
 - `bun run build` - Production build
+- `bunx biome format --write <files>` - Auto-format before committing (enforced by lefthook pre-commit)
 - `bun run ingest:backfill` - Scan Gorgon CT log from last cursor
 - `bun run ingest:stream` - Long-running poller for new entries
 - `bun run db:push` - Push schema to database
@@ -40,6 +41,9 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 
 ## Important Notes
 
+- React Compiler is enabled — ESLint enforces `react-hooks/preserve-manual-memoization`. Functions used in `useCallback`/`useMemo` deps must be at module scope or stable; defining them inside the component triggers warnings.
+- Lefthook pre-commit runs biome-format, typecheck (tsc --noEmit), and eslint. All must pass.
+- Filter state: URL is source of truth, sessionStorage (`src/lib/filter-storage.ts`) is a cross-navigation safety net. Nav links carry filters via query params.
 - DB connection is lazy (via Proxy) to avoid build-time errors when DATABASE_URL is unset
 - The ingestion worker runs via tsx which resolves @/ aliases from tsconfig paths
 - Both cron and worker use `processIngestBatch` from `src/lib/ct/ingest-batch.ts` (single source of truth)

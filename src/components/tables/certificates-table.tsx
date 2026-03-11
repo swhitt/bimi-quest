@@ -263,7 +263,7 @@ export function CertificatesTable({
       },
       {
         accessorKey: "certType",
-        meta: { className: "hidden sm:table-cell sm:w-[68px]" },
+        meta: { className: "w-[52px] sm:w-[68px]" },
         header: "Type",
         cell: ({ row }) => {
           const certType = row.original.certType || "BIMI";
@@ -320,7 +320,7 @@ export function CertificatesTable({
       },
       {
         accessorKey: "issuerOrg",
-        meta: { className: "hidden sm:table-cell sm:w-[90px] lg:w-[110px]" },
+        meta: { className: "w-[60px] sm:w-[90px] lg:w-[110px]" },
         header: () => (
           <SortHeader
             label="CA"

@@ -59,38 +59,18 @@ function toURLSearchParams(record: Record<string, string | string[] | undefined>
   return params;
 }
 
-/** Default date range: current calendar year if March+, otherwise previous year. */
-function getDefaultDateRange(): { from: string; to: string } {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // 0-indexed
-  if (month >= 2) {
-    // March or later → current calendar year
-    return { from: `${year}-01-01`, to: now.toISOString().slice(0, 10) };
-  }
-  // Jan/Feb → previous calendar year
-  return { from: `${year - 1}-01-01`, to: `${year - 1}-12-31` };
-}
-
 export async function DashboardContent({
   searchParams,
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  // Apply default date range when no date filters are set
   const userSetDateFilter = !!(searchParams.from || searchParams.to);
-  const effectiveParams = { ...searchParams };
-  if (!userSetDateFilter) {
-    const defaults = getDefaultDateRange();
-    effectiveParams.from = defaults.from;
-    effectiveParams.to = defaults.to;
-  }
 
-  const filterParams = toURLSearchParams(effectiveParams);
-  const apiQuery = buildApiParamsFromSearchParams(effectiveParams);
+  const filterParams = toURLSearchParams(searchParams);
+  const apiQuery = buildApiParamsFromSearchParams(searchParams);
 
   // Build params for recent certs with pagination defaults
-  const recentCertsSearchParams = toURLSearchParams(effectiveParams);
+  const recentCertsSearchParams = toURLSearchParams(searchParams);
   recentCertsSearchParams.set("page", "1");
   recentCertsSearchParams.set("limit", "7");
   recentCertsSearchParams.set("sort", "notBefore");

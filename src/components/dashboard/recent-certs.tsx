@@ -7,6 +7,7 @@ import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
+import { displayIntermediateCa } from "@/lib/ca-display";
 import { certUrl, orgUrl } from "@/lib/entity-urls";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
@@ -122,6 +123,9 @@ export function RecentCerts({
                   <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
                     {cert.certType || "BIMI"}
                   </Badge>
+                  <span className="text-[10px] text-muted-foreground/70 shrink-0">
+                    {displayIntermediateCa(cert.issuerOrg)}
+                  </span>
                   <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                     <UtcTime
                       date={cert.notBefore}

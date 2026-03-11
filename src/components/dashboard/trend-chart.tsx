@@ -118,7 +118,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
       </div>
       {pivoted.length > 0 ? (
         <div role="img" aria-label="Bar chart showing BIMI certificate issuance trends over time" className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={pivoted} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
               <CartesianGrid vertical={false} className="stroke-border" />
               <XAxis

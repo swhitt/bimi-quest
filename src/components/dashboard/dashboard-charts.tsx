@@ -59,17 +59,17 @@ export function DashboardCharts({
 }: DashboardChartsProps) {
   return (
     <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border rounded-lg border border-border">
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-[1px]">
         <ChartErrorBoundary>
           <MarketShareChart data={caBreakdown} selectedCA={selectedCA} apiQuery={apiQuery} />
         </ChartErrorBoundary>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-[1px]">
         <ChartErrorBoundary>
           <TrendChart data={monthlyTrend} selectedCA={selectedCA} apiQuery={apiQuery} hasDateFilter={hasDateFilter} />
         </ChartErrorBoundary>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-[1px]">
         <ChartErrorBoundary>
           <CertTypeChart caBreakdown={caBreakdown} markTypeBreakdown={markTypeBreakdown} apiQuery={apiQuery} />
         </ChartErrorBoundary>

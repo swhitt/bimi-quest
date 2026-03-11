@@ -88,7 +88,7 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
       </div>
       {grandTotal > 0 ? (
         <div role="img" aria-label="Donut chart showing VMC vs CMC certificate type distribution" className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />
               <Pie

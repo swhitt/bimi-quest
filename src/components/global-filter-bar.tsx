@@ -1,8 +1,15 @@
 "use client";
 
-import { ChevronDown, ListFilter, X } from "lucide-react";
+import { ChevronDown, Link2, ListFilter, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  buildHydratedUrl,
+  buildShareUrl,
+  hasAnyFilterParams,
+  loadFilterState,
+  saveFilterState,
+} from "@/lib/filter-storage";
 import { type FilterChip, FilterChips } from "@/components/filter-chips";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -560,12 +567,41 @@ function SecondaryFilters({
 }
 
 /** Gate component: skip rendering (and all hooks/fetches) on pages where filters don't apply. */
+const HIDDEN_PATHS = ["/validate", "/privacy"];
+const HIDDEN_PREFIXES = ["/ct/", "/tools/"];
+
 function FilterBarInner() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const lastHydratedBase = useRef("");
 
-  if (pathname === "/validate" || pathname === "/privacy" || pathname.startsWith("/ct/")) return null;
+  const isHidden = HIDDEN_PATHS.includes(pathname) || HIDDEN_PREFIXES.some((p) => pathname.startsWith(p));
 
+  // Hydrate filters from sessionStorage when landing on a data page without params
+  useEffect(() => {
+    if (isHidden) return;
+
+    const basePath = pathname.replace(/\/page\/\d+$/, "").replace(/\/ca\/[^/]+$/, "") || "/";
+    if (lastHydratedBase.current === basePath) return;
+    lastHydratedBase.current = basePath;
+
+    if (hasAnyFilterParams(searchParams, pathname)) return;
+
+    const stored = loadFilterState();
+    if (!stored) return;
+
+    const url = buildHydratedUrl(pathname, stored);
+    if (url) router.replace(url);
+  }, [pathname, searchParams, router, isHidden]);
+
+  if (isHidden) return null;
   return <FilterBarContent />;
+}
+
+/** Extract the base page path (strip /ca/slug and /page/N suffixes). */
+function getBasePath(p: string): string {
+  return p.replace(/\/page\/\d+$/, "").replace(/\/ca\/[^/]+$/, "") || "/";
 }
 
 function FilterBarContent() {
@@ -595,17 +631,30 @@ function FilterBarContent() {
   // Read CA from /{page}/ca/{slug} pattern
   const pathMatch = pathname.match(/\/ca\/([^/]+)/);
 
-  // Extract the base page path (strip /ca/slug and /page/N suffixes)
-  function getBasePath(p: string): string {
-    return p.replace(/\/page\/\d+$/, "").replace(/\/ca\/[^/]+$/, "") || "/";
-  }
-
   // Pages where CA goes in query param instead of path (avoids conflict with dynamic route segments)
   const basePath = getBasePath(pathname);
   const useQueryCa = basePath === "/domains";
 
   const caSlug = pathMatch ? pathMatch[1].toLowerCase() : useQueryCa ? (searchParams.get("ca") ?? "") : "";
   const ca = caSlug ? (CA_SLUG_TO_NAME[caSlug] ?? "") : "";
+
+  // Persist filter state to sessionStorage for cross-page navigation.
+  // Only saves when URL actually has filter params (avoids overwriting stored state
+  // during the brief moment before hydration fills in the params).
+  useEffect(() => {
+    if (hasAnyFilterParams(searchParams, pathname)) {
+      saveFilterState(searchParams, caSlug);
+    }
+  }, [searchParams, pathname, caSlug]);
+
+  const [copied, setCopied] = useState(false);
+  const copyShareUrl = useCallback(() => {
+    const url = buildShareUrl(pathname, searchParams, caSlug);
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [pathname, searchParams, caSlug]);
 
   // Build a URL preserving secondary filters, with the CA in the path or query param
   const buildUrl = useCallback(
@@ -772,13 +821,15 @@ function FilterBarContent() {
       value: country,
       onRemove: () => updateSecondaryFilter("country", ""),
     });
-  if (dateFrom)
+  if (dateFrom) {
+    const isDefault = fromRaw === null;
     chips.push({
       key: "from",
-      label: "Issued from",
-      value: dateFrom,
+      label: isDefault ? "Showing" : "Issued from",
+      value: isDefault ? "past 12 months" : dateFrom,
       onRemove: () => updateMultipleFilters({ from: "all" }),
     });
+  }
   if (dateTo)
     chips.push({
       key: "to",
@@ -881,12 +932,6 @@ function FilterBarContent() {
               )}
             </SheetContent>
           </Sheet>
-          {hasFilters && (
-            <Button variant="ghost" size="xs" onClick={clearFilters} className="text-muted-foreground">
-              <X className="size-3" />
-              Clear
-            </Button>
-          )}
         </div>
 
         {/* ===== Desktop: Primary selects + More Filters popover ===== */}
@@ -937,17 +982,24 @@ function FilterBarContent() {
               />
             </PopoverContent>
           </Popover>
-
-          {hasFilters && (
-            <Button variant="ghost" size="xs" onClick={clearFilters} className="text-muted-foreground">
-              <X className="size-3" />
-              Clear
-            </Button>
-          )}
         </div>
 
         {/* ===== Chips row (both mobile and desktop) ===== */}
-        <FilterChips chips={chips} onClearAll={clearFilters} />
+        <div className="flex items-start gap-1.5">
+          <div className="flex-1 min-w-0">
+            <FilterChips chips={chips} onClearAll={clearFilters} />
+          </div>
+          {chips.length > 0 && (
+            <button
+              onClick={copyShareUrl}
+              className="mt-1.5 shrink-0 rounded p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Copy share link"
+              title={copied ? "Copied!" : "Copy share link with current filters"}
+            >
+              <Link2 className="size-3.5" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

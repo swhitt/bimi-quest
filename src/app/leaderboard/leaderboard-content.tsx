@@ -83,17 +83,27 @@ export function LeaderboardContent() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-8 sm:w-10" />
+                <col />
+                <col className="w-12 sm:w-14" />
+                <col className="w-0 sm:w-14 hidden sm:table-column" />
+                <col className="w-0 sm:w-14 hidden sm:table-column" />
+                <col className="w-0 md:w-16 hidden md:table-column" />
+                <col className="w-0 lg:w-44 hidden lg:table-column" />
+                <col className="w-0 md:w-18 hidden md:table-column" />
+              </colgroup>
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="px-3 py-3 w-12 font-medium">#</th>
-                  <th className="px-3 py-3 font-medium">Organization</th>
-                  <th className="px-3 py-3 font-medium text-right">Total</th>
-                  <th className="px-3 py-3 font-medium text-right">VMC</th>
-                  <th className="px-3 py-3 font-medium text-right">CMC</th>
-                  <th className="px-3 py-3 font-medium text-right">Active</th>
-                  <th className="px-3 py-3 font-medium">Industry</th>
-                  <th className="px-3 py-3 font-medium">Country</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium">#</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium">Organization</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium text-right">Total</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium text-right hidden sm:table-cell">VMC</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium text-right hidden sm:table-cell">CMC</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium text-right hidden md:table-cell">Active</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium hidden lg:table-cell">Industry</th>
+                  <th className="px-2 py-2 sm:px-3 sm:py-3 font-medium hidden md:table-cell">Country</th>
                 </tr>
               </thead>
               <tbody>
@@ -119,12 +129,15 @@ export function LeaderboardContent() {
                       key={row.org}
                       className={cn("border-b last:border-0 hover:bg-muted/50", loading && "opacity-50")}
                     >
-                      <td className="px-3 py-2.5 font-mono text-muted-foreground tabular-nums">{rank}</td>
-                      <td className="px-3 py-2.5">
-                        <OrgChip org={row.org} size="sm" />
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 font-mono text-xs text-muted-foreground tabular-nums">
+                        {rank}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums">{row.total}</td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 truncate">
+                        <OrgChip org={row.org} size="sm" compact className="sm:hidden" />
+                        <OrgChip org={row.org} size="sm" className="hidden sm:inline-flex" />
+                      </td>
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 text-right font-mono tabular-nums">{row.total}</td>
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 text-right hidden sm:table-cell">
                         {row.vmcCount > 0 ? (
                           <Badge variant="secondary" className="bg-blue-500/15 text-blue-700 dark:text-blue-400">
                             {row.vmcCount}
@@ -133,7 +146,7 @@ export function LeaderboardContent() {
                           <span className="text-muted-foreground">&mdash;</span>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 text-right hidden sm:table-cell">
                         {row.cmcCount > 0 ? (
                           <Badge variant="secondary" className="bg-purple-500/15 text-purple-700 dark:text-purple-400">
                             {row.cmcCount}
@@ -142,7 +155,7 @@ export function LeaderboardContent() {
                           <span className="text-muted-foreground">&mdash;</span>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 text-right hidden md:table-cell">
                         <span
                           className={cn(
                             "font-mono tabular-nums",
@@ -156,8 +169,12 @@ export function LeaderboardContent() {
                           {activeRate}%
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{row.industry ?? "\u2014"}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{row.country ?? "\u2014"}</td>
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 text-muted-foreground truncate hidden lg:table-cell">
+                        {row.industry ?? "\u2014"}
+                      </td>
+                      <td className="px-2 py-1.5 sm:px-3 sm:py-2.5 text-muted-foreground hidden md:table-cell">
+                        {row.country ?? "\u2014"}
+                      </td>
                     </tr>
                   );
                 })}
