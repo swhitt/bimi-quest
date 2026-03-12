@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
 
   const { page, limit, sort, dir } = parsed.data;
   const offset = (page - 1) * limit;
-  const q = params.get("q")?.trim() ?? "";
+  const q = (params.get("q")?.trim() ?? "").slice(0, 200);
   const filterRaw = params.get("f") ?? "";
 
   // Validate sort column
@@ -260,10 +260,21 @@ export async function GET(request: NextRequest) {
         domain: domainBimiState.domain,
         bimiGrade: domainBimiState.bimiGrade,
         dmarcPolicy: domainBimiState.dmarcPolicy,
+        dmarcRecordRaw: domainBimiState.dmarcRecordRaw,
         bimiLogoUrl: domainBimiState.bimiLogoUrl,
+        bimiRecordRaw: domainBimiState.bimiRecordRaw,
         bimiAuthorityUrl: domainBimiState.bimiAuthorityUrl,
         svgTinyPsValid: domainBimiState.svgTinyPsValid,
+        svgValidationErrors: domainBimiState.svgValidationErrors,
+        svgIndicatorHash: domainBimiState.svgIndicatorHash,
+        svgTileBg: domainBimiState.svgTileBg,
         dmarcValid: domainBimiState.dmarcValid,
+        dmarcRua: sql<string | null>`${domainBimiState.dnsSnapshot}->'dmarc'->>'rua'`.as("dmarcRua"),
+        svgContent: sql<
+          string | null
+        >`CASE WHEN length(${domainBimiState.svgContent}) <= 32768 THEN ${domainBimiState.svgContent} END`.as(
+          "svgContent",
+        ),
         lastChecked: domainBimiState.lastChecked,
         _total: sql<number>`count(*) OVER()`.as("_total"),
       })
@@ -274,7 +285,10 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     const total = rows.length > 0 ? rows[0]._total : 0;
-    const data = rows.map(({ _total: _, ...rest }) => rest);
+    const data = rows.map(({ _total: _, svgContent, ...rest }) => ({
+      ...rest,
+      svgDataUri: svgContent ? `data:image/svg+xml;base64,${Buffer.from(svgContent).toString("base64")}` : null,
+    }));
 
     return NextResponse.json(
       {

@@ -69,7 +69,9 @@ export async function POST(request: NextRequest) {
 
     // If we found a valid cert, try to ingest it (fire-and-forget)
     if (result.certificate.found && result.certificate.rawPem) {
-      ingestFromPem(result.certificate.rawPem, "validation").catch((err) => console.warn("ingestFromPem failed:", err));
+      ingestFromPem(result.certificate.rawPem, "validation").catch((err) =>
+        log("error", "validate.ingest.failed", { domain: result.domain, error: String(err) }),
+      );
     }
 
     // Persist DNS snapshot and validation state (fire-and-forget)
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
           updatedAt: sql`now()`,
         },
       })
-      .catch((err) => console.warn("domainBimiState upsert failed:", err));
+      .catch((err) => log("error", "validate.upsert.failed", { domain: result.domain, error: String(err) }));
 
     // Strip rawPem from the response (internal use only)
     const { rawPem: _, ...certWithoutPem } = result.certificate;

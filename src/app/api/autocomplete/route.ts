@@ -11,7 +11,7 @@ import { escapeLike } from "@/lib/db/certificate-filters";
  */
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim().toLowerCase();
-  if (!q || q.length < 2) {
+  if (!q || q.length < 2 || q.length > 200) {
     return NextResponse.json([]);
   }
 
