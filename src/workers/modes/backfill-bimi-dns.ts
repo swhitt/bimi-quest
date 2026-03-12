@@ -8,7 +8,7 @@ import { safeFetch } from "@/lib/net/safe-fetch";
 import { errorMessage } from "@/lib/utils";
 import type { DnsSnapshot } from "@/lib/db/schema";
 
-interface BimiDnsRow {
+export interface BimiDnsRow {
   domain: string;
   bimi_record_raw: string | null;
   bimi_version: string | null;
@@ -33,7 +33,7 @@ interface BimiDnsRow {
   dns_snapshot: DnsSnapshot | null;
 }
 
-async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
+export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
   const row: BimiDnsRow = {
     domain,
     bimi_record_raw: null,

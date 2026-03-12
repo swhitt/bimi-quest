@@ -324,9 +324,31 @@ export const caSyncCursors = pgTable("ca_sync_cursors", {
 });
 
 // ---------------------------------------------------------------------------
-// DMARC Policy Change Tracking
+// DNS Record Change Tracking (polymorphic: BIMI + DMARC)
 // ---------------------------------------------------------------------------
 
+export const dnsRecordChanges = pgTable(
+  "dns_record_changes",
+  {
+    id: serial("id").primaryKey(),
+    domain: text("domain")
+      .notNull()
+      .references(() => domainBimiState.domain),
+    recordType: text("record_type").notNull(), // 'bimi' | 'dmarc'
+    changeType: text("change_type").notNull(), // semantic event
+    previousRaw: text("previous_raw"),
+    newRaw: text("new_raw"),
+    previousRecord: jsonb("previous_record").$type<Record<string, string>>(),
+    newRecord: jsonb("new_record").$type<Record<string, string>>(),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_dns_changes_detected_at").on(table.detectedAt),
+    index("idx_dns_changes_domain_detected").on(table.domain, table.detectedAt),
+  ],
+);
+
+// Legacy table — kept for migration; new code uses dnsRecordChanges
 export const dmarcPolicyChanges = pgTable(
   "dmarc_policy_changes",
   {

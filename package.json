@@ -20,6 +20,7 @@
     "ingest:reslug": "tsx src/workers/ingest.ts reslug",
     "ingest:backfill-tile-bg": "tsx src/workers/ingest.ts backfill-tile-bg",
     "ingest:bimi-dns": "tsx src/workers/ingest.ts bimi-dns",
+    "ingest:refresh-dns": "tsx src/workers/ingest.ts refresh-dns",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

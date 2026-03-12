@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { dmarcPolicyChanges } from "@/lib/db/schema";
+import { dnsRecordChanges } from "@/lib/db/schema";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -12,25 +12,27 @@ export async function GET(request: NextRequest) {
   try {
     const rows = await db
       .select({
-        domain: dmarcPolicyChanges.domain,
-        previousPolicy: dmarcPolicyChanges.previousPolicy,
-        newPolicy: dmarcPolicyChanges.newPolicy,
-        previousPct: dmarcPolicyChanges.previousPct,
-        newPct: dmarcPolicyChanges.newPct,
-        detectedAt: dmarcPolicyChanges.detectedAt,
+        domain: dnsRecordChanges.domain,
+        recordType: dnsRecordChanges.recordType,
+        changeType: dnsRecordChanges.changeType,
+        previousRaw: dnsRecordChanges.previousRaw,
+        newRaw: dnsRecordChanges.newRaw,
+        previousRecord: dnsRecordChanges.previousRecord,
+        newRecord: dnsRecordChanges.newRecord,
+        detectedAt: dnsRecordChanges.detectedAt,
       })
-      .from(dmarcPolicyChanges)
-      .orderBy(desc(dmarcPolicyChanges.detectedAt))
+      .from(dnsRecordChanges)
+      .orderBy(desc(dnsRecordChanges.detectedAt))
       .limit(limit);
 
     return NextResponse.json(
       {
         data: rows.map((r) => ({
           domain: r.domain,
-          previousPolicy: r.previousPolicy,
-          newPolicy: r.newPolicy,
-          previousPct: r.previousPct,
-          newPct: r.newPct,
+          recordType: r.recordType,
+          changeType: r.changeType,
+          previousRecord: r.previousRecord,
+          newRecord: r.newRecord,
           detectedAt: r.detectedAt?.toISOString() ?? null,
         })),
       },
@@ -39,6 +41,6 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (error) {
-    return apiError(error, "dmarc-drift.api.failed", "/api/stats/dmarc-drift", "Failed to fetch DMARC policy changes");
+    return apiError(error, "dmarc-drift.api.failed", "/api/stats/dmarc-drift", "Failed to fetch DNS record changes");
   }
 }

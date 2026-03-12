@@ -6,52 +6,47 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UtcTime } from "@/components/ui/utc-time";
 import { cn } from "@/lib/utils";
 
-interface DmarcChange {
+interface DnsChange {
   domain: string;
-  previousPolicy: string | null;
-  newPolicy: string;
-  previousPct: number | null;
-  newPct: number | null;
+  recordType: string;
+  changeType: string;
+  previousRecord: Record<string, string> | null;
+  newRecord: Record<string, string> | null;
   detectedAt: string | null;
 }
 
-/** Ordered severity of DMARC policies for determining upgrade vs downgrade. */
-const POLICY_RANK: Record<string, number> = { none: 0, quarantine: 1, reject: 2 };
+const CHANGE_STYLE: Record<string, { label: string; color: string }> = {
+  policy_strengthened: { label: "strengthened", color: "text-green-600 dark:text-green-400" },
+  policy_weakened: { label: "weakened", color: "text-red-600 dark:text-red-400" },
+  record_created: { label: "created", color: "text-green-600 dark:text-green-400" },
+  record_removed: { label: "removed", color: "text-red-600 dark:text-red-400" },
+  logo_changed: { label: "logo changed", color: "text-blue-600 dark:text-blue-400" },
+  authority_changed: { label: "authority changed", color: "text-blue-600 dark:text-blue-400" },
+  declination_set: { label: "declined", color: "text-amber-600 dark:text-amber-400" },
+  tags_modified: { label: "modified", color: "text-muted-foreground" },
+};
 
-function policyRank(policy: string | null): number {
-  return policy ? (POLICY_RANK[policy] ?? -1) : -1;
-}
-
-/** Returns true if the change represents a stricter DMARC posture. */
-function isUpgrade(prev: string | null, next: string): boolean {
-  return policyRank(next) > policyRank(prev);
-}
-
-/** Short display label for a policy value. */
-function policyLabel(policy: string | null): string {
-  if (!policy) return "unknown";
-  return policy;
-}
-
-/** Format pct value for display, omitting when it's the default 100. */
-function pctSuffix(pct: number | null): string {
-  if (pct === null || pct === 100) return "";
-  return ` (${pct}%)`;
+function changeDetail(c: DnsChange): string {
+  if (c.recordType === "dmarc" && c.previousRecord?.p && c.newRecord?.p) {
+    return `${c.previousRecord.p} → ${c.newRecord.p}`;
+  }
+  const style = CHANGE_STYLE[c.changeType];
+  return style?.label ?? c.changeType;
 }
 
 export function DmarcDriftFeed() {
-  const [changes, setChanges] = useState<DmarcChange[]>([]);
+  const [changes, setChanges] = useState<DnsChange[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/stats/dmarc-drift?limit=10")
+    fetch("/api/stats/dmarc-drift?limit=20")
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((json: { data: DmarcChange[] }) => {
+      .then((json: { data: DnsChange[] }) => {
         if (!cancelled) {
           setChanges(json.data);
           setLoading(false);
@@ -71,9 +66,7 @@ export function DmarcDriftFeed() {
   if (loading) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          dmarc policy changes
-        </span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dns record changes</span>
         <Skeleton className="h-[160px] mt-1" />
       </div>
     );
@@ -82,9 +75,7 @@ export function DmarcDriftFeed() {
   if (error) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          dmarc policy changes
-        </span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dns record changes</span>
         <div className="flex h-[160px] flex-col items-center justify-center gap-2">
           <p className="text-sm text-destructive">Failed to load</p>
           <button
@@ -100,29 +91,28 @@ export function DmarcDriftFeed() {
 
   return (
     <div>
-      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dmarc policy changes</span>
+      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dns record changes</span>
       {changes.length > 0 ? (
         <ol className="mt-1 space-y-0.5">
           {changes.map((c, i) => {
-            const upgrade = isUpgrade(c.previousPolicy, c.newPolicy);
-            const downgrade = !upgrade && policyRank(c.newPolicy) < policyRank(c.previousPolicy);
+            const style = CHANGE_STYLE[c.changeType] ?? { label: c.changeType, color: "text-muted-foreground" };
             return (
-              <li key={`${c.domain}-${i}`} className="flex items-center gap-1.5 text-[13px] py-0.5 px-1 rounded">
+              <li
+                key={`${c.domain}-${c.recordType}-${i}`}
+                className="flex items-center gap-1.5 text-[13px] py-0.5 px-1 rounded"
+              >
+                <span
+                  className={cn(
+                    "shrink-0 font-mono text-[10px] uppercase w-[38px]",
+                    c.recordType === "bimi" ? "text-blue-500" : "text-violet-500",
+                  )}
+                >
+                  {c.recordType}
+                </span>
                 <div className="min-w-0 flex-1 truncate">
                   <HostChip hostname={c.domain} showExternal={false} size="xs" compact />
                 </div>
-                <span
-                  className={cn(
-                    "font-mono text-[11px] shrink-0",
-                    upgrade && "text-green-600 dark:text-green-400",
-                    downgrade && "text-red-600 dark:text-red-400",
-                    !upgrade && !downgrade && "text-muted-foreground",
-                  )}
-                >
-                  {policyLabel(c.previousPolicy)}
-                  {pctSuffix(c.previousPct)} &rarr; {policyLabel(c.newPolicy)}
-                  {pctSuffix(c.newPct)}
-                </span>
+                <span className={cn("font-mono text-[11px] shrink-0", style.color)}>{changeDetail(c)}</span>
                 {c.detectedAt && (
                   <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                     <UtcTime date={c.detectedAt} relative />

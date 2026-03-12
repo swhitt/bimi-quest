@@ -91,6 +91,13 @@ if (mode === "stream") {
     console.error(err);
     process.exit(1);
   });
+} else if (mode === "refresh-dns") {
+  const limit = parseInt(process.argv[3] || "1000", 10);
+  const { refreshDns } = await import("./modes/refresh-dns");
+  refreshDns(sql, limit).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 } else {
   const { backfill } = await import("./modes/backfill");
   backfill().catch((err) => {
