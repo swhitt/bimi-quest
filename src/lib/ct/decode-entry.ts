@@ -1,6 +1,7 @@
 import { X509Certificate } from "@peculiar/x509";
 import { bytesToHex } from "@/lib/hex";
 import { toArrayBuffer } from "@/lib/pem";
+import { ALL_OID_NAMES } from "@/lib/x509/asn1-tree";
 import type { CTLogEntry } from "./gorgon";
 import {
   base64ToBuffer,
@@ -121,33 +122,6 @@ function getKeySize(cert: X509Certificate): number | null {
   }
 }
 
-// Well-known OID -> friendly name mapping for extensions
-const OID_NAMES: Record<string, string> = {
-  "2.5.29.15": "Key Usage",
-  "2.5.29.37": "Extended Key Usage",
-  "2.5.29.19": "Basic Constraints",
-  "2.5.29.14": "Subject Key Identifier",
-  "2.5.29.35": "Authority Key Identifier",
-  "2.5.29.17": "Subject Alternative Name",
-  "2.5.29.31": "CRL Distribution Points",
-  "2.5.29.32": "Certificate Policies",
-  "1.3.6.1.5.5.7.1.1": "Authority Info Access",
-  "1.3.6.1.5.5.7.1.12": "Logotype (BIMI)",
-  "1.3.6.1.4.1.11129.2.4.2": "CT Precert SCTs",
-  "1.3.6.1.4.1.11129.2.4.3": "CT Poison",
-  "1.3.6.1.4.1.11129.2.4.5": "CT Precert Signing Cert",
-};
-
-// Well-known EKU OID -> friendly name
-const EKU_NAMES: Record<string, string> = {
-  "1.3.6.1.5.5.7.3.1": "serverAuth",
-  "1.3.6.1.5.5.7.3.2": "clientAuth",
-  "1.3.6.1.5.5.7.3.3": "codeSigning",
-  "1.3.6.1.5.5.7.3.4": "emailProtection",
-  "1.3.6.1.5.5.7.3.8": "timeStamping",
-  "1.3.6.1.5.5.7.3.9": "OCSPSigning",
-};
-
 // Key Usage bit names (RFC 5280 §4.2.1.3)
 const KU_BITS = [
   "digitalSignature",
@@ -221,7 +195,7 @@ function parseExtKeyUsage(cert: X509Certificate): string[] {
       offset += len;
       // Decode OID from DER
       const oid = derOidToString(oidBytes);
-      oids.push(EKU_NAMES[oid] ?? oid);
+      oids.push(ALL_OID_NAMES[oid] ?? oid);
     }
     return oids;
   } catch {
@@ -269,10 +243,10 @@ async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | nul
       extKeyUsage: parseExtKeyUsage(cert),
       extensions: cert.extensions.map((ext) => ({
         oid: ext.type,
-        name: OID_NAMES[ext.type] ?? null,
+        name: ALL_OID_NAMES[ext.type] ?? null,
         critical: ext.critical,
       })),
-      hasUnknownCriticalExtensions: cert.extensions.some((ext) => ext.critical && !OID_NAMES[ext.type]),
+      hasUnknownCriticalExtensions: cert.extensions.some((ext) => ext.critical && !ALL_OID_NAMES[ext.type]),
       logotypeSvg: extractLogotypeSvg(cert).svgContent,
       certPem: derToPem(certDer),
     };

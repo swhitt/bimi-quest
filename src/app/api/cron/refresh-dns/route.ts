@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { apiError, verifyCronAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { dnsRecordChanges, domainBimiState } from "@/lib/db/schema";
-import type { BimiDnsRow } from "@/workers/modes/backfill-bimi-dns";
+import { buildDomainStateValues } from "@/lib/dns/persist-domain-state";
 import type { DnsChangeRecord, DnsRefreshAdapter, OldDomainState } from "@/lib/dns/refresh-orchestrator";
 import { refreshDnsBatch } from "@/lib/dns/refresh-orchestrator";
 
@@ -27,9 +27,9 @@ function createDrizzleAdapter(): DnsRefreshAdapter {
       return rows;
     },
 
-    async persistDomain(changes: DnsChangeRecord[], row: BimiDnsRow): Promise<void> {
+    async persistDomain(changes: DnsChangeRecord[], row): Promise<void> {
+      const values = buildDomainStateValues(row);
       await db.transaction(async (tx) => {
-        // Insert change records
         for (const c of changes) {
           await tx.insert(dnsRecordChanges).values({
             domain: c.domain,
@@ -42,61 +42,12 @@ function createDrizzleAdapter(): DnsRefreshAdapter {
           });
         }
 
-        // Upsert domain_bimi_state
         await tx
           .insert(domainBimiState)
-          .values({
-            domain: row.domain,
-            bimiRecordRaw: row.bimi_record_raw,
-            bimiVersion: row.bimi_version,
-            bimiLogoUrl: row.bimi_logo_url,
-            bimiAuthorityUrl: row.bimi_authority_url,
-            bimiLpsTag: row.bimi_lps_tag,
-            bimiAvpTag: row.bimi_avp_tag,
-            bimiDeclination: row.bimi_declination,
-            bimiSelector: row.bimi_selector,
-            bimiOrgDomainFallback: row.bimi_org_domain_fallback,
-            dmarcRecordRaw: row.dmarc_record_raw,
-            dmarcPolicy: row.dmarc_policy,
-            dmarcPct: row.dmarc_pct,
-            dmarcValid: row.dmarc_valid,
-            svgFetched: row.svg_fetched,
-            svgContent: row.svg_content,
-            svgContentType: row.svg_content_type,
-            svgSizeBytes: row.svg_size_bytes,
-            svgTinyPsValid: row.svg_tiny_ps_valid,
-            svgValidationErrors: row.svg_validation_errors,
-            svgIndicatorHash: row.svg_indicator_hash,
-            dnsSnapshot: row.dns_snapshot,
-            lastChecked: new Date(),
-          })
+          .values(values)
           .onConflictDoUpdate({
             target: domainBimiState.domain,
-            set: {
-              bimiRecordRaw: row.bimi_record_raw,
-              bimiVersion: row.bimi_version,
-              bimiLogoUrl: row.bimi_logo_url,
-              bimiAuthorityUrl: row.bimi_authority_url,
-              bimiLpsTag: row.bimi_lps_tag,
-              bimiAvpTag: row.bimi_avp_tag,
-              bimiDeclination: row.bimi_declination,
-              bimiSelector: row.bimi_selector,
-              bimiOrgDomainFallback: row.bimi_org_domain_fallback,
-              dmarcRecordRaw: row.dmarc_record_raw,
-              dmarcPolicy: row.dmarc_policy,
-              dmarcPct: row.dmarc_pct,
-              dmarcValid: row.dmarc_valid,
-              svgFetched: row.svg_fetched,
-              svgContent: row.svg_content,
-              svgContentType: row.svg_content_type,
-              svgSizeBytes: row.svg_size_bytes,
-              svgTinyPsValid: row.svg_tiny_ps_valid,
-              svgValidationErrors: row.svg_validation_errors,
-              svgIndicatorHash: row.svg_indicator_hash,
-              dnsSnapshot: row.dns_snapshot,
-              lastChecked: new Date(),
-              updatedAt: new Date(),
-            },
+            set: { ...values, updatedAt: new Date() },
           });
       });
     },

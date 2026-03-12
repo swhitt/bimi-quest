@@ -74,16 +74,30 @@ export async function refreshDnsBatch(adapter: DnsRefreshAdapter, limit: number)
       }),
     );
 
-    for (const entry of results) {
-      if (!entry.result) {
-        if ("error" in entry) batchErrors++;
+    const persistable = results.filter((e) => {
+      if (!e.result) {
+        if ("error" in e) batchErrors++;
+        return false;
+      }
+      return true;
+    });
+
+    const persistResults = await Promise.allSettled(
+      persistable.map((entry) => {
+        const changes = detectChanges(entry.old, entry.result!);
+        return adapter.persistDomain(changes, entry.result!).then(() => changes);
+      }),
+    );
+
+    for (let j = 0; j < persistResults.length; j++) {
+      const outcome = persistResults[j];
+      const entry = persistable[j];
+      if (outcome.status === "rejected") {
+        console.error(`  Persist failed for ${entry.old.domain}:`, outcome.reason);
+        batchErrors++;
         continue;
       }
-
-      const changes = detectChanges(entry.old, entry.result);
-
-      await adapter.persistDomain(changes, entry.result);
-
+      const changes = outcome.value;
       bimiChanges += changes.filter((c) => c.recordType === "bimi").length;
       dmarcChanges += changes.filter((c) => c.recordType === "dmarc").length;
       for (const c of changes) {
