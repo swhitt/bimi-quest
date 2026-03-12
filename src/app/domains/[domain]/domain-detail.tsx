@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { DnsSnapshot } from "@/lib/db/schema";
 import { computeReadinessScore, type ReadinessResult, type ReadinessTier } from "@/lib/bimi/readiness-score";
-import { domainUrl } from "@/lib/entity-urls";
-import { cn } from "@/lib/utils";
+import { cn, errorMessage } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ExternalArrowIcon } from "@/components/ui/icons";
 import { BimiInboxPreview } from "@/components/bimi-inbox-preview";
 import { DomainWatchButton } from "@/components/domain-watch-button";
+import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
+import { useGlobalFilters } from "@/lib/use-global-filters";
+import { validateUrl } from "@/lib/entity-urls";
 
 interface DomainDetailProps {
   domain: string;
@@ -252,6 +256,91 @@ function synthesizeSnapshot(data: DomainDetailProps["data"]): DnsSnapshot {
   };
 }
 
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+function DomainCertificates({ domain }: { domain: string }) {
+  const { buildApiParams } = useGlobalFilters();
+  const [data, setData] = useState<{ data: CertRow[]; pagination: PaginationData } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const apiQuery = buildApiParams({ host: domain, sort: "notBefore", dir: "desc" });
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`/api/certificates?${apiQuery}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
+      .then(setData)
+      .catch((err) => setError(errorMessage(err)))
+      .finally(() => setLoading(false));
+  }, [apiQuery]);
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-destructive text-sm">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loading || !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">Loading certificates...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (data.data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">No BIMI certificates found for this domain.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-2">
+        Certificates
+        <span className="text-muted-foreground text-sm font-normal ml-2">
+          {data.pagination.total} certificate{data.pagination.total !== 1 ? "s" : ""}
+        </span>
+      </h2>
+      <CertificatesTable
+        data={data.data}
+        pagination={data.pagination}
+        basePath={`/domains/${encodeURIComponent(domain)}`}
+        showSearch={false}
+      />
+    </div>
+  );
+}
+
 export function DomainDetail({ domain, data }: DomainDetailProps) {
   // Use real dnsSnapshot when available, otherwise synthesize from flat columns
   const snapshot = data.dnsSnapshot ?? synthesizeSnapshot(data);
@@ -273,29 +362,74 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <Link href="/" className="hover:text-foreground">
+          Dashboard
+        </Link>
+        <span>/</span>
+        <Link href="/domains" className="hover:text-foreground">
+          Domains
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">{domain}</span>
+      </nav>
+
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-3">
-        {logoUrl && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
-            alt=""
-            className="size-10 shrink-0 rounded border object-contain"
-          />
-        )}
-        <h1 className="font-mono text-2xl font-bold">{domain}</h1>
-        {grade && <Badge className={cn("text-base px-3 py-0.5", GRADE_COLORS[grade] ?? "bg-muted")}>{grade}</Badge>}
-        <Badge className={cn("text-xs", TIER_COLORS[readiness.tier])}>
-          {readiness.tier} ({readiness.score})
-        </Badge>
-        <div className="flex-1" />
-        {data.lastChecked && (
-          <span className="text-muted-foreground text-sm">Checked {new Date(data.lastChecked).toLocaleString()}</span>
-        )}
-        <DomainWatchButton domain={domain} />
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/validate?q=${encodeURIComponent(domain)}`}>Re-check</Link>
-        </Button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {logoUrl && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
+              alt=""
+              className="size-10 shrink-0 rounded border object-contain"
+            />
+          )}
+          <h1 className="font-mono text-2xl font-bold flex items-center gap-2">
+            {domain}
+            <a
+              href={`https://${domain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+              title={`Open ${domain} in new tab`}
+            >
+              <ExternalArrowIcon className="size-4" />
+            </a>
+          </h1>
+          {grade && <Badge className={cn("text-base px-3 py-0.5", GRADE_COLORS[grade] ?? "bg-muted")}>{grade}</Badge>}
+          <Badge className={cn("text-xs", TIER_COLORS[readiness.tier])}>
+            {readiness.tier} ({readiness.score})
+          </Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {data.lastChecked && (
+            <span className="text-muted-foreground text-sm">Checked {new Date(data.lastChecked).toLocaleString()}</span>
+          )}
+          <DomainWatchButton domain={domain} />
+          <Button asChild size="sm" variant="outline">
+            <Link href={validateUrl(domain)}>Re-check</Link>
+          </Button>
+          <a
+            href={`https://crt.sh/?q=${encodeURIComponent(domain)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            crt.sh
+            <ExternalArrowIcon />
+          </a>
+          <a
+            href={`https://mxtoolbox.com/SuperTool.aspx?action=dmarc%3a${encodeURIComponent(domain)}&run=toolpage`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            MX Toolbox
+            <ExternalArrowIcon />
+          </a>
+        </div>
       </div>
 
       {/* Grade Breakdown */}
@@ -465,58 +599,49 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
         </Card>
       )}
 
-      {/* Certificate */}
+      {/* Certificate (from DNS snapshot) */}
       {(cert || data.bimiAuthorityUrl) && (
         <Card>
           <CardHeader>
-            <CardTitle>Certificate</CardTitle>
+            <CardTitle>Certificate (DNS)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {cert ? (
-              <>
-                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                  <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
-                  <KV label="Type" value={cert.certType ? <Badge variant="secondary">{cert.certType}</Badge> : null} />
-                  <KV label="Issuer" value={cert.issuer} />
-                  <KV label="Subject" value={cert.subject} />
-                  <KV label="Serial Number" value={cert.serialNumber} mono />
-                  <KV label="Not Before" value={cert.notBefore} />
-                  <KV label="Not After" value={cert.notAfter} />
-                  {cert.subjectAltNames && cert.subjectAltNames.length > 0 && (
-                    <KV label="SANs" value={cert.subjectAltNames.join(", ")} mono />
-                  )}
-                  <KV label="Mark Type" value={cert.markType} />
-                  {cert.logoHashValue && (
-                    <KV
-                      label="Logo Hash"
-                      value={`${cert.logoHashAlgorithm ?? "SHA-256"}: ${cert.logoHashValue}`}
-                      mono
-                    />
-                  )}
-                  {cert.authorityUrl && (
-                    <KV
-                      label="Authority URL"
-                      value={
-                        cert.authorityUrl.startsWith("https://") ? (
-                          <a
-                            href={cert.authorityUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline break-all"
-                          >
-                            {cert.authorityUrl}
-                          </a>
-                        ) : (
-                          <span className="font-mono break-all">{cert.authorityUrl}</span>
-                        )
-                      }
-                    />
-                  )}
-                </dl>
-                <Link href={domainUrl(domain)} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
-                  View certificates for {domain}
-                </Link>
-              </>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                <KV label="Found" value={<BoolBadge value={cert.found} trueLabel="Yes" falseLabel="No" />} />
+                <KV label="Type" value={cert.certType ? <Badge variant="secondary">{cert.certType}</Badge> : null} />
+                <KV label="Issuer" value={cert.issuer} />
+                <KV label="Subject" value={cert.subject} />
+                <KV label="Serial Number" value={cert.serialNumber} mono />
+                <KV label="Not Before" value={cert.notBefore} />
+                <KV label="Not After" value={cert.notAfter} />
+                {cert.subjectAltNames && cert.subjectAltNames.length > 0 && (
+                  <KV label="Domains" value={cert.subjectAltNames.join(", ")} mono />
+                )}
+                <KV label="Mark Type" value={cert.markType} />
+                {cert.logoHashValue && (
+                  <KV label="Logo Hash" value={`${cert.logoHashAlgorithm ?? "SHA-256"}: ${cert.logoHashValue}`} mono />
+                )}
+                {cert.authorityUrl && (
+                  <KV
+                    label="Authority URL"
+                    value={
+                      cert.authorityUrl.startsWith("https://") ? (
+                        <a
+                          href={cert.authorityUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline break-all"
+                        >
+                          {cert.authorityUrl}
+                        </a>
+                      ) : (
+                        <span className="font-mono break-all">{cert.authorityUrl}</span>
+                      )
+                    }
+                  />
+                )}
+              </dl>
             ) : (
               <div className="space-y-3">
                 {data.bimiAuthorityUrl && (
@@ -553,6 +678,9 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Certificates from CT logs */}
+      <DomainCertificates domain={domain} />
     </div>
   );
 }

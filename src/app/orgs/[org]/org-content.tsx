@@ -94,8 +94,8 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
             Dashboard
           </Link>
           <span>/</span>
-          <Link href="/certificates" className="hover:text-foreground">
-            Certificates
+          <Link href="/leaderboard" className="hover:text-foreground">
+            Organizations
           </Link>
           <span>/</span>
           <span className="text-foreground">{org}</span>
