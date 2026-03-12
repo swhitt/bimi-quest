@@ -1,7 +1,8 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
+import { format, lastDayOfMonth, parseISO } from "date-fns";
 import { Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ function TrendTooltip({
 }
 
 export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: TrendChartProps) {
+  const router = useRouter();
   const colors = useChartColors();
   const isFiltered = selectedCA !== "All Intermediates" && selectedCA in CA_COLOR_INDEX;
 
@@ -124,17 +126,15 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
               <XAxis
                 dataKey="month"
                 tickFormatter={tickFormatter}
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
-                width={40}
+                width={48}
               />
               <Tooltip
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}
@@ -150,6 +150,15 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
                     stackId={isFiltered ? undefined : "trend"}
                     fill={color}
                     fillOpacity={isFiltered ? 0.85 : 0.8}
+                    style={{ cursor: "pointer" }}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Recharts onClick data includes custom keys
+                    onClick={(d: any) => {
+                      const month = String(d.month ?? "");
+                      if (!month) return;
+                      const from = `${month}-01`;
+                      const end = lastDayOfMonth(parseISO(from));
+                      router.push(`/certificates?from=${from}&to=${format(end, "yyyy-MM-dd")}`);
+                    }}
                   />
                 );
               })}

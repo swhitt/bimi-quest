@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ function DonutTooltip({
 }
 
 export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }: CertTypeChartProps) {
+  const router = useRouter();
   const certColors = useCertTypeColors();
   const vmcTotal = caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
@@ -100,6 +102,10 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
                 innerRadius="58%"
                 paddingAngle={2}
                 strokeWidth={0}
+                style={{ cursor: "pointer" }}
+                onClick={(d) => {
+                  if (d?.name) router.push(`/certificates?type=${d.name}`);
+                }}
               >
                 {outerData.map((entry) => (
                   <Cell key={entry.name} fill={entry.fill} />

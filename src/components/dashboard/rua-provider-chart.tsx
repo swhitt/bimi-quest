@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +39,7 @@ function RuaTooltip({
 }
 
 export function RuaProviderChart() {
+  const router = useRouter();
   const { data, loading } = useFilteredData<RuaProviderRow[]>(
     "/api/stats/rua-providers",
     (json: unknown) => (json as { data?: RuaProviderRow[] }).data ?? [],
@@ -80,16 +82,14 @@ export function RuaProviderChart() {
               <CartesianGrid horizontal={false} className="stroke-border" />
               <XAxis
                 type="number"
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
                 width={140}
@@ -101,6 +101,10 @@ export function RuaProviderChart() {
                 fill="oklch(0.55 0.15 230)"
                 fillOpacity={0.85}
                 radius={[0, 3, 3, 0]}
+                style={{ cursor: "pointer" }}
+                onClick={(d) => {
+                  if (d?.name) router.push(`/domains?f=dmarc.rua:contains:${encodeURIComponent(String(d.name))}`);
+                }}
               />
             </BarChart>
           </ResponsiveContainer>

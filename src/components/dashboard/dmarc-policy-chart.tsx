@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,17 +11,16 @@ export interface DmarcPolicyRow {
   count: number;
 }
 
-/** Color mapping for DMARC policies: reject=green, quarantine=yellow, none=red, unknown=gray */
-const POLICY_COLORS: Record<string, { light: string; dark: string }> = {
-  reject: { light: "oklch(0.55 0.16 145)", dark: "oklch(0.72 0.16 145)" },
-  quarantine: { light: "oklch(0.65 0.16 85)", dark: "oklch(0.78 0.16 85)" },
-  none: { light: "oklch(0.55 0.18 25)", dark: "oklch(0.68 0.18 25)" },
-  unknown: { light: "oklch(0.55 0 0)", dark: "oklch(0.65 0 0)" },
+/** CSS variable mapping for DMARC policies — defined in globals.css for both light/dark */
+const POLICY_CSS_VARS: Record<string, string> = {
+  reject: "var(--policy-reject)",
+  quarantine: "var(--policy-quarantine)",
+  none: "var(--policy-none)",
+  unknown: "var(--policy-unknown)",
 };
 
-function getPolicyColor(policy: string, theme: string | undefined): string {
-  const entry = POLICY_COLORS[policy] ?? POLICY_COLORS.unknown;
-  return theme === "light" ? entry.light : entry.dark;
+function getPolicyColor(policy: string): string {
+  return POLICY_CSS_VARS[policy] ?? POLICY_CSS_VARS.unknown;
 }
 
 interface PolicyTooltipEntry {
@@ -51,7 +50,7 @@ const POLICY_ORDER: Record<string, number> = {
 };
 
 export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow[] }) {
-  const { resolvedTheme } = useTheme();
+  const router = useRouter();
   const { data, loading } = useFilteredData<DmarcPolicyRow[]>(
     "/api/stats/dmarc-policy",
     (json: unknown) => (json as { data?: DmarcPolicyRow[] }).data ?? [],
@@ -76,7 +75,7 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
       policy: d.policy,
       count: d.count,
       percent: total > 0 ? ((d.count / total) * 100).toFixed(1) : "0.0",
-      fill: getPolicyColor(d.policy, resolvedTheme),
+      fill: getPolicyColor(d.policy),
     }));
 
   return (
@@ -97,6 +96,10 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
                   outerRadius={70}
                   strokeWidth={1.5}
                   className="stroke-background"
+                  style={{ cursor: "pointer" }}
+                  onClick={(d) => {
+                    if (d?.policy) router.push(`/domains?f=dmarc.policy:eq:${encodeURIComponent(d.policy)}`);
+                  }}
                 >
                   {chartData.map((entry) => (
                     <Cell key={entry.policy} fill={entry.fill} />
