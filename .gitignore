@@ -53,6 +53,9 @@ next-env.d.ts
 # scripts
 scripts/capture-screenshots.mjs
 
+# screenshots
+screenshots/
+
 # internal tracking
 TODO.md
 AUDIT-REPORT.md

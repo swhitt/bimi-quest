@@ -23,8 +23,8 @@ const DMARC_POLICY_RANK: Record<string, number> = { none: 0, quarantine: 1, reje
 export type BimiChangeType =
   | "record_created"
   | "record_removed"
-  | "logo_changed"
-  | "authority_changed"
+  | "logo_url_changed"
+  | "authority_url_changed"
   | "declination_set"
   | "tags_modified";
 
@@ -44,9 +44,9 @@ export function deriveBimiChangeType(
   if (old.l !== new_.l) {
     // Declination: new record has empty l= tag
     if (new_.l === "") return "declination_set";
-    return "logo_changed";
+    return "logo_url_changed";
   }
-  if (old.a !== new_.a) return "authority_changed";
+  if (old.a !== new_.a) return "authority_url_changed";
   if (new_.l === "" && old.l !== "") return "declination_set";
   return "tags_modified";
 }

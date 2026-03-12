@@ -51,3 +51,4 @@ BIMI certificate market intelligence tool. Scans DigiCert's Gorgon CT log for VM
 - BIMI OIDs: 1.3.6.1.5.5.7.1.12 (logotype), 1.3.6.1.4.1.53087.1.13 (mark type)
 - Uint8Array -> ArrayBuffer conversions are needed for @peculiar/x509 with strict TS
 - `deriveCertType` in parser.ts is the canonical source for VMC/CMC classification
+- Save all screenshots to `screenshots/YYYY-MM-DD-plan-name/NN-description.png` (gitignored). One dir per plan session, numbering from 01. Check existing files to get the next number. Take the screenshot first, then name it based on what's visible

@@ -57,7 +57,7 @@ export function DnsChangesFeed() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/stats/dmarc-drift?limit=50")
+    fetch("/api/stats/dns-changes?limit=50")
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

@@ -22,7 +22,7 @@ function createDrizzleAdapter(): DnsRefreshAdapter {
           dmarc_record_raw: domainBimiState.dmarcRecordRaw,
         })
         .from(domainBimiState)
-        .orderBy(asc(sql`${domainBimiState.lastChecked} NULLS FIRST`))
+        .orderBy(asc(sql`${domainBimiState.lastChecked} NULLS FIRST`), asc(domainBimiState.createdAt))
         .limit(limit);
       return rows;
     },

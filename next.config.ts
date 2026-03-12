@@ -20,19 +20,41 @@ const nextConfig: NextConfig = {
     return [];
   },
   async rewrites() {
-    return [{ source: "/certificates/page/:page", destination: "/certificates?page=:page" }];
+    return [
+      { source: "/certificates/page/:page", destination: "/certificates?page=:page" },
+      { source: "/certificates/ca/:slug", destination: "/certificates?ca=:slug" },
+      { source: "/certificates/ca/:slug/page/:page", destination: "/certificates?ca=:slug&page=:page" },
+    ];
   },
   async headers() {
+    const securityHeaders = [
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      {
+        key: "Content-Security-Policy",
+        value: [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "connect-src 'self'",
+          "font-src 'self'",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "frame-ancestors 'none'",
+        ].join("; "),
+      },
+    ];
+    // HSTS only in production — setting it on localhost permanently forces the browser to HTTPS
+    if (process.env.NODE_ENV === "production") {
+      securityHeaders.push({ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" });
+    }
     return [
       {
         source: "/(.*)",
-        headers: [
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
-        ],
+        headers: securityHeaders,
       },
       {
         source: "/api/:path*",

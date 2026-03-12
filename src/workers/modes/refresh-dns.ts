@@ -13,7 +13,7 @@ function createRawSqlAdapter(sql: NeonQueryFunction<false, false>): DnsRefreshAd
       return (await sql`
 				SELECT domain, bimi_record_raw, dmarc_record_raw
 				FROM domain_bimi_state
-				ORDER BY last_checked ASC NULLS FIRST
+				ORDER BY last_checked ASC NULLS FIRST, created_at ASC
 				LIMIT ${limit}
 			`) as OldDomainState[];
     },
