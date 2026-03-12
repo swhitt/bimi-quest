@@ -67,7 +67,7 @@ export function RecentCerts({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
           latest certificates
         </span>
         <Link

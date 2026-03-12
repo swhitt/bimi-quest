@@ -74,7 +74,9 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
   return (
     <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">vmc vs cmc</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          vmc vs cmc
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"
@@ -155,7 +157,7 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
                   return (
                     <div key={d.name} className="flex items-center gap-2">
                       <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.fill }} />
-                      <span className="text-muted-foreground truncate text-xs">{d.name}</span>
+                      <span className="text-muted-foreground text-xs whitespace-nowrap">{d.name}</span>
                       <span className="ml-auto pl-2 font-mono text-[11px] tabular-nums">
                         {d.value.toLocaleString()}
                       </span>

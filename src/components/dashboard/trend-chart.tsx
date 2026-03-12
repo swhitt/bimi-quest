@@ -93,7 +93,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
 
   const tickFormatter = (value: string) => {
     try {
-      return format(parseISO(`${value}-01`), "MMM");
+      return format(parseISO(`${value}-01`), "MMM ''yy");
     } catch {
       return value;
     }
@@ -102,7 +102,7 @@ export function TrendChart({ data, selectedCA, apiQuery = "", hasDateFilter }: T
   return (
     <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
           {isFiltered ? `${selectedCA} issuance` : "issuance trend"}
         </span>
         <Button

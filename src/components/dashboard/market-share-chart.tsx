@@ -88,7 +88,9 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
   return (
     <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">market share</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          market share
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"

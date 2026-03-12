@@ -67,7 +67,9 @@ export function DmarcDriftFeed() {
   if (loading) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dns record changes</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          dns record changes
+        </span>
         <Skeleton className="h-[160px] mt-1" />
       </div>
     );
@@ -76,7 +78,9 @@ export function DmarcDriftFeed() {
   if (error) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dns record changes</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          dns record changes
+        </span>
         <div className="flex h-[160px] flex-col items-center justify-center gap-2">
           <p className="text-sm text-destructive">Failed to load</p>
           <button
@@ -96,7 +100,9 @@ export function DmarcDriftFeed() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dns record changes</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          dns record changes
+        </span>
         <MiniPagination
           page={page}
           totalPages={totalPages}

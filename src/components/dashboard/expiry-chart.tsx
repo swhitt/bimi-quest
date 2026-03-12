@@ -73,7 +73,9 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   if (loading && data.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">expirations</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          expirations
+        </span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -107,7 +109,9 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">expirations</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          expirations
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"

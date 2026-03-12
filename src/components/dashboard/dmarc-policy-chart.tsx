@@ -82,7 +82,9 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
   if (loading && data.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dmarc policies</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          dmarc policies
+        </span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -102,7 +104,9 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
 
   return (
     <div>
-      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">dmarc policies</span>
+      <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+        dmarc policies
+      </span>
       {chartData.length > 0 ? (
         <div className="flex flex-col sm:flex-row items-center gap-4 mt-1">
           <div role="img" aria-label="Pie chart showing DMARC policy distribution across domains" className="shrink-0">

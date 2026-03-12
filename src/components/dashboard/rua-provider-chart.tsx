@@ -107,7 +107,7 @@ export function RuaProviderChart() {
     return (
       <div>
         <div className="mb-1">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
             dmarc report destinations
           </span>
           <p className="text-[10px] text-muted-foreground">Top aggregate report (rua) providers by domain count</p>
@@ -127,7 +127,7 @@ export function RuaProviderChart() {
   return (
     <div>
       <div className="mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
           dmarc report destinations
         </span>
         <p className="text-[10px] text-muted-foreground">Top aggregate report (rua) providers by domain count</p>

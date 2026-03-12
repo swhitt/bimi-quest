@@ -117,9 +117,9 @@ export function DiffBlock({ diffs }: { diffs: Diff[] }) {
                 <span className="select-none text-muted-foreground">- </span>
                 {hasHighlight ? (
                   <>
-                    <span className="opacity-50">{hl.prefix}</span>
+                    <span className="opacity-70">{hl.prefix}</span>
                     <span className="bg-red-200/60 dark:bg-red-900/40 rounded-sm px-0.5">{hl.aDiff}</span>
-                    <span className="opacity-50">{hl.suffix}</span>
+                    <span className="opacity-70">{hl.suffix}</span>
                   </>
                 ) : (
                   d.old
@@ -131,9 +131,9 @@ export function DiffBlock({ diffs }: { diffs: Diff[] }) {
                 <span className="select-none text-muted-foreground">+ </span>
                 {hasHighlight ? (
                   <>
-                    <span className="opacity-50">{hl.prefix}</span>
+                    <span className="opacity-70">{hl.prefix}</span>
                     <span className="bg-green-200/60 dark:bg-green-900/40 rounded-sm px-0.5">{hl.bDiff}</span>
-                    <span className="opacity-50">{hl.suffix}</span>
+                    <span className="opacity-70">{hl.suffix}</span>
                   </>
                 ) : (
                   d.new_
