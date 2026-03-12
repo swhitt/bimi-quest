@@ -113,6 +113,7 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
                 axisLine={false}
                 tickLine={false}
                 width={120}
+                interval={0}
               />
               <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<IndustryTooltip />} />
               <Bar

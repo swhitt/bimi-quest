@@ -43,9 +43,9 @@ export function useChartColors(): Record<string, string> {
   return resolvedTheme === "light" ? LIGHT_CA_COLORS : DARK_CA_COLORS;
 }
 
+/** CSS variable mapping — defined in globals.css for both light/dark */
 export function useCertTypeColors(): { VMC: string; CMC: string } {
-  const { resolvedTheme } = useTheme();
-  return resolvedTheme === "light" ? CERT_TYPE_COLORS.light : CERT_TYPE_COLORS.dark;
+  return { VMC: "var(--cert-vmc)", CMC: "var(--cert-cmc)" };
 }
 
 export function getCAColor(colors: Record<string, string>, ca: string): string {

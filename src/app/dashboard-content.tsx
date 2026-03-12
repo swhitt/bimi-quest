@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { DmarcDriftFeed } from "@/components/dashboard/dmarc-drift-feed";
+import { DmarcDriftFeed } from "@/components/dashboard/dns-changes-feed";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { TopOrgs } from "@/components/dashboard/top-orgs";

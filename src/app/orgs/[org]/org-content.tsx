@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { HostnameLink } from "@/components/hostname-link";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { Badge } from "@/components/ui/badge";
@@ -86,20 +86,12 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
   const country = data.data.length > 0 ? data.data[0].subjectCountry : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Header */}
       <div>
-        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2" aria-label="Breadcrumb">
-          <Link href="/" className="hover:text-foreground">
-            Dashboard
-          </Link>
-          <span>/</span>
-          <Link href="/leaderboard" className="hover:text-foreground">
-            Organizations
-          </Link>
-          <span>/</span>
-          <span className="text-foreground">{org}</span>
-        </nav>
+        <BreadcrumbNav
+          items={[{ label: "Dashboard", href: "/" }, { label: "Organizations", href: "/leaderboard" }, { label: org }]}
+        />
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -140,10 +132,10 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
           {/* Domains section */}
           {domains.length > 0 && (
             <div>
-              <h2 className="text-sm font-medium text-muted-foreground mb-2">
+              <h2 className="text-sm font-medium text-muted-foreground mb-1.5">
                 Top domains{data.pagination.totalPages > 1 ? " (this page)" : ""}
               </h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {domains.map(([domain, count]) => (
                   <span
                     key={domain}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { DnsSnapshot } from "@/lib/db/schema";
 import { computeReadinessScore, type ReadinessResult, type ReadinessTier } from "@/lib/bimi/readiness-score";
 import { cn, errorMessage } from "@/lib/utils";
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { BimiInboxPreview } from "@/components/bimi-inbox-preview";
 import { DomainWatchButton } from "@/components/domain-watch-button";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
-import { type DnsChange, CHANGE_STYLE } from "@/components/dashboard/dmarc-drift-feed";
+import { type DnsChange, CHANGE_STYLE } from "@/components/dashboard/dns-changes-feed";
 import { UtcTime } from "@/components/ui/utc-time";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { validateUrl } from "@/lib/entity-urls";
@@ -442,23 +443,14 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
   const readiness = computeReadinessScore(snapshot);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">
-          Dashboard
-        </Link>
-        <span>/</span>
-        <Link href="/domains" className="hover:text-foreground">
-          Domains
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{domain}</span>
-      </nav>
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6 px-4 py-4 sm:py-8">
+      <BreadcrumbNav
+        items={[{ label: "Dashboard", href: "/" }, { label: "Domains", href: "/domains" }, { label: domain }]}
+      />
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {logoUrl && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -484,9 +476,11 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
             {readiness.tier} ({readiness.score})
           </Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2">
           {data.lastChecked && (
-            <span className="text-muted-foreground text-sm">Checked {new Date(data.lastChecked).toLocaleString()}</span>
+            <span className="text-muted-foreground text-xs sm:text-sm">
+              Checked {new Date(data.lastChecked).toLocaleString()}
+            </span>
           )}
           <DomainWatchButton domain={domain} />
           <Button asChild size="sm" variant="outline">
@@ -496,7 +490,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
             href={`https://crt.sh/?q=${encodeURIComponent(domain)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 sm:px-2.5 sm:py-1.5 text-xs sm:text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             crt.sh
             <ExternalArrowIcon />
@@ -505,7 +499,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
             href={`https://mxtoolbox.com/SuperTool.aspx?action=dmarc%3a${encodeURIComponent(domain)}&run=toolpage`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 sm:px-2.5 sm:py-1.5 text-xs sm:text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             MX Toolbox
             <ExternalArrowIcon />

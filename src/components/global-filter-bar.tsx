@@ -855,17 +855,16 @@ function FilterBarContent() {
   return (
     <div className="border-b bg-muted/30">
       <div className="container mx-auto px-4 py-2">
-        {/* ===== Mobile: Sheet trigger ===== */}
-        <div className="flex items-center justify-between md:hidden">
+        {/* ===== Mobile: Sheet trigger + inline chips ===== */}
+        <div className="flex items-center gap-2 md:hidden">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 shrink-0 text-sm text-muted-foreground hover:text-foreground"
                 aria-expanded={sheetOpen}
                 aria-controls="filter-sheet"
               >
                 <ListFilter className="size-4" />
-                Filters
                 {filterCount > 0 && (
                   <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                     {filterCount}
@@ -932,6 +931,19 @@ function FilterBarContent() {
               )}
             </SheetContent>
           </Sheet>
+          <div className="flex-1 min-w-0 overflow-x-auto">
+            <FilterChips chips={chips} onClearAll={clearFilters} />
+          </div>
+          {chips.length > 0 && (
+            <button
+              onClick={copyShareUrl}
+              className="shrink-0 rounded p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Copy share link"
+              title={copied ? "Copied!" : "Copy share link with current filters"}
+            >
+              <Link2 className="size-3.5" />
+            </button>
+          )}
         </div>
 
         {/* ===== Desktop: Primary selects + More Filters popover ===== */}
@@ -984,8 +996,8 @@ function FilterBarContent() {
           </Popover>
         </div>
 
-        {/* ===== Chips row (both mobile and desktop) ===== */}
-        <div className="flex items-start gap-1.5">
+        {/* ===== Chips row (desktop only — mobile chips are inline above) ===== */}
+        <div className="hidden md:flex items-start gap-1.5">
           <div className="flex-1 min-w-0">
             <FilterChips chips={chips} onClearAll={clearFilters} />
           </div>

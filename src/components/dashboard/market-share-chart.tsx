@@ -124,6 +124,7 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                 axisLine={false}
                 tickLine={false}
                 width={110}
+                interval={0}
               />
               <Tooltip
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}

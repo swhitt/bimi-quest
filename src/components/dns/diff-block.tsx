@@ -65,7 +65,7 @@ export function TagKey({ tag }: { tag: string }) {
   const label = TAG_LABELS[tag];
   return label ? (
     <>
-      {tag} <span className="text-muted-foreground/50">({label})</span>
+      {tag} <span className="text-muted-foreground">({label})</span>
     </>
   ) : (
     <>{tag}</>
@@ -76,12 +76,12 @@ export function DiffBlock({ diffs }: { diffs: Diff[] }) {
   if (diffs.length === 0) return null;
 
   return (
-    <div className="mt-1 rounded bg-muted/50 px-2 py-1.5 font-mono text-[11px] leading-relaxed space-y-0.5">
+    <div className="mt-1 rounded bg-muted px-2 py-1.5 font-mono text-[11px] leading-relaxed space-y-0.5">
       {diffs.map((d) => {
         // Unchanged context field
         if (!d.changed) {
           return (
-            <div key={d.key} className="text-muted-foreground/50 truncate">
+            <div key={d.key} className="text-muted-foreground truncate">
               <TagKey tag={d.key} />: {d.old}
             </div>
           );
@@ -96,9 +96,9 @@ export function DiffBlock({ diffs }: { diffs: Diff[] }) {
               <span className="text-muted-foreground">
                 <TagKey tag={d.key} />:{" "}
               </span>
-              <span className="text-red-600/80 dark:text-red-400/70 line-through decoration-red-400/30">{d.old}</span>
-              <span className="text-muted-foreground/50"> → </span>
-              <span className="text-green-600/80 dark:text-green-400/70 font-medium">{d.new_}</span>
+              <span className="text-red-700 dark:text-red-400 line-through decoration-red-400/30">{d.old}</span>
+              <span className="text-muted-foreground"> → </span>
+              <span className="text-green-700 dark:text-green-400 font-medium">{d.new_}</span>
             </div>
           );
         }
@@ -113,8 +113,8 @@ export function DiffBlock({ diffs }: { diffs: Diff[] }) {
               <TagKey tag={d.key} />
             </span>
             {d.old !== null && (
-              <div className="pl-3 text-red-600/80 dark:text-red-400/70 overflow-x-auto whitespace-nowrap">
-                <span className="select-none text-muted-foreground/50">- </span>
+              <div className="pl-3 text-red-700 dark:text-red-400 overflow-x-auto whitespace-nowrap">
+                <span className="select-none text-muted-foreground">- </span>
                 {hasHighlight ? (
                   <>
                     <span className="opacity-50">{hl.prefix}</span>
@@ -127,8 +127,8 @@ export function DiffBlock({ diffs }: { diffs: Diff[] }) {
               </div>
             )}
             {d.new_ !== null && (
-              <div className="pl-3 text-green-600/80 dark:text-green-400/70 overflow-x-auto whitespace-nowrap">
-                <span className="select-none text-muted-foreground/50">+ </span>
+              <div className="pl-3 text-green-700 dark:text-green-400 overflow-x-auto whitespace-nowrap">
+                <span className="select-none text-muted-foreground">+ </span>
                 {hasHighlight ? (
                   <>
                     <span className="opacity-50">{hl.prefix}</span>

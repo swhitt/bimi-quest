@@ -58,7 +58,7 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
         <div className="space-y-1">
           <ol className="mt-1 space-y-0.5">
             {orgs.map((org, i) => (
-              <li key={org.org} className="flex items-center gap-1.5 text-[13px]">
+              <li key={org.org} className="flex items-center gap-1.5 text-[13px] font-medium">
                 <span className="font-mono tabular-nums text-muted-foreground w-5 text-right shrink-0 text-[11px]">
                   {String((page - 1) * PAGE_SIZE + i + 1).padStart(2, "0")}.
                 </span>

@@ -126,7 +126,7 @@ export function DmarcDriftFeed() {
                     {c.recordType}
                   </span>
                   <div className="min-w-0 flex-1 truncate">
-                    <HostChip hostname={c.domain} showExternal={false} size="xs" compact />
+                    <HostChip hostname={c.domain} size="xs" compact />
                   </div>
                   <span className={cn("font-mono text-[10px] shrink-0", style.color)}>{style.label}</span>
                   {c.detectedAt && (

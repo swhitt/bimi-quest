@@ -8,7 +8,8 @@ import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { displayIntermediateCa } from "@/lib/ca-display";
-import { certUrl, domainUrl, orgUrl } from "@/lib/entity-urls";
+import { HostChip } from "@/components/host-chip";
+import { certUrl, orgUrl } from "@/lib/entity-urls";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export interface RecentCert {
@@ -109,15 +110,9 @@ export function RecentCerts({
                   ) : (
                     <div className="size-5 shrink-0 rounded border bg-muted" />
                   )}
-                  <span className="text-[13px] truncate flex-1 min-w-0">
+                  <span className="text-[13px] font-medium truncate flex-1 min-w-0">
                     {cert.sanList[0] ? (
-                      <Link
-                        href={domainUrl(cert.sanList[0])}
-                        className="font-mono text-muted-foreground hover:text-foreground hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {cert.sanList[0]}
-                      </Link>
+                      <HostChip hostname={cert.sanList[0]} size="xs" compact />
                     ) : (
                       <span className="font-mono text-muted-foreground">{cert.subjectCn || "Unknown"}</span>
                     )}
@@ -125,7 +120,7 @@ export function RecentCerts({
                   {cert.subjectOrg && (
                     <Link
                       href={orgUrl(cert.subjectOrg)}
-                      className="hidden sm:inline text-[11px] text-muted-foreground/70 truncate max-w-[120px] hover:underline shrink-0"
+                      className="hidden sm:inline text-[11px] text-muted-foreground truncate max-w-[120px] hover:underline shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {cert.subjectOrg}
@@ -134,7 +129,7 @@ export function RecentCerts({
                   <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
                     {cert.certType || "BIMI"}
                   </Badge>
-                  <span className="hidden sm:inline text-[10px] text-muted-foreground/70 shrink-0">
+                  <span className="hidden sm:inline text-[10px] text-muted-foreground shrink-0">
                     {displayIntermediateCa(cert.issuerOrg)}
                   </span>
                   <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
