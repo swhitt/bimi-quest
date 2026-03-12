@@ -4,6 +4,7 @@ import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { buildDnsSnapshot } from "@/lib/bimi/dns-snapshot";
 import { computeSvgHash, decompressSvgIfNeeded, validateSVGTinyPS } from "@/lib/bimi/svg";
 import { throttle } from "@/lib/ct/gorgon";
+import { parseCertBasicInfo } from "@/lib/ct/parser";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { errorMessage } from "@/lib/utils";
 import type { DnsSnapshot } from "@/lib/db/schema";
@@ -127,6 +128,53 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     }
   }
 
+  // Fetch authority certificate if present
+  let certSnapshot: {
+    found: boolean;
+    authorityUrl: string | null;
+    certType: string | null;
+    issuer: string | null;
+    serialNumber?: string | null;
+    subject?: string | null;
+    notBefore?: string | null;
+    notAfter?: string | null;
+    subjectAltNames?: string[] | null;
+    markType?: string | null;
+    logoHashAlgorithm?: string | null;
+    logoHashValue?: string | null;
+  } | null = null;
+
+  if (bimiRecord?.authorityUrl) {
+    try {
+      const res = await safeFetch(bimiRecord.authorityUrl, {
+        headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        const pemText = await res.text();
+        const certInfo = parseCertBasicInfo(pemText);
+        if (certInfo) {
+          certSnapshot = {
+            found: true,
+            authorityUrl: bimiRecord.authorityUrl,
+            certType: certInfo.certType,
+            issuer: certInfo.issuer,
+            serialNumber: certInfo.serialNumber,
+            subject: certInfo.subject,
+            notBefore: certInfo.notBefore.toISOString(),
+            notAfter: certInfo.notAfter.toISOString(),
+            subjectAltNames: certInfo.sans.length > 0 ? certInfo.sans : null,
+            markType: certInfo.markType,
+            logoHashAlgorithm: certInfo.logotypeSvgHash ? "SHA-256" : null,
+            logoHashValue: certInfo.logotypeSvgHash,
+          };
+        }
+      }
+    } catch {
+      // Cert fetch timeout or error — leave null
+    }
+  }
+
   // Build structured DNS snapshot from the flat fields we just populated
   row.dns_snapshot = buildDnsSnapshot({
     bimiRecord: bimiRecord
@@ -167,8 +215,7 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
           validationErrors: row.svg_validation_errors,
         }
       : null,
-    // The backfill worker doesn't fetch authority certificates, so this stays null
-    certificate: null,
+    certificate: certSnapshot,
     grade: null,
   });
 
