@@ -98,6 +98,19 @@ if (mode === "stream") {
     console.error(err);
     process.exit(1);
   });
+} else if (mode === "backfill-tile-bg-domains") {
+  const { backfillTileBgDomains } = await import("./modes/backfill-tile-bg-domains");
+  backfillTileBgDomains(sql).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+} else if (mode === "backfill-certs") {
+  const limit = parseInt(process.argv[3] || "1000", 10);
+  const { backfillCerts } = await import("./modes/backfill-certs");
+  backfillCerts(sql, limit).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 } else {
   const { backfill } = await import("./modes/backfill");
   backfill().catch((err) => {

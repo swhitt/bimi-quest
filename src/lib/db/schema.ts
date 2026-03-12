@@ -217,6 +217,7 @@ export const domainBimiState = pgTable(
     bimiSelector: text("bimi_selector").default("default"),
     bimiOrgDomainFallback: boolean("bimi_org_domain_fallback").default(false),
     svgIndicatorHash: text("svg_indicator_hash"),
+    svgTileBg: text("svg_tile_bg"),
     bimiGrade: text("bimi_grade"),
     dnsSnapshot: jsonb("dns_snapshot").$type<DnsSnapshot>(),
     lastChecked: timestamp("last_checked", { withTimezone: true }),

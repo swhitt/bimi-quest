@@ -9,6 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { caSlugToName } from "@/lib/ca-slugs";
+import { PaginationBar } from "@/components/pagination-bar";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { LogoCard } from "@/components/logo-card";
+import { resolveRuaProviders } from "@/lib/rua-providers";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -17,10 +21,17 @@ interface DomainResult {
   domain: string;
   bimiGrade: string | null;
   dmarcPolicy: string | null;
+  dmarcRecordRaw: string | null;
   bimiLogoUrl: string | null;
+  bimiRecordRaw: string | null;
   bimiAuthorityUrl: string | null;
   svgTinyPsValid: boolean | null;
+  svgValidationErrors: string[] | null;
+  svgIndicatorHash: string | null;
+  svgTileBg: string | null;
   dmarcValid: boolean | null;
+  dmarcRua: string | null;
+  svgDataUri: string | null;
   lastChecked: string | null;
 }
 
@@ -91,7 +102,7 @@ const SORTABLE_COLUMNS = [
   { key: "lastChecked", label: "Last Checked" },
 ] as const;
 
-const PAGE_LIMIT = 50;
+const DEFAULT_PAGE_LIMIT = 50;
 
 // --- Helpers ---
 
@@ -234,7 +245,8 @@ export function DomainSearch() {
       if (currentQ) params.set("q", currentQ);
       if (currentF) params.set("f", currentF);
       params.set("page", currentPage);
-      params.set("limit", String(PAGE_LIMIT));
+      const currentLimit = currentUrl.searchParams.get("limit") ?? String(DEFAULT_PAGE_LIMIT);
+      params.set("limit", currentLimit);
       params.set("sort", currentSort);
       params.set("dir", currentDir);
 
@@ -484,15 +496,25 @@ export function DomainSearch() {
                         }
                       }}
                     >
-                      <td className="px-2 py-3">
+                      <td className="w-10 px-2 py-1">
                         {row.bimiLogoUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={`/api/proxy/svg?url=${encodeURIComponent(row.bimiLogoUrl)}`}
-                            alt=""
-                            width={20}
-                            height={20}
-                            className="rounded object-contain"
+                          <LogoCard
+                            svgUrl={
+                              row.svgIndicatorHash
+                                ? `/api/logo/${row.svgIndicatorHash}?format=svg`
+                                : `/api/proxy/svg?url=${encodeURIComponent(row.bimiLogoUrl)}`
+                            }
+                            tileBg={
+                              row.svgTileBg === "rgb(243 244 246)"
+                                ? "light"
+                                : row.svgTileBg === "rgb(38 38 38)"
+                                  ? "dark"
+                                  : null
+                            }
+                            fingerprint={row.svgIndicatorHash}
+                            size="sm"
+                            alt={`${row.domain} logo`}
+                            asLink={!!row.svgIndicatorHash}
                           />
                         ) : null}
                       </td>
@@ -516,9 +538,65 @@ export function DomainSearch() {
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">
                         {row.dmarcPolicy ? (
-                          <Badge variant="secondary" className={cn(DMARC_POLICY_COLORS[row.dmarcPolicy] ?? "")}>
-                            {row.dmarcPolicy}
-                          </Badge>
+                          <div className="flex flex-col gap-0.5">
+                            <HoverCard openDelay={300} closeDelay={100}>
+                              <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <span className="cursor-default">
+                                  <Badge variant="secondary" className={cn(DMARC_POLICY_COLORS[row.dmarcPolicy] ?? "")}>
+                                    {row.dmarcPolicy}
+                                  </Badge>
+                                </span>
+                              </HoverCardTrigger>
+                              {row.dmarcRecordRaw && (
+                                <HoverCardContent
+                                  side="top"
+                                  align="start"
+                                  className="w-auto max-w-[420px] px-3 py-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <p className="text-[10px] font-medium text-muted-foreground mb-1">DMARC TXT Record</p>
+                                  <p className="text-xs font-mono break-all leading-relaxed">{row.dmarcRecordRaw}</p>
+                                </HoverCardContent>
+                              )}
+                            </HoverCard>
+                            {(() => {
+                              const providers = resolveRuaProviders(row.dmarcRua);
+                              if (providers.length === 0) return null;
+                              if (providers.length === 1) {
+                                return (
+                                  <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+                                    {providers[0]}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <HoverCard openDelay={200} closeDelay={100}>
+                                  <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <span className="text-[10px] text-muted-foreground truncate max-w-[180px] cursor-default border-b border-dotted border-muted-foreground/40">
+                                      {providers.join(" · ")}
+                                    </span>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent
+                                    side="top"
+                                    align="start"
+                                    className="w-auto max-w-[260px] px-3 py-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <p className="text-[10px] font-medium text-muted-foreground mb-1">
+                                      DMARC Report Processors
+                                    </p>
+                                    <ul className="space-y-0.5">
+                                      {providers.map((p) => (
+                                        <li key={p} className="text-xs">
+                                          {p}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </HoverCardContent>
+                                </HoverCard>
+                              );
+                            })()}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">&mdash;</span>
                         )}
@@ -538,14 +616,53 @@ export function DomainSearch() {
                       <td className="px-4 py-3">
                         {row.svgTinyPsValid === null ? (
                           <span className="text-muted-foreground">&mdash;</span>
-                        ) : row.svgTinyPsValid ? (
-                          <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400">
-                            Valid
-                          </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-red-500/15 text-red-700 dark:text-red-400">
-                            Invalid
-                          </Badge>
+                          <HoverCard openDelay={300} closeDelay={100}>
+                            <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <span className="cursor-default">
+                                {row.svgTinyPsValid ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-green-500/15 text-green-700 dark:text-green-400"
+                                  >
+                                    Valid
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="bg-red-500/15 text-red-700 dark:text-red-400">
+                                    Invalid
+                                  </Badge>
+                                )}
+                              </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent
+                              side="top"
+                              align="start"
+                              className="w-auto max-w-[420px] px-3 py-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <p className="text-[10px] font-medium text-muted-foreground mb-1">
+                                SVG Tiny PS Validation
+                              </p>
+                              {row.bimiRecordRaw && (
+                                <p className="text-xs font-mono break-all leading-relaxed mb-1">{row.bimiRecordRaw}</p>
+                              )}
+                              {row.svgTinyPsValid ? (
+                                <p className="text-xs text-green-600 dark:text-green-400">
+                                  Passes SVG Tiny PS profile requirements
+                                </p>
+                              ) : row.svgValidationErrors && row.svgValidationErrors.length > 0 ? (
+                                <ul className="space-y-0.5">
+                                  {row.svgValidationErrors.map((err, i) => (
+                                    <li key={i} className="text-xs text-red-600 dark:text-red-400">
+                                      {err}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-xs text-red-600 dark:text-red-400">Fails SVG Tiny PS validation</p>
+                              )}
+                            </HoverCardContent>
+                          </HoverCard>
                         )}
                       </td>
                     </tr>
@@ -558,27 +675,7 @@ export function DomainSearch() {
       </Card>
 
       {/* Pagination */}
-      {results && results.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {results.pagination.total.toLocaleString()} results &middot; page {results.pagination.page} of{" "}
-            {results.pagination.totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => handlePageChange(page - 1)}>
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= results.pagination.totalPages}
-              onClick={() => handlePageChange(page + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      {results && <PaginationBar pagination={results.pagination} onPageChange={handlePageChange} noun="domains" />}
     </div>
   );
 }

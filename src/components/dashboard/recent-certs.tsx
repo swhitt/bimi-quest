@@ -120,7 +120,7 @@ export function RecentCerts({
                   {cert.subjectOrg && (
                     <Link
                       href={orgUrl(cert.subjectOrg)}
-                      className="hidden sm:inline text-[11px] text-muted-foreground truncate max-w-[120px] hover:underline shrink-0"
+                      className="hidden sm:inline text-[11px] text-muted-foreground truncate min-w-0 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {cert.subjectOrg}

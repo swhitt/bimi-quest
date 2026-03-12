@@ -5,76 +5,36 @@ import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PROVIDER_NAMES, providerFilterTerm } from "@/lib/rua-providers";
 
 interface RuaProviderRow {
   provider: string;
   domainCount: number;
 }
 
-/** Map RUA report destination domains to their product/company name */
-const PROVIDER_NAMES: Record<string, string> = {
-  "vali.email": "Valimail",
-  "emaildefense.proofpoint.com": "Proofpoint",
-  "dmarc-reports.cloudflare.net": "Cloudflare",
-  "inbox.ondmarc.com": "Red Sift OnDMARC",
-  "rep.dmarcanalyzer.com": "DMARC Analyzer (Mimecast)",
-  "ag.eu.dmarcadvisor.com": "DMARC Advisor",
-  "dmarc.everest.email": "Everest (Validity)",
-  "rua.powerdmarc.com": "PowerDMARC",
-  "rua.easydmarc.us": "EasyDMARC",
-  "rua.easydmarc.eu": "EasyDMARC",
-  "rua.agari.com": "Agari (Fortra)",
-  "mxtoolbox.dmarc-report.com": "MXToolbox",
-  "dmarc.postmarkapp.com": "Postmark (ActiveCampaign)",
-  "inbound.dmarcdigests.com": "DMARC Digests",
-  "ag.dmarcian.com": "dmarcian",
-  "ag.us.dmarcian.com": "dmarcian",
-  "ag.eu.dmarcian.com": "dmarcian",
-  "ag.dmarcly.com": "DMARCLY",
-  "dmarc25.jp": "DMARC25",
-  "progist.in": "Progist",
-  "dmarc.inboxmonster.com": "Inbox Monster",
-  "rua.dmarc.emailanalyst.com": "Email Analyst",
-  "sdmarc.net": "sDMARC",
-  "ar.glockapps.com": "GlockApps",
-  "dmarc.250ok.net": "250ok (Validity)",
-  "in.mailhardener.com": "Mailhardener",
-  "rx.rakuten.co.jp": "Rakuten",
-  "dmarc.brevo.com": "Brevo (Sendinblue)",
-  "inbox.eu.redsift.cloud": "Red Sift",
-  "rua.netcraft.com": "Netcraft",
-  "rua.dmp.cisco.com": "Cisco Domain Protection",
-  "dmarc-report.uriports.com": "URIports",
-  "dmarc.fraudmarc.com": "Fraudmarc",
-};
-
-interface RuaTooltipEntry {
+interface AggregatedProvider {
   name: string;
-  value: number;
-  color: string;
+  domainCount: number;
+  /** All hostnames that mapped to this provider (for click-through filter) */
+  hostnames: string[];
 }
 
-function RuaTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: readonly RuaTooltipEntry[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-
-  const count = payload[0]?.value ?? 0;
-  const domain = String(label ?? "");
-  const company = PROVIDER_NAMES[domain];
-
-  return (
-    <ChartTooltipContent
-      label={company ? `${company} (${domain})` : domain}
-      rows={[{ color: payload[0]?.color ?? "oklch(0.55 0.15 230)", name: "Domains", value: count.toLocaleString() }]}
-    />
-  );
+/** Merge hostname-level rows into provider-level rows using PROVIDER_NAMES */
+function aggregateByProvider(rows: RuaProviderRow[]): AggregatedProvider[] {
+  const map = new Map<string, { count: number; hostnames: string[] }>();
+  for (const row of rows) {
+    const provider = PROVIDER_NAMES[row.provider] ?? row.provider;
+    const existing = map.get(provider);
+    if (existing) {
+      existing.count += row.domainCount;
+      existing.hostnames.push(row.provider);
+    } else {
+      map.set(provider, { count: row.domainCount, hostnames: [row.provider] });
+    }
+  }
+  return [...map.entries()]
+    .map(([name, { count, hostnames }]) => ({ name, domainCount: count, hostnames }))
+    .sort((a, b) => b.domainCount - a.domainCount);
 }
 
 export function RuaProviderChart() {
@@ -117,10 +77,8 @@ export function RuaProviderChart() {
     );
   }
 
-  const chartData = data.slice(0, 25).map((d) => ({
-    name: d.provider,
-    domainCount: d.domainCount,
-  }));
+  const aggregated = aggregateByProvider(data);
+  const chartData = aggregated.slice(0, 25);
 
   const barHeight = Math.max(chartData.length * 24, 120);
 
@@ -152,7 +110,25 @@ export function RuaProviderChart() {
                 width={200}
                 interval={0}
               />
-              <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<RuaTooltip />} />
+              <Tooltip
+                cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const count = payload[0]?.value ?? 0;
+                  return (
+                    <ChartTooltipContent
+                      label={String(label ?? "")}
+                      rows={[
+                        {
+                          color: payload[0]?.color ?? "oklch(0.55 0.15 230)",
+                          name: "Domains",
+                          value: Number(count).toLocaleString(),
+                        },
+                      ]}
+                    />
+                  );
+                }}
+              />
               <Bar
                 dataKey="domainCount"
                 name="Domains"
@@ -161,7 +137,10 @@ export function RuaProviderChart() {
                 radius={[0, 3, 3, 0]}
                 style={{ cursor: "pointer" }}
                 onClick={(d) => {
-                  if (d?.name) router.push(`/domains?f=dmarc.rua:contains:${encodeURIComponent(String(d.name))}`);
+                  const entry = chartData.find((e) => e.name === d?.name);
+                  if (!entry) return;
+                  const term = providerFilterTerm(entry.name, entry.hostnames);
+                  router.push(`/domains?f=dmarc.rua:contains:${encodeURIComponent(term)}`);
                 }}
               />
             </BarChart>

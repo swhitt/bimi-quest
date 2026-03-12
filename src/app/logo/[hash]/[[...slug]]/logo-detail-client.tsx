@@ -29,7 +29,7 @@ interface LogoData {
   country: string | null;
   notBefore: string | null;
   notAfter: string | null;
-  fingerprintSha256: string;
+  fingerprintSha256: string | null;
   isPrecert: boolean;
   ctLogIndex: string | null;
 }
@@ -152,21 +152,25 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
 
           {/* Primary action */}
-          <Button asChild variant="outline" size="sm" className="mt-2">
-            <Link href={certUrl(logo.fingerprintSha256)}>
-              <Award className="mr-1.5 size-3.5" />
-              View certificate details
-            </Link>
-          </Button>
+          {logo.fingerprintSha256 && (
+            <Button asChild variant="outline" size="sm" className="mt-2">
+              <Link href={certUrl(logo.fingerprintSha256)}>
+                <Award className="mr-1.5 size-3.5" />
+                View certificate details
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Details card */}
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="divide-y">
-          <DetailRow label="Certificate" href={certUrl(logo.fingerprintSha256)}>
-            <span className="font-mono text-xs truncate">{logo.fingerprintSha256}</span>
-          </DetailRow>
+          {logo.fingerprintSha256 && (
+            <DetailRow label="Certificate" href={certUrl(logo.fingerprintSha256)}>
+              <span className="font-mono text-xs truncate">{logo.fingerprintSha256}</span>
+            </DetailRow>
+          )}
 
           {logo.issuer && (
             <DetailRow label="Intermediate CA">

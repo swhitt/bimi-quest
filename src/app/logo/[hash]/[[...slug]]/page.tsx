@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
+import { certificates, domainBimiState } from "@/lib/db/schema";
 import { domainSlug } from "@/lib/domain-slug";
 import { LogoDetailClient } from "./logo-detail-client";
 
@@ -12,33 +12,79 @@ interface Props {
   params: Promise<{ hash: string; slug?: string[] }>;
 }
 
+const LOGO_COLUMNS = {
+  svgHash: certificates.logotypeSvgHash,
+  svg: certificates.logotypeSvg,
+  org: certificates.subjectOrg,
+  domain: certificates.sanList,
+  certType: certificates.certType,
+  markType: certificates.markType,
+  issuer: certificates.issuerOrg,
+  rootCa: certificates.rootCaOrg,
+  score: certificates.notabilityScore,
+  logoQuality: certificates.logoQualityScore,
+  reason: certificates.notabilityReason,
+  description: certificates.companyDescription,
+  country: certificates.subjectCountry,
+  notBefore: certificates.notBefore,
+  notAfter: certificates.notAfter,
+  fingerprintSha256: certificates.fingerprintSha256,
+  isPrecert: certificates.isPrecert,
+  ctLogIndex: certificates.ctLogIndex,
+};
+
 /** Deduplicated logo lookup shared by generateMetadata and the page component. */
 const getLogo = cache(async (hash: string) => {
-  const [row] = await db
-    .select({
-      svgHash: certificates.logotypeSvgHash,
-      svg: certificates.logotypeSvg,
-      org: certificates.subjectOrg,
-      domain: certificates.sanList,
-      certType: certificates.certType,
-      markType: certificates.markType,
-      issuer: certificates.issuerOrg,
-      rootCa: certificates.rootCaOrg,
-      score: certificates.notabilityScore,
-      logoQuality: certificates.logoQualityScore,
-      reason: certificates.notabilityReason,
-      description: certificates.companyDescription,
-      country: certificates.subjectCountry,
-      notBefore: certificates.notBefore,
-      notAfter: certificates.notAfter,
-      fingerprintSha256: certificates.fingerprintSha256,
-      isPrecert: certificates.isPrecert,
-      ctLogIndex: certificates.ctLogIndex,
-    })
+  // Try certificate fingerprint prefix first
+  const [byFp] = await db
+    .select(LOGO_COLUMNS)
     .from(certificates)
     .where(and(sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
     .limit(1);
-  return row ?? null;
+  if (byFp) return byFp;
+
+  // Fall back to SVG content hash in certificates table
+  const [bySvgHash] = await db
+    .select(LOGO_COLUMNS)
+    .from(certificates)
+    .where(and(sql`${certificates.logotypeSvgHash} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
+    .limit(1);
+  if (bySvgHash) return bySvgHash;
+
+  // Final fallback: domain_bimi_state (logos fetched from BIMI DNS, no cert in our DB)
+  const [byDomain] = await db
+    .select({
+      svgContent: domainBimiState.svgContent,
+      svgHash: domainBimiState.svgIndicatorHash,
+      domain: domainBimiState.domain,
+    })
+    .from(domainBimiState)
+    .where(and(sql`${domainBimiState.svgIndicatorHash} LIKE ${hash + "%"}`, isNotNull(domainBimiState.svgContent)))
+    .limit(1);
+  if (byDomain) {
+    return {
+      svgHash: byDomain.svgHash,
+      svg: byDomain.svgContent,
+      org: byDomain.domain,
+      domain: [byDomain.domain],
+      certType: null,
+      markType: null,
+      issuer: null,
+      rootCa: null,
+      score: null,
+      logoQuality: null,
+      reason: null,
+      description: null,
+      country: null,
+      notBefore: null,
+      notAfter: null,
+      fingerprintSha256: byDomain.svgHash ?? hash,
+      isPrecert: false,
+      ctLogIndex: null,
+    };
+  }
+
+  return null;
 });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -108,7 +154,7 @@ export default async function LogoPage({ params }: Props) {
         country: logo.country,
         notBefore: logo.notBefore?.toISOString() ?? null,
         notAfter: logo.notAfter?.toISOString() ?? null,
-        fingerprintSha256: logo.fingerprintSha256,
+        fingerprintSha256: logo.certType ? logo.fingerprintSha256 : null,
         isPrecert: logo.isPrecert ?? false,
         ctLogIndex: logo.ctLogIndex != null ? String(logo.ctLogIndex) : null,
       }}
