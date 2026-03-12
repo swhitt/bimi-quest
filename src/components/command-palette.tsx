@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { certUrl, hostUrl, orgUrl } from "@/lib/entity-urls";
+import { certUrl, domainUrl, orgUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 
 interface DomainResult {
@@ -45,7 +45,7 @@ function flattenResults(results: SearchResults): FlatItem[] {
       category: "Domains",
       label: d.domain,
       detail: d.grade ? `Grade ${d.grade}` : "No grade",
-      href: hostUrl(d.domain),
+      href: domainUrl(d.domain),
     });
   }
 

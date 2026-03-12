@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { hostUrl, orgUrl } from "@/lib/entity-urls";
+import { domainUrl, orgUrl } from "@/lib/entity-urls";
 import { detectSearchType, extractDomain, normalizeHex, type SearchType } from "@/lib/search-detect";
 
 interface Suggestion {
@@ -145,7 +145,7 @@ export function UniversalSearch({ variant = "nav", autoFocus = false, onNavigate
     } else {
       const domain = extractDomain(trimmed);
       if (domain) {
-        router.push(hostUrl(domain));
+        router.push(domainUrl(domain));
       }
     }
 
@@ -296,7 +296,7 @@ export function UniversalSearch({ variant = "nav", autoFocus = false, onNavigate
               ) : (
                 <>
                   <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground w-8">
-                    {s.type === "domain" ? "host" : "org"}
+                    {s.type === "domain" ? "domain" : "org"}
                   </span>
                   <span className="truncate flex-1">{s.label}</span>
                   <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{s.count}</span>

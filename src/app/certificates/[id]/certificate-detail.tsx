@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { HostChip } from "@/components/host-chip";
 import { HostnameLink } from "@/components/hostname-link";
 import { LogoCard } from "@/components/logo-card";
@@ -311,23 +312,16 @@ export function CertificateDetail({ id, initialData }: { id: string; initialData
   const notYetValid = new Date(cert.notBefore) > new Date();
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">
-          Dashboard
-        </Link>
-        <span>/</span>
-        <Link href="/certificates" className="hover:text-foreground">
-          Certificates
-        </Link>
-        <span>/</span>
-        {cert.subjectOrg ? (
-          <OrgChip org={cert.subjectOrg} compact className="text-foreground" />
-        ) : (
-          <span className="text-foreground">{cert.subjectCn || cert.sanList[0] || `#${cert.id}`}</span>
-        )}
-      </nav>
+    <div className="space-y-4 sm:space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Dashboard", href: "/" },
+          { label: "Certificates", href: "/certificates" },
+          cert.subjectOrg
+            ? { label: cert.subjectOrg, node: <OrgChip org={cert.subjectOrg} compact className="text-foreground" /> }
+            : { label: cert.subjectCn || cert.sanList[0] || `#${cert.id}` },
+        ]}
+      />
 
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">

@@ -205,15 +205,23 @@ export function CertificatesTable({
           const orgHref = row.original.subjectOrg
             ? orgUrl(row.original.subjectOrg)
             : certUrl(row.original.fingerprintSha256);
+          const certType = row.original.certType || "BIMI";
           return (
             <div className="min-w-0">
-              <Link
-                href={orgHref}
-                className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate max-w-full inline-block transition-colors duration-150"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {org}
-              </Link>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="sm:hidden inline-block size-2 shrink-0 rounded-full"
+                  style={{ background: certType === "VMC" ? "var(--cert-vmc)" : "var(--cert-cmc)" }}
+                  title={certType}
+                />
+                <Link
+                  href={orgHref}
+                  className="font-medium text-foreground/90 hover:text-foreground hover:underline decoration-foreground/30 underline-offset-2 truncate max-w-full inline-block transition-colors duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {org}
+                </Link>
+              </div>
               {firstDomain && (
                 <span className="text-[11px] md:hidden block truncate">
                   <HostnameLink hostname={firstDomain} size="xs" compact />
@@ -263,7 +271,7 @@ export function CertificatesTable({
       },
       {
         accessorKey: "certType",
-        meta: { className: "w-[52px] sm:w-[68px]" },
+        meta: { className: "hidden sm:table-cell w-[52px] sm:w-[68px]" },
         header: "Type",
         cell: ({ row }) => {
           const certType = row.original.certType || "BIMI";
@@ -320,7 +328,7 @@ export function CertificatesTable({
       },
       {
         accessorKey: "issuerOrg",
-        meta: { className: "w-[60px] sm:w-[90px] lg:w-[110px]" },
+        meta: { className: "hidden sm:table-cell sm:w-[90px] lg:w-[110px]" },
         header: () => (
           <SortHeader
             label="CA"
