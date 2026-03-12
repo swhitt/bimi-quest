@@ -99,22 +99,31 @@ export interface BIMIValidationResult {
   errors: string[];
 }
 
-/** Run full BIMI validation for a domain.
- *  Uses AbortSignal.timeout to cap external fetches at 25s total, leaving
- *  headroom for the Vercel function's 30s limit. */
-export async function validateDomain(options: ValidateDomainOptions): Promise<BIMIValidationResult> {
-  const { domain, selector = "default", localPart, receiverDomains } = options;
+// ---------------------------------------------------------------------------
+// Focused helpers — each encapsulates one async phase of validation
+// ---------------------------------------------------------------------------
+
+interface BimiDnsState {
+  bimiRecord: BIMIRecord | null;
+  dmarcRecord: DMARCRecord | null;
+  dmarcValid: boolean;
+  dmarcReason: string | null;
+  isSubdomain: boolean;
+  caa: CAAResult | null;
+  lpsTrace: LpsTieredResult | null;
+  receiverTrust: ReceiverTrustResult | null;
+  errors: string[];
+}
+
+/** DNS lookups for BIMI + DMARC + CAA + receiver trust (all independent, run in parallel). */
+async function fetchBimiDnsState(
+  domain: string,
+  selector: string,
+  localPart: string | undefined,
+  receiverDomains: string[] | undefined,
+): Promise<BimiDnsState> {
   const errors: string[] = [];
-  const now = new Date();
 
-  // Overall timeout signal — individual fetch timeouts are shorter, but this
-  // guards against accumulated latency from sequential steps.
-  const signal = AbortSignal.timeout(25_000);
-
-  // 1 & 2. BIMI + DMARC + CAA DNS lookups (independent, run in parallel)
-  // Each lookup may throw on resolver errors (SERVFAIL, timeouts, etc.) while
-  // returning null for genuine "record not found" (ENOTFOUND/ENODATA).
-  // When a localPart is provided, use tiered LPS lookup instead of standard BIMI lookup.
   const bimiLookup = localPart
     ? tieredLpsLookup(domain, selector, localPart).catch((err: unknown) => err as Error)
     : lookupBIMIRecord(domain, selector).catch((err: unknown) => err as Error);
@@ -134,7 +143,6 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
   if (bimiResult instanceof Error) {
     errors.push(`BIMI DNS lookup failed (resolver error): ${errorMessage(bimiResult)}`);
   } else if (bimiResult && "steps" in bimiResult) {
-    // Tiered LPS result
     lpsTrace = bimiResult;
     bimiRecord = bimiResult.finalRecord;
     if (!bimiRecord) {
@@ -174,7 +182,18 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     errors.push(`CAA DNS lookup failed (resolver error): ${errorMessage(caaResult)}`);
   }
 
-  // 3. SVG logo
+  return { bimiRecord, dmarcRecord, dmarcValid, dmarcReason, isSubdomain, caa, lpsTrace, receiverTrust, errors };
+}
+
+interface SvgIndicatorResult {
+  svgResult: BIMIValidationResult["svg"];
+  svgContent: string | null;
+  errors: string[];
+}
+
+/** Fetch the SVG logo, decompress if SVGZ, and validate against SVG Tiny PS. */
+async function fetchSvgIndicator(logoUrl: string, signal: AbortSignal): Promise<SvgIndicatorResult> {
+  const errors: string[] = [];
   let svgResult: BIMIValidationResult["svg"] = {
     found: false,
     url: null,
@@ -184,38 +203,51 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
   };
   let svgContent: string | null = null;
 
-  if (bimiRecord?.logoUrl) {
-    try {
-      const res = await safeFetch(bimiRecord.logoUrl, {
-        headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
-        signal,
-      });
-      if (res.ok) {
-        // Handle both SVG and SVGZ (gzipped SVG)
-        const buffer = Buffer.from(await res.arrayBuffer());
-        const svgText = decompressSvgIfNeeded(buffer);
-        svgContent = svgText;
-        const validation = validateSVGTinyPS(svgText);
-        const hash = computeSvgHash(svgText);
-        svgResult = {
-          found: true,
-          url: bimiRecord.logoUrl,
-          validation,
-          sizeBytes: new TextEncoder().encode(svgText).length,
-          indicatorHash: hash,
-        };
-        if (!validation.valid) {
-          errors.push(`SVG validation failed: ${validation.errors.join("; ")}`);
-        }
-      } else {
-        errors.push(`Failed to fetch SVG logo: HTTP ${res.status} from ${bimiRecord.logoUrl}`);
+  try {
+    const res = await safeFetch(logoUrl, {
+      headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
+      signal,
+    });
+    if (res.ok) {
+      const buffer = Buffer.from(await res.arrayBuffer());
+      const svgText = decompressSvgIfNeeded(buffer);
+      svgContent = svgText;
+      const validation = validateSVGTinyPS(svgText);
+      const hash = computeSvgHash(svgText);
+      svgResult = {
+        found: true,
+        url: logoUrl,
+        validation,
+        sizeBytes: new TextEncoder().encode(svgText).length,
+        indicatorHash: hash,
+      };
+      if (!validation.valid) {
+        errors.push(`SVG validation failed: ${validation.errors.join("; ")}`);
       }
-    } catch (err) {
-      errors.push(`Failed to fetch SVG logo: ${errorMessage(err)}`);
+    } else {
+      errors.push(`Failed to fetch SVG logo: HTTP ${res.status} from ${logoUrl}`);
     }
+  } catch (err) {
+    errors.push(`Failed to fetch SVG logo: ${errorMessage(err)}`);
   }
 
-  // 4. Authority certificate (VMC/CMC)
+  return { svgResult, svgContent, errors };
+}
+
+interface CertificateResult {
+  certResult: BIMIValidationResult["certificate"];
+  errors: string[];
+}
+
+/** Fetch the authority certificate, parse it, validate the chain, check CA authorization and SVG hash match. */
+async function fetchBimiCertificate(
+  authorityUrl: string,
+  signal: AbortSignal,
+  svgIndicatorHash: string | null,
+  domain: string,
+  now: Date,
+): Promise<CertificateResult> {
+  const errors: string[] = [];
   let certResult: BIMIValidationResult["certificate"] = {
     found: false,
     authorityUrl: null,
@@ -237,78 +269,138 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     logoHashValue: null,
   };
 
-  if (bimiRecord?.authorityUrl) {
-    try {
-      const res = await safeFetch(bimiRecord.authorityUrl, {
-        headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
-        signal,
-      });
-      if (res.ok) {
-        const pemText = await res.text();
-        const certInfo = parseCertBasicInfo(pemText);
-        if (certInfo) {
-          const chainResult = await validateCertificateChain(pemText);
+  try {
+    const res = await safeFetch(authorityUrl, {
+      headers: { "User-Agent": "bimi-quest/1.0 (BIMI Validator)" },
+      signal,
+    });
+    if (res.ok) {
+      const pemText = await res.text();
+      const certInfo = parseCertBasicInfo(pemText);
+      if (certInfo) {
+        const chainResult = await validateCertificateChain(pemText);
 
-          // Check if intermediate CA is authorized for BIMI
-          const normalizedIssuer = normalizeIssuerOrg(certInfo.issuerOrg);
-          const authorizedCa = normalizedIssuer ? AUTHORIZED_CAS.has(normalizedIssuer) : false;
+        const normalizedIssuer = normalizeIssuerOrg(certInfo.issuerOrg);
+        const authorizedCa = normalizedIssuer ? AUTHORIZED_CAS.has(normalizedIssuer) : false;
 
-          // Compare cert-embedded SVG hash with web-fetched SVG hash
-          let svgMatch: boolean | null = null;
-          if (certInfo.logotypeSvgHash && svgResult.indicatorHash) {
-            svgMatch = certInfo.logotypeSvgHash === svgResult.indicatorHash;
-          }
+        let svgMatch: boolean | null = null;
+        if (certInfo.logotypeSvgHash && svgIndicatorHash) {
+          svgMatch = certInfo.logotypeSvgHash === svgIndicatorHash;
+        }
 
-          certResult = {
-            found: true,
-            authorityUrl: bimiRecord.authorityUrl,
-            certType: certInfo.certType,
-            issuer: certInfo.issuer,
-            serialNumber: certInfo.serialNumber,
-            subject: certInfo.subject,
-            validFrom: certInfo.notBefore,
-            validTo: certInfo.notAfter,
-            isExpired: certInfo.notAfter < now,
-            rawPem: pemText,
-            chain: chainResult,
-            authorizedCa,
-            certSvgHash: certInfo.logotypeSvgHash,
-            svgMatch,
-            subjectAltNames: certInfo.sans.length > 0 ? certInfo.sans : null,
-            markType: certInfo.markType,
-            logoHashAlgorithm: certInfo.logotypeSvgHash ? "SHA-256" : null,
-            logoHashValue: certInfo.logotypeSvgHash,
-          };
-          if (certInfo.notAfter < now) {
-            errors.push("BIMI certificate is expired");
-          }
-          if (chainResult && !chainResult.chainValid) {
-            for (const ce of chainResult.chainErrors) {
-              errors.push(`Certificate chain: ${ce}`);
-            }
-          }
-          if (certInfo.sans.length > 0) {
-            const covered = certInfo.sans.some((san) => sanCoversDomain(san, domain));
-            if (!covered) {
-              errors.push(`Certificate does not cover domain ${domain} (SANs: ${certInfo.sans.join(", ")})`);
-            }
-          }
-          if (!authorizedCa) {
-            errors.push(`Issuer "${normalizedIssuer || "unknown"}" is not an authorized BIMI CA`);
-          }
-          if (svgMatch === false) {
-            errors.push("Certificate SVG does not match web-hosted SVG indicator");
+        certResult = {
+          found: true,
+          authorityUrl,
+          certType: certInfo.certType,
+          issuer: certInfo.issuer,
+          serialNumber: certInfo.serialNumber,
+          subject: certInfo.subject,
+          validFrom: certInfo.notBefore,
+          validTo: certInfo.notAfter,
+          isExpired: certInfo.notAfter < now,
+          rawPem: pemText,
+          chain: chainResult,
+          authorizedCa,
+          certSvgHash: certInfo.logotypeSvgHash,
+          svgMatch,
+          subjectAltNames: certInfo.sans.length > 0 ? certInfo.sans : null,
+          markType: certInfo.markType,
+          logoHashAlgorithm: certInfo.logotypeSvgHash ? "SHA-256" : null,
+          logoHashValue: certInfo.logotypeSvgHash,
+        };
+        if (certInfo.notAfter < now) {
+          errors.push("BIMI certificate is expired");
+        }
+        if (chainResult && !chainResult.chainValid) {
+          for (const ce of chainResult.chainErrors) {
+            errors.push(`Certificate chain: ${ce}`);
           }
         }
-      } else {
-        errors.push(`Failed to fetch authority certificate: HTTP ${res.status}`);
+        if (certInfo.sans.length > 0) {
+          const covered = certInfo.sans.some((san) => sanCoversDomain(san, domain));
+          if (!covered) {
+            errors.push(`Certificate does not cover domain ${domain} (SANs: ${certInfo.sans.join(", ")})`);
+          }
+        }
+        if (!authorizedCa) {
+          errors.push(`Issuer "${normalizedIssuer || "unknown"}" is not an authorized BIMI CA`);
+        }
+        if (svgMatch === false) {
+          errors.push("Certificate SVG does not match web-hosted SVG indicator");
+        }
       }
-    } catch (err) {
-      errors.push(`Failed to fetch authority certificate: ${errorMessage(err)}`);
+    } else {
+      errors.push(`Failed to fetch authority certificate: HTTP ${res.status}`);
     }
+  } catch (err) {
+    errors.push(`Failed to fetch authority certificate: ${errorMessage(err)}`);
   }
 
-  // 5. RNG schema validation (async, only if we have SVG content)
+  return { certResult, errors };
+}
+
+// ---------------------------------------------------------------------------
+// Main orchestrator
+// ---------------------------------------------------------------------------
+
+/** Run full BIMI validation for a domain.
+ *  Uses AbortSignal.timeout to cap external fetches at 25s total, leaving
+ *  headroom for the Vercel function's 30s limit. */
+export async function validateDomain(options: ValidateDomainOptions): Promise<BIMIValidationResult> {
+  const { domain, selector = "default", localPart, receiverDomains } = options;
+  const errors: string[] = [];
+  const now = new Date();
+  const signal = AbortSignal.timeout(25_000);
+
+  // 1. DNS lookups (BIMI + DMARC + CAA + receiver trust)
+  const dns = await fetchBimiDnsState(domain, selector, localPart, receiverDomains);
+  const { bimiRecord, dmarcRecord, dmarcValid, dmarcReason, isSubdomain, caa, lpsTrace, receiverTrust } = dns;
+  errors.push(...dns.errors);
+
+  // 2. SVG indicator fetch + validation
+  let svgResult: BIMIValidationResult["svg"] = {
+    found: false,
+    url: null,
+    validation: null,
+    sizeBytes: null,
+    indicatorHash: null,
+  };
+  let svgContent: string | null = null;
+  if (bimiRecord?.logoUrl) {
+    const svg = await fetchSvgIndicator(bimiRecord.logoUrl, signal);
+    svgResult = svg.svgResult;
+    svgContent = svg.svgContent;
+    errors.push(...svg.errors);
+  }
+
+  // 3. Authority certificate (VMC/CMC)
+  let certResult: BIMIValidationResult["certificate"] = {
+    found: false,
+    authorityUrl: null,
+    certType: null,
+    issuer: null,
+    serialNumber: null,
+    subject: null,
+    validFrom: null,
+    validTo: null,
+    isExpired: null,
+    rawPem: null,
+    chain: null,
+    authorizedCa: null,
+    certSvgHash: null,
+    svgMatch: null,
+    subjectAltNames: null,
+    markType: null,
+    logoHashAlgorithm: null,
+    logoHashValue: null,
+  };
+  if (bimiRecord?.authorityUrl) {
+    const cert = await fetchBimiCertificate(bimiRecord.authorityUrl, signal, svgResult.indicatorHash, domain, now);
+    certResult = cert.certResult;
+    errors.push(...cert.errors);
+  }
+
+  // 4. RNG schema validation (only if we have SVG content)
   let rngChecks: BimiCheckItem[] = [];
   if (svgContent) {
     try {
@@ -327,7 +419,7 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     }
   }
 
-  // 6. Build structured checks
+  // 5. Build structured checks
   const checks = buildChecks({
     bimiRecord,
     dmarcRecord,
@@ -344,11 +436,11 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     selector,
   });
 
-  // 7. Compute grade
+  // 6. Compute grade
   const declined = bimiRecord?.declined ?? false;
   const { grade, summary: gradeSummary } = computeGrade(checks, declined);
 
-  // 8. Build structured DNS snapshot for domain detail pages
+  // 7. Build structured DNS snapshot for domain detail pages
   const dnsSnapshot = buildDnsSnapshot({
     bimiRecord: bimiRecord
       ? {
@@ -399,7 +491,7 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     grade,
   });
 
-  // 9. Generate auth result and response headers
+  // 8. Generate auth result and response headers
   const authResult = buildAuthResult(domain, selector, bimiRecord, svgResult, certResult, dmarcValid, declined);
   const responseHeaders = buildResponseHeaders(bimiRecord, svgContent);
 
