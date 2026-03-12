@@ -68,7 +68,7 @@ export function RecentCerts({
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
-          latest certificates
+          latest bimi certificates
         </span>
         <Link
           href={viewAllHref}

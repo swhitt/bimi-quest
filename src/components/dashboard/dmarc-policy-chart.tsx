@@ -108,9 +108,9 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
         dmarc policies
       </span>
       {chartData.length > 0 ? (
-        <div className="flex flex-col sm:flex-row items-center gap-4 mt-1">
+        <div className="flex items-center gap-4 mt-1">
           <div role="img" aria-label="Pie chart showing DMARC policy distribution across domains" className="shrink-0">
-            <ResponsiveContainer width={160} height={160}>
+            <ResponsiveContainer width={200} height={200}>
               <PieChart>
                 <Pie
                   data={chartData}
@@ -118,8 +118,8 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
                   nameKey="policy"
                   cx="50%"
                   cy="50%"
-                  innerRadius={36}
-                  outerRadius={70}
+                  innerRadius={46}
+                  outerRadius={90}
                   strokeWidth={1.5}
                   className="stroke-background"
                   style={{ cursor: "pointer" }}
@@ -135,7 +135,7 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="space-y-1.5 text-sm font-medium min-w-0">
+          <div className="flex-1 space-y-1.5 text-sm font-medium min-w-0">
             {chartData.map((d) => (
               <div key={d.policy} className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: d.fill }} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HostChip } from "@/components/host-chip";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
@@ -32,13 +33,27 @@ export const CHANGE_STYLE: Record<string, { label: string; color: string }> = {
 
 const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
 
-const PAGE_SIZE = 5;
+/** Sort priority: bimi first, then dmarc, then anything else */
+const RECORD_TYPE_ORDER: Record<string, number> = { bimi: 0, dmarc: 1 };
 
-export function DmarcDriftFeed() {
+/** Stable sort: BIMI before DMARC within the same refresh cycle (same minute) */
+function sortBimiFirst(changes: DnsChange[]): DnsChange[] {
+  return [...changes].sort((a, b) => {
+    const ta = (a.detectedAt ?? "").slice(0, 16);
+    const tb = (b.detectedAt ?? "").slice(0, 16);
+    if (ta !== tb) return tb.localeCompare(ta);
+    return (RECORD_TYPE_ORDER[a.recordType] ?? 9) - (RECORD_TYPE_ORDER[b.recordType] ?? 9);
+  });
+}
+
+const PAGE_SIZE = 10;
+
+export function DnsChangesFeed() {
   const [changes, setChanges] = useState<DnsChange[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [page, setPage] = useState(1);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +64,7 @@ export function DmarcDriftFeed() {
       })
       .then((json: { data: DnsChange[] }) => {
         if (!cancelled) {
-          setChanges(json.data);
+          setChanges(sortBimiFirst(json.data));
           setLoading(false);
         }
       })
@@ -111,41 +126,68 @@ export function DmarcDriftFeed() {
         />
       </div>
       {pageChanges.length > 0 ? (
-        <ol className="mt-1 space-y-2">
-          {pageChanges.map((c, i) => {
-            const style = CHANGE_STYLE[c.changeType] ?? {
-              label: c.changeType,
-              color: "text-muted-foreground",
-            };
-            const showAll = POLICY_CHANGES.has(c.changeType);
-            const diffs = computeDiff(c.previousRecord, c.newRecord, showAll);
+        <div className="relative mt-1">
+          <ol className="max-h-[240px] overflow-y-auto space-y-1 pb-4 scrollbar-thin">
+            {pageChanges.map((c, i) => {
+              const globalIdx = (page - 1) * PAGE_SIZE + i;
+              const style = CHANGE_STYLE[c.changeType] ?? {
+                label: c.changeType,
+                color: "text-muted-foreground",
+              };
+              const showAll = POLICY_CHANGES.has(c.changeType);
+              const diffs = computeDiff(c.previousRecord, c.newRecord, showAll);
+              const hasDiffs = diffs.length > 0;
+              const isOpen = expanded.has(globalIdx);
 
-            return (
-              <li key={`${c.domain}-${c.recordType}-${i}`} className="rounded border px-2 py-1.5">
-                <div className="flex items-center gap-1.5 text-[13px]">
-                  <span
-                    className={cn(
-                      "shrink-0 font-mono text-[10px] uppercase w-[38px]",
-                      c.recordType === "bimi" ? "text-blue-500" : "text-violet-500",
-                    )}
+              return (
+                <li key={`${c.domain}-${c.recordType}-${i}`} className="rounded border px-2 py-1.5">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-[13px] w-full text-left"
+                    onClick={() => {
+                      if (!hasDiffs) return;
+                      setExpanded((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(globalIdx)) next.delete(globalIdx);
+                        else next.add(globalIdx);
+                        return next;
+                      });
+                    }}
+                    style={{ cursor: hasDiffs ? "pointer" : "default" }}
                   >
-                    {c.recordType}
-                  </span>
-                  <div className="min-w-0 flex-1 truncate">
-                    <HostChip hostname={c.domain} size="xs" compact />
-                  </div>
-                  <span className={cn("font-mono text-[10px] shrink-0", style.color)}>{style.label}</span>
-                  {c.detectedAt && (
-                    <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                      <UtcTime date={c.detectedAt} relative />
+                    {hasDiffs && (
+                      <ChevronRight
+                        className={cn(
+                          "size-3 shrink-0 text-muted-foreground transition-transform",
+                          isOpen && "rotate-90",
+                        )}
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        "shrink-0 font-mono text-[10px] uppercase w-[38px]",
+                        c.recordType === "bimi" ? "text-blue-500" : "text-violet-500",
+                      )}
+                    >
+                      {c.recordType}
                     </span>
-                  )}
-                </div>
-                <DiffBlock diffs={diffs} />
-              </li>
-            );
-          })}
-        </ol>
+                    <div className="min-w-0 flex-1 truncate">
+                      <HostChip hostname={c.domain} size="xs" compact />
+                    </div>
+                    <span className={cn("font-mono text-[10px] shrink-0", style.color)}>{style.label}</span>
+                    {c.detectedAt && (
+                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                        <UtcTime date={c.detectedAt} relative />
+                      </span>
+                    )}
+                  </button>
+                  {isOpen && <DiffBlock diffs={diffs} />}
+                </li>
+              );
+            })}
+          </ol>
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent" />
+        </div>
       ) : (
         <div className="flex h-[120px] items-center justify-center text-muted-foreground text-sm">
           No changes detected yet

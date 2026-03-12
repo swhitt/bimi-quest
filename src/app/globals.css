@@ -121,6 +121,12 @@
   }
 }
 
+/* Thin, theme-aware scrollbar for overflow containers */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
 @media (pointer: coarse) {
   [data-slot="table-row"] {
     -webkit-tap-highlight-color: transparent;
