@@ -8,7 +8,7 @@ import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { displayIntermediateCa } from "@/lib/ca-display";
-import { certUrl, orgUrl } from "@/lib/entity-urls";
+import { certUrl, domainUrl, orgUrl } from "@/lib/entity-urls";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export interface RecentCert {
@@ -66,7 +66,9 @@ export function RecentCerts({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">latest</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          latest certificates
+        </span>
         <Link
           href={viewAllHref}
           className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
@@ -108,22 +110,31 @@ export function RecentCerts({
                     <div className="size-5 shrink-0 rounded border bg-muted" />
                   )}
                   <span className="text-[13px] truncate flex-1 min-w-0">
-                    {cert.subjectOrg ? (
+                    {cert.sanList[0] ? (
                       <Link
-                        href={orgUrl(cert.subjectOrg)}
-                        className="hover:underline"
+                        href={domainUrl(cert.sanList[0])}
+                        className="font-mono text-muted-foreground hover:text-foreground hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {cert.subjectOrg}
+                        {cert.sanList[0]}
                       </Link>
                     ) : (
-                      cert.subjectCn || cert.sanList[0] || "Unknown"
+                      <span className="font-mono text-muted-foreground">{cert.subjectCn || "Unknown"}</span>
                     )}
                   </span>
+                  {cert.subjectOrg && (
+                    <Link
+                      href={orgUrl(cert.subjectOrg)}
+                      className="hidden sm:inline text-[11px] text-muted-foreground/70 truncate max-w-[120px] hover:underline shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {cert.subjectOrg}
+                    </Link>
+                  )}
                   <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
                     {cert.certType || "BIMI"}
                   </Badge>
-                  <span className="text-[10px] text-muted-foreground/70 shrink-0">
+                  <span className="hidden sm:inline text-[10px] text-muted-foreground/70 shrink-0">
                     {displayIntermediateCa(cert.issuerOrg)}
                   </span>
                   <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
