@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFilteredData } from "@/lib/use-filtered-data";
 
 export interface DmarcPolicyRow {
   policy: string;
@@ -26,7 +26,7 @@ function getPolicyColor(policy: string): string {
 interface PolicyTooltipEntry {
   name: string;
   value: number;
-  payload: { policy: string; count: number; percent: string; fill: string };
+  payload: { policy: string; label: string; count: number; percent: string; fill: string };
 }
 
 function PolicyTooltip({ active, payload }: { active?: boolean; payload?: readonly PolicyTooltipEntry[] }) {
@@ -34,14 +34,14 @@ function PolicyTooltip({ active, payload }: { active?: boolean; payload?: readon
 
   const rows = payload.map((p) => ({
     color: p.payload.fill,
-    name: p.payload.policy,
+    name: p.payload.label,
     value: `${p.payload.count.toLocaleString()} (${p.payload.percent}%)`,
   }));
 
   return <ChartTooltipContent rows={rows} />;
 }
 
-/** Sort order so the pie slices go reject → quarantine → none → unknown */
+/** Sort order so the pie slices go reject → quarantine → none → no DMARC */
 const POLICY_ORDER: Record<string, number> = {
   reject: 0,
   quarantine: 1,
@@ -49,14 +49,36 @@ const POLICY_ORDER: Record<string, number> = {
   unknown: 3,
 };
 
+const POLICY_LABELS: Record<string, string> = {
+  unknown: "no DMARC",
+};
+
 export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow[] }) {
   const router = useRouter();
-  const { data, loading } = useFilteredData<DmarcPolicyRow[]>(
-    "/api/stats/dmarc-policy",
-    (json: unknown) => (json as { data?: DmarcPolicyRow[] }).data ?? [],
-    initialData ?? [],
-    initialData,
-  );
+  const [data, setData] = useState<DmarcPolicyRow[]>(initialData ?? []);
+  const [loading, setLoading] = useState(!initialData);
+
+  useEffect(() => {
+    if (initialData) return;
+    let cancelled = false;
+    fetch("/api/stats/dmarc-policy")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json: { data?: DmarcPolicyRow[] }) => {
+        if (!cancelled) setData(json.data ?? []);
+      })
+      .catch(() => {
+        /* keep initialData or empty */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialData]);
 
   if (loading && data.length === 0) {
     return (
@@ -73,6 +95,7 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
     .sort((a, b) => (POLICY_ORDER[a.policy] ?? 99) - (POLICY_ORDER[b.policy] ?? 99))
     .map((d) => ({
       policy: d.policy,
+      label: POLICY_LABELS[d.policy] ?? d.policy,
       count: d.count,
       percent: total > 0 ? ((d.count / total) * 100).toFixed(1) : "0.0",
       fill: getPolicyColor(d.policy),
@@ -113,7 +136,7 @@ export function DmarcPolicyChart({ initialData }: { initialData?: DmarcPolicyRow
             {chartData.map((d) => (
               <div key={d.policy} className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: d.fill }} />
-                <span className="text-muted-foreground truncate">{d.policy}</span>
+                <span className="text-muted-foreground truncate">{d.label}</span>
                 <span className="ml-auto pl-2 font-mono text-xs tabular-nums">{d.count.toLocaleString()}</span>
                 <span className="font-mono text-xs tabular-nums text-muted-foreground w-12 text-right">
                   {d.percent}%

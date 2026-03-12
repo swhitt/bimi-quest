@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFilteredData } from "@/lib/use-filtered-data";
 
 interface RuaProviderRow {
   provider: string;
@@ -40,11 +40,29 @@ function RuaTooltip({
 
 export function RuaProviderChart() {
   const router = useRouter();
-  const { data, loading } = useFilteredData<RuaProviderRow[]>(
-    "/api/stats/rua-providers",
-    (json: unknown) => (json as { data?: RuaProviderRow[] }).data ?? [],
-    [],
-  );
+  const [data, setData] = useState<RuaProviderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats/rua-providers")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json: { data?: RuaProviderRow[] }) => {
+        if (!cancelled) setData(json.data ?? []);
+      })
+      .catch(() => {
+        /* keep empty */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading && data.length === 0) {
     return (
