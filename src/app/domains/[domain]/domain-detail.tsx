@@ -12,6 +12,9 @@ import { ExternalArrowIcon } from "@/components/ui/icons";
 import { BimiInboxPreview } from "@/components/bimi-inbox-preview";
 import { DomainWatchButton } from "@/components/domain-watch-button";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
+import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
+import { type DnsChange, CHANGE_STYLE } from "@/components/dashboard/dmarc-drift-feed";
+import { UtcTime } from "@/components/ui/utc-time";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { validateUrl } from "@/lib/entity-urls";
 
@@ -254,6 +257,84 @@ function synthesizeSnapshot(data: DomainDetailProps["data"]): DnsSnapshot {
       grade: data.bimiGrade,
     },
   };
+}
+
+const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
+
+function DomainChangeHistory({ domain }: { domain: string }) {
+  const [changes, setChanges] = useState<DnsChange[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/domains/${encodeURIComponent(domain)}/changes?limit=20`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json: { data: DnsChange[] }) => {
+        if (!cancelled) {
+          setChanges(json.data);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [domain]);
+
+  if (loading) return null;
+  if (error || changes.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>DNS Change History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-2">
+          {changes.map((c, i) => {
+            const style = CHANGE_STYLE[c.changeType] ?? {
+              label: c.changeType,
+              color: "text-muted-foreground",
+            };
+            const showAll = POLICY_CHANGES.has(c.changeType);
+            const diffs = computeDiff(c.previousRecord, c.newRecord, showAll);
+
+            return (
+              <li key={`${c.recordType}-${c.changeType}-${i}`} className="rounded border px-2 py-1.5">
+                <div className="flex items-center gap-1.5 text-[13px]">
+                  <span
+                    className={cn(
+                      "shrink-0 font-mono text-[10px] uppercase w-[38px]",
+                      c.recordType === "bimi" ? "text-blue-500" : "text-violet-500",
+                    )}
+                  >
+                    {c.recordType}
+                  </span>
+                  <span className={cn("font-mono text-[10px] shrink-0", style.color)}>{style.label}</span>
+                  <div className="flex-1" />
+                  {c.detectedAt && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                      <UtcTime date={c.detectedAt} relative />
+                    </span>
+                  )}
+                </div>
+                <DiffBlock diffs={diffs} />
+              </li>
+            );
+          })}
+        </ol>
+      </CardContent>
+    </Card>
+  );
 }
 
 interface PaginationData {
@@ -598,6 +679,9 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* DNS Change History */}
+      <DomainChangeHistory domain={domain} />
 
       {/* Certificate (from DNS snapshot) */}
       {(cert || data.bimiAuthorityUrl) && (
