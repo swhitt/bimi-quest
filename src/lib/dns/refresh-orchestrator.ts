@@ -4,6 +4,7 @@
  * handles DB reads/writes, keeping the core logic DB-layer agnostic.
  */
 import { lookupDomain, type BimiDnsRow } from "@/workers/modes/backfill-bimi-dns";
+import { errorMessage } from "@/lib/utils";
 import { deriveBimiChangeType, deriveDmarcChangeType, parseTxtRecord, recordsChanged } from "./change-detection";
 
 export interface OldDomainState {
@@ -41,6 +42,18 @@ export interface DnsRefreshAdapter {
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+const DNS_TIMEOUT_MS = 10_000;
+
+/** Wrap lookupDomain with a timeout so a single slow resolver can't block the batch. */
+function lookupWithTimeout(domain: string): Promise<BimiDnsRow | null> {
+  return Promise.race([
+    lookupDomain(domain),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`DNS lookup timeout for ${domain}`)), DNS_TIMEOUT_MS),
+    ),
+  ]);
+}
+
 const BATCH = 10;
 
 export async function refreshDnsBatch(adapter: DnsRefreshAdapter, limit: number): Promise<RefreshStats> {
@@ -66,9 +79,9 @@ export async function refreshDnsBatch(adapter: DnsRefreshAdapter, limit: number)
       batch.map(async (d, idx) => {
         await delay(idx * delayMs);
         try {
-          return { old: d, result: await lookupDomain(d.domain) };
+          return { old: d, result: await lookupWithTimeout(d.domain) };
         } catch (err) {
-          console.error(`  Error looking up ${d.domain}:`, err);
+          console.error(`  Error looking up ${d.domain}:`, errorMessage(err));
           return { old: d, result: null, error: true as const };
         }
       }),

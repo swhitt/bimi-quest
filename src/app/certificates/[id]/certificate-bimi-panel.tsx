@@ -11,16 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UtcTime } from "@/components/ui/utc-time";
 import { computeDiff } from "@/lib/diff";
 import { errorMessage } from "@/lib/utils";
-import type { BimiCheckResult, CertData, RevocationResult } from "./certificate-types";
-
-function Row({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:gap-4">
-      <span className="sm:w-40 sm:shrink-0 text-muted-foreground">{label}</span>
-      <span className={`break-all min-w-0 ${mono ? "font-mono text-xs" : ""}`}>{value || "-"}</span>
-    </div>
-  );
-}
+import { Row } from "./cert-row";
+import type { BimiCheckResult, CertificateBimiData, RevocationResult } from "./certificate-types";
 
 function buildBimiChecks(
   dc: BimiCheckResult["domains"][number],
@@ -302,7 +294,7 @@ function LogoComparison({
   return (
     <div className="rounded-md border bg-muted/30 p-3">
       <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Logo Comparison</h4>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-xs font-medium">Cert SVG</span>
@@ -312,10 +304,10 @@ function LogoComparison({
               </Badge>
             )}
           </div>
-          <div className="aspect-square rounded-md border bg-white p-2 overflow-hidden">
+          <div className="aspect-square rounded-md border bg-background p-2 overflow-hidden">
             <LogoSvg svg={certSvg} alt="Certificate SVG" className="h-full w-full" />
           </div>
-          <span className="text-[10px] text-muted-foreground mt-1 block text-center">
+          <span className="text-xs text-muted-foreground mt-1 block text-center">
             {certSvgSizeBytes ? `${(certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
           </span>
         </div>
@@ -324,7 +316,7 @@ function LogoComparison({
             <span className="text-xs font-medium">Web SVG</span>
             <div className="flex items-center gap-1">
               {svgMatch === true && (
-                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px] px-1.5 py-0">Match</Badge>
+                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-xs px-1.5 py-0">Match</Badge>
               )}
               {svgMatch === false && (
                 <Badge variant="destructive" className="text-xs px-1.5 py-0">
@@ -338,7 +330,7 @@ function LogoComparison({
               )}
             </div>
           </div>
-          <div className="relative flex aspect-square items-center justify-center rounded-md border bg-white p-2 overflow-hidden">
+          <div className="relative flex aspect-square items-center justify-center rounded-md border bg-background p-2 overflow-hidden">
             {logoUrl && (
               <Image
                 src={`/api/proxy/svg?url=${encodeURIComponent(logoUrl)}`}
@@ -350,14 +342,19 @@ function LogoComparison({
               />
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground mt-1 block text-center">
+          <span className="text-xs text-muted-foreground mt-1 block text-center">
             {webSvgSizeBytes ? `${(webSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
           </span>
         </div>
       </div>
       {svgMatch === false && webSvgSource && (
         <div className="mt-2">
-          <Button variant="outline" size="sm" className="h-6 text-xs" onClick={onToggleDiff}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-offset-2"
+            onClick={onToggleDiff}
+          >
             {showDiff ? "Hide Diff" : "View Diff"}
           </Button>
           {showDiff && (
@@ -423,7 +420,7 @@ function SVGDiffViewer({ certSvg, webSvg }: { certSvg: string; webSvg: string })
   );
 }
 
-export function CertificateBimiPanel({ id, data }: { id: string; data: CertData }) {
+export function CertificateBimiPanel({ id, data }: { id: string; data: CertificateBimiData }) {
   const cert = data.certificate;
 
   const [bimiCheck, setBimiCheck] = useState<BimiCheckResult | null>(null);

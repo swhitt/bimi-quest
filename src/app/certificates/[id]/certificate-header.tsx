@@ -17,19 +17,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
 import { certUrl, domainUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
-import type { CertData } from "./certificate-types";
+import { Row } from "./cert-row";
+import type { CertificateHeaderData } from "./certificate-types";
 import { formatSerial } from "./certificate-types";
 
-function Row({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:gap-4">
-      <span className="sm:w-40 sm:shrink-0 text-muted-foreground">{label}</span>
-      <span className={`break-all min-w-0 ${mono ? "font-mono text-xs" : ""}`}>{value || "-"}</span>
-    </div>
-  );
-}
-
-export function CertificateHeader({ data }: { data: CertData }) {
+export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
   const cert = data.certificate;
   const isExpired = new Date(cert.notAfter) < new Date();
   const notYetValid = new Date(cert.notBefore) > new Date();
@@ -226,7 +218,7 @@ export function CertificateHeader({ data }: { data: CertData }) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-xs shrink-0"
+              className="h-8 px-2 text-xs shrink-0"
               onClick={() => copyToClipboard(cert.fingerprintSha256, "fingerprint")}
             >
               {copied === "fingerprint" ? "Copied" : "Copy"}

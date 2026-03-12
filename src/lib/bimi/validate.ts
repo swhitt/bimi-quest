@@ -192,7 +192,7 @@ interface SvgIndicatorResult {
 }
 
 /** Fetch the SVG logo, decompress if SVGZ, and validate against SVG Tiny PS. */
-async function fetchSvgIndicator(logoUrl: string, signal: AbortSignal): Promise<SvgIndicatorResult> {
+async function fetchSvgIndicator(logoUrl: string, signal: AbortSignal, domain: string): Promise<SvgIndicatorResult> {
   const errors: string[] = [];
   let svgResult: BIMIValidationResult["svg"] = {
     found: false,
@@ -225,10 +225,10 @@ async function fetchSvgIndicator(logoUrl: string, signal: AbortSignal): Promise<
         errors.push(`SVG validation failed: ${validation.errors.join("; ")}`);
       }
     } else {
-      errors.push(`Failed to fetch SVG logo: HTTP ${res.status} from ${logoUrl}`);
+      errors.push(`Failed to fetch SVG logo for ${domain}: HTTP ${res.status} from ${logoUrl}`);
     }
   } catch (err) {
-    errors.push(`Failed to fetch SVG logo: ${errorMessage(err)}`);
+    errors.push(`Failed to fetch SVG logo for ${domain}: ${errorMessage(err)}`);
   }
 
   return { svgResult, svgContent, errors };
@@ -309,7 +309,7 @@ async function fetchBimiCertificate(
           logoHashValue: certInfo.logotypeSvgHash,
         };
         if (certInfo.notAfter < now) {
-          errors.push("BIMI certificate is expired");
+          errors.push(`BIMI certificate for ${domain} is expired`);
         }
         if (chainResult && !chainResult.chainValid) {
           for (const ce of chainResult.chainErrors) {
@@ -323,17 +323,19 @@ async function fetchBimiCertificate(
           }
         }
         if (!authorizedCa) {
-          errors.push(`Issuer "${normalizedIssuer || "unknown"}" is not an authorized BIMI CA`);
+          errors.push(
+            `Certificate for ${domain}: issuer "${normalizedIssuer || "unknown"}" is not an authorized BIMI CA`,
+          );
         }
         if (svgMatch === false) {
-          errors.push("Certificate SVG does not match web-hosted SVG indicator");
+          errors.push(`Certificate SVG for ${domain} does not match web-hosted SVG indicator`);
         }
       }
     } else {
-      errors.push(`Failed to fetch authority certificate: HTTP ${res.status}`);
+      errors.push(`Failed to fetch authority certificate for ${domain}: HTTP ${res.status}`);
     }
   } catch (err) {
-    errors.push(`Failed to fetch authority certificate: ${errorMessage(err)}`);
+    errors.push(`Failed to fetch authority certificate for ${domain}: ${errorMessage(err)}`);
   }
 
   return { certResult, errors };
@@ -367,7 +369,7 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
   };
   let svgContent: string | null = null;
   if (bimiRecord?.logoUrl) {
-    const svg = await fetchSvgIndicator(bimiRecord.logoUrl, signal);
+    const svg = await fetchSvgIndicator(bimiRecord.logoUrl, signal, domain);
     svgResult = svg.svgResult;
     svgContent = svg.svgContent;
     errors.push(...svg.errors);
@@ -537,7 +539,7 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
 // Structured check builder
 // ---------------------------------------------------------------------------
 
-interface CheckBuilderInput {
+export interface CheckBuilderInput {
   bimiRecord: BIMIRecord | null;
   dmarcRecord: DMARCRecord | null;
   dmarcValid: boolean;
@@ -566,12 +568,9 @@ function check(
   return { id, category, label, status, summary, ...opts };
 }
 
-function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
+export function buildBimiDnsChecks(input: CheckBuilderInput): BimiCheckItem[] {
   const checks: BimiCheckItem[] = [];
 
-  // -- Spec compliance checks --
-
-  // BIMI DNS
   if (input.bimiRecord) {
     if (input.bimiRecord.declined) {
       checks.push(
@@ -659,41 +658,50 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
     );
   }
 
-  // DMARC
+  return checks;
+}
+
+export function buildDmarcChecks(input: CheckBuilderInput): BimiCheckItem[] {
   if (input.dmarcRecord) {
     if (input.dmarcValid) {
-      checks.push(
-        check(
-          "dmarc-policy",
-          "spec",
-          "DMARC Policy",
-          "pass",
-          `p=${input.dmarcRecord.policy}, pct=${input.dmarcRecord.pct}`,
-          {
-            specRef: "draft-12 section 3",
-          },
-        ),
-      );
-    } else {
-      checks.push(
-        check("dmarc-policy", "spec", "DMARC Policy", "fail", input.dmarcReason || "DMARC policy insufficient", {
+      const effectivePolicy =
+        input.isSubdomain && input.dmarcRecord.sp ? `sp=${input.dmarcRecord.sp}` : `p=${input.dmarcRecord.policy}`;
+      const summary = `${effectivePolicy}, pct=${input.dmarcRecord.pct}`;
+      return [
+        check("dmarc-policy", "spec", "DMARC Policy", "pass", summary, {
           specRef: "draft-12 section 3",
-          remediation:
-            'Your IT team needs to update the domain\'s DMARC policy to "quarantine" or "reject" with pct=100. Update the _dmarc TXT record accordingly.',
+          detail:
+            input.isSubdomain && input.dmarcRecord.sp
+              ? `Subdomain policy (sp=${input.dmarcRecord.sp}) applies; organizational policy is p=${input.dmarcRecord.policy}`
+              : undefined,
         }),
-      );
+      ];
     }
-  } else {
-    checks.push(
-      check("dmarc-policy", "spec", "DMARC Policy", "fail", "No DMARC record found", {
+    return [
+      check("dmarc-policy", "spec", "DMARC Policy", "fail", input.dmarcReason || "DMARC policy insufficient", {
         specRef: "draft-12 section 3",
         remediation:
-          "Add a DMARC DNS TXT record at _dmarc." +
-          input.domain +
-          " with at least p=quarantine and pct=100. Your IT or email security team can help set this up.",
+          'Your IT team needs to update the domain\'s DMARC policy to "quarantine" or "reject" with pct=100. Update the _dmarc TXT record accordingly.',
+        detail:
+          input.isSubdomain && input.dmarcRecord.sp
+            ? `Subdomain policy (sp=${input.dmarcRecord.sp}) applies; organizational policy is p=${input.dmarcRecord.policy}`
+            : undefined,
       }),
-    );
+    ];
   }
+  return [
+    check("dmarc-policy", "spec", "DMARC Policy", "fail", "No DMARC record found", {
+      specRef: "draft-12 section 3",
+      remediation:
+        "Add a DMARC DNS TXT record at _dmarc." +
+        input.domain +
+        " with at least p=quarantine and pct=100. Your IT or email security team can help set this up.",
+    }),
+  ];
+}
+
+export function buildSvgChecks(input: CheckBuilderInput): BimiCheckItem[] {
+  const checks: BimiCheckItem[] = [];
 
   // SVG schema (regex-based)
   if (input.svgResult.validation) {
@@ -708,9 +716,6 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
     );
   }
 
-  // RNG schema validation
-  checks.push(...input.rngChecks);
-
   // SVG indicator hash
   if (input.svgResult.indicatorHash) {
     checks.push(
@@ -721,8 +726,14 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
     );
   }
 
-  // Certificate chain
+  return checks;
+}
+
+export function buildCertChecks(input: CheckBuilderInput): BimiCheckItem[] {
+  const checks: BimiCheckItem[] = [];
+
   if (input.certResult.found) {
+    // Certificate chain
     if (input.certResult.chain?.chainValid) {
       const hasWarnings = input.certResult.chain.chainErrors.length > 0;
       checks.push(
@@ -814,59 +825,68 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
     );
   }
 
-  // CAA issuevmc
-  if (input.caa) {
-    if (input.caa.status === "vmc_authorized") {
-      checks.push(
-        check(
-          "caa-issuevmc",
-          "spec",
-          "CAA issuevmc",
-          "pass",
-          `issuevmc authorized: ${input.caa.authorizedCAs.join(", ")}`,
-        ),
-      );
-      // Check if the cert issuer matches an authorized CA
-      if (input.certResult.found && input.certResult.issuer) {
-        const issuerNormalized = normalizeIssuerOrg(input.certResult.issuer);
-        const authorized = isIssuerAuthorizedByCAA(issuerNormalized, input.caa.authorizedCAs);
-        if (authorized === false) {
-          checks.push(
-            check(
-              "caa-issuer-mismatch",
-              "spec",
-              "CAA Issuer Match",
-              "warn",
-              `Certificate issuer "${issuerNormalized}" not in issuevmc authorized CAs`,
-              {
-                remediation:
-                  "The certificate was issued by a CA not listed in your domain's CAA issuevmc records. " +
-                  "Either add the CA to your CAA records or obtain a certificate from an authorized CA.",
-              },
-            ),
-          );
-        } else if (authorized === true) {
-          checks.push(
-            check("caa-issuer-mismatch", "spec", "CAA Issuer Match", "pass", "Certificate issuer matches CAA issuevmc"),
-          );
-        }
+  return checks;
+}
+
+export function buildCaaChecks(input: CheckBuilderInput): BimiCheckItem[] {
+  if (!input.caa) return [];
+
+  const checks: BimiCheckItem[] = [];
+
+  if (input.caa.status === "vmc_authorized") {
+    checks.push(
+      check(
+        "caa-issuevmc",
+        "spec",
+        "CAA issuevmc",
+        "pass",
+        `issuevmc authorized: ${input.caa.authorizedCAs.join(", ")}`,
+      ),
+    );
+    // Check if the cert issuer matches an authorized CA
+    if (input.certResult.found && input.certResult.issuer) {
+      const issuerNormalized = normalizeIssuerOrg(input.certResult.issuer);
+      const authorized = isIssuerAuthorizedByCAA(issuerNormalized, input.caa.authorizedCAs);
+      if (authorized === false) {
+        checks.push(
+          check(
+            "caa-issuer-mismatch",
+            "spec",
+            "CAA Issuer Match",
+            "warn",
+            `Certificate issuer "${issuerNormalized}" not in issuevmc authorized CAs`,
+            {
+              remediation:
+                "The certificate was issued by a CA not listed in your domain's CAA issuevmc records. " +
+                "Either add the CA to your CAA records or obtain a certificate from an authorized CA.",
+            },
+          ),
+        );
+      } else if (authorized === true) {
+        checks.push(
+          check("caa-issuer-mismatch", "spec", "CAA Issuer Match", "pass", "Certificate issuer matches CAA issuevmc"),
+        );
       }
-    } else if (input.caa.status === "standard_only") {
-      checks.push(
-        check("caa-issuevmc", "spec", "CAA issuevmc", "info", "CAA records exist but no issuevmc tag found", {
-          remediation:
-            "Add a CAA record with the issuevmc property tag to explicitly authorize CAs for VMC issuance. " +
-            'Example: 0 issuevmc "digicert.com"',
-        }),
-      );
-    } else {
-      checks.push(
-        check("caa-issuevmc", "spec", "CAA issuevmc", "info", "No CAA records found (any CA may issue certificates)"),
-      );
     }
+  } else if (input.caa.status === "standard_only") {
+    checks.push(
+      check("caa-issuevmc", "spec", "CAA issuevmc", "info", "CAA records exist but no issuevmc tag found", {
+        remediation:
+          "Add a CAA record with the issuevmc property tag to explicitly authorize CAs for VMC issuance. " +
+          'Example: 0 issuevmc "digicert.com"',
+      }),
+    );
+  } else {
+    checks.push(
+      check("caa-issuevmc", "spec", "CAA issuevmc", "info", "No CAA records found (any CA may issue certificates)"),
+    );
   }
 
-  // -- Compatibility checks --
+  return checks;
+}
+
+export function buildCompatibilityChecks(input: CheckBuilderInput): BimiCheckItem[] {
+  const checks: BimiCheckItem[] = [];
 
   // Gmail dimensions
   if (input.svgResult.validation) {
@@ -952,6 +972,18 @@ function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
   }
 
   return checks;
+}
+
+function buildChecks(input: CheckBuilderInput): BimiCheckItem[] {
+  return [
+    ...buildBimiDnsChecks(input),
+    ...buildDmarcChecks(input),
+    ...buildSvgChecks(input),
+    ...input.rngChecks,
+    ...buildCertChecks(input),
+    ...buildCaaChecks(input),
+    ...buildCompatibilityChecks(input),
+  ];
 }
 
 // ---------------------------------------------------------------------------

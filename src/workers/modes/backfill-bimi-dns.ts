@@ -64,10 +64,13 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     dns_snapshot: null,
   };
 
-  // Parallel DNS lookups — distinguish "no record" (null) from resolver errors
+  // Parallel DNS lookups — distinguish "no record" (null) from resolver errors.
+  // Allow partial results: if one lookup fails but the other succeeds,
+  // populate what we can rather than discarding the entire domain.
   let bimiRecord: Awaited<ReturnType<typeof lookupBIMIRecord>> | null = null;
   let dmarcResult: Awaited<ReturnType<typeof lookupDMARC>> | null = null;
-  let dnsError = false;
+  let bimiFailed = false;
+  let dmarcFailed = false;
 
   const [bimiOutcome, dmarcOutcome] = await Promise.allSettled([lookupBIMIRecord(domain), lookupDMARC(domain)]);
 
@@ -75,18 +78,18 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     bimiRecord = bimiOutcome.value;
   } else {
     console.warn(`  DNS error looking up BIMI for ${domain}: ${errorMessage(bimiOutcome.reason)}`);
-    dnsError = true;
+    bimiFailed = true;
   }
 
   if (dmarcOutcome.status === "fulfilled") {
     dmarcResult = dmarcOutcome.value;
   } else {
     console.warn(`  DNS error looking up DMARC for ${domain}: ${errorMessage(dmarcOutcome.reason)}`);
-    dnsError = true;
+    dmarcFailed = true;
   }
 
-  // If either DNS lookup had a resolver error, skip this domain so it gets retried next run
-  if (dnsError) return null;
+  // Only skip the domain entirely if BOTH lookups failed
+  if (bimiFailed && dmarcFailed) return null;
 
   if (bimiRecord) {
     row.bimi_record_raw = bimiRecord.raw;

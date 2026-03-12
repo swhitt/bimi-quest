@@ -1,11 +1,21 @@
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import type { SvgGroupRow } from "../types";
 
+export const ALLOWED_COLUMNS = new Set([
+  "logo_color_richness",
+  "logo_tile_bg",
+  "logotype_visual_hash",
+  "logo_quality_score",
+]);
+
 /**
  * Standard cursor-based SVG batch query. Handles both recalc (all SVGs)
  * and non-recalc (only rows where targetColumn IS NULL) modes.
  */
 function defaultFetchBatch(targetColumn: string) {
+  if (!ALLOWED_COLUMNS.has(targetColumn)) {
+    throw new Error(`Invalid target column: ${targetColumn}`);
+  }
   return async (sql: NeonQueryFunction<false, false>, lastHash: string, limit: number, recalc: boolean) => {
     if (recalc) {
       return (await sql`

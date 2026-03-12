@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UtcTime } from "@/components/ui/utc-time";
-import type { CertData } from "./certificate-types";
+import type { CertificateChainData } from "./certificate-types";
 import { formatSerial } from "./certificate-types";
 
 function chainLabel(chainCert: { chainPosition: number; subjectDn: string; issuerDn: string }): string {
@@ -32,7 +32,7 @@ function CopyableFingerprint({
         {value.substring(value.length - 8)}
       </span>
       <button
-        className="text-xs text-muted-foreground hover:text-foreground underline"
+        className="text-xs text-muted-foreground hover:text-foreground underline min-h-8 px-1"
         onClick={() => onCopy(value, label)}
       >
         {copied === label ? "Copied" : "Copy"}
@@ -41,7 +41,7 @@ function CopyableFingerprint({
   );
 }
 
-export function CertificateChain({ data }: { data: CertData }) {
+export function CertificateChain({ data }: { data: CertificateChainData }) {
   const cert = data.certificate;
 
   const [copied, setCopied] = useState<string | null>(null);

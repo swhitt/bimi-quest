@@ -1,4 +1,11 @@
-type ExtensionValue = string | { v: string; c: boolean };
+/** Extension value — either plain text or an object with decoded value and criticality flag. */
+export type ExtensionValue = string | { v: string; c: boolean };
+
+/** Narrow prop types for each sub-component — documents exactly which fields are consumed. */
+export type CertificateHeaderData = Pick<CertData, "certificate" | "pairedCert" | "sanCertCounts">;
+export type CertificateBimiData = Pick<CertData, "certificate" | "bimiStates">;
+export type CertificateExtensionsData = Pick<CertData, "certificate" | "pairedCert" | "sanCertCounts">;
+export type CertificateChainData = Pick<CertData, "certificate" | "chain">;
 
 export interface CertData {
   certificate: {

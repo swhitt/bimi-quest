@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { normalizeIssuerOrg } from "@/lib/ca-display";
 import { NOTABILITY_NOTIFICATION_THRESHOLD } from "@/lib/constants";
 import { buildCertInsertValues } from "@/lib/ct/cert-values";
@@ -83,25 +83,31 @@ async function flushScores(batch: PendingCert[], notify: boolean): Promise<void>
 
   const scores = await scoreNotabilityBatch(brands);
 
-  // Batch all score updates into a single HTTP request via Neon's db.batch()
-  const updateQueries = batch
-    .filter((cert) => scores.has(String(cert.id)))
-    .map((cert) => {
-      const notability = scores.get(String(cert.id))!;
-      return db
-        .update(certificates)
-        .set({
-          notabilityScore: notability.score,
-          notabilityReason: notability.reason,
-          companyDescription: notability.description,
-          industry: notability.industry,
-        })
-        .where(eq(certificates.id, cert.id));
-    });
+  // Single unnest UPDATE instead of N individual queries
+  const scored = batch.filter((cert) => scores.has(String(cert.id)));
+  if (scored.length > 0) {
+    const ids = scored.map((c) => c.id);
+    const scoreVals = scored.map((c) => scores.get(String(c.id))!.score);
+    const reasons = scored.map((c) => scores.get(String(c.id))!.reason);
+    const descriptions = scored.map((c) => scores.get(String(c.id))!.description);
+    const industries = scored.map((c) => scores.get(String(c.id))!.industry);
 
-  if (updateQueries.length > 0) {
-    const [first, ...rest] = updateQueries;
-    await db.batch([first, ...rest]);
+    await db.execute(sql`
+      UPDATE certificates AS c SET
+        notability_score = d.score,
+        notability_reason = d.reason,
+        company_description = d.description,
+        industry = d.industry,
+        updated_at = now()
+      FROM unnest(
+        ${ids}::int[],
+        ${scoreVals}::int[],
+        ${reasons}::text[],
+        ${descriptions}::text[],
+        ${industries}::text[]
+      ) AS d(id, score, reason, description, industry)
+      WHERE c.id = d.id
+    `);
   }
 
   // Dispatch notifications for notable certs (separate from DB update)
@@ -148,6 +154,8 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
   const allPendingScores: PendingCert[] = [];
   let consecutiveFetchFailures = 0;
   const MAX_FETCH_FAILURES = 5;
+  let consecutiveBatchFailures = 0;
+  const MAX_BATCH_FAILURES = 3;
 
   for (let i = startIndex; i < endIndex; ) {
     if (maxBatches > 0 && batchesRun >= maxBatches) break;
@@ -383,6 +391,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
     // Only advance to the last successfully processed entry.
     const newCursor = lastSuccessIndex + 1;
     if (newCursor > i) {
+      consecutiveBatchFailures = 0;
       const now = new Date();
       await db
         .insert(ingestionCursors)
@@ -403,8 +412,27 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       processed = newCursor;
       i = newCursor;
     } else {
-      onProgress?.(`Batch starting at ${i} failed entirely, stopping.`);
-      break;
+      consecutiveBatchFailures++;
+      if (consecutiveBatchFailures >= MAX_BATCH_FAILURES) {
+        // Force-skip this batch to avoid jamming ingestion on the same broken entries
+        const skipTo = i + BATCH_SIZE;
+        onProgress?.(`${MAX_BATCH_FAILURES} consecutive batch failures at index ${i}, force-skipping to ${skipTo}`);
+        const now = new Date();
+        await db
+          .insert(ingestionCursors)
+          .values({ logName: "gorgon", lastIndex: skipTo, lastRun: now, updatedAt: now })
+          .onConflictDoUpdate({
+            target: ingestionCursors.logName,
+            set: { lastIndex: skipTo, lastRun: now, updatedAt: now },
+          });
+        processed = skipTo;
+        i = skipTo;
+      } else {
+        onProgress?.(
+          `Batch starting at ${i} failed entirely (${consecutiveBatchFailures}/${MAX_BATCH_FAILURES}), retrying...`,
+        );
+        break;
+      }
     }
 
     // If we hit a transient DB error mid-batch, stop processing to allow retry

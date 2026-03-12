@@ -120,7 +120,7 @@ export function RuaProviderChart() {
                       label={String(label ?? "")}
                       rows={[
                         {
-                          color: payload[0]?.color ?? "oklch(0.55 0.15 230)",
+                          color: payload[0]?.color ?? "var(--color-chart-1)",
                           name: "Domains",
                           value: Number(count).toLocaleString(),
                         },
@@ -132,7 +132,7 @@ export function RuaProviderChart() {
               <Bar
                 dataKey="domainCount"
                 name="Domains"
-                fill="oklch(0.55 0.15 230)"
+                fill="var(--color-chart-1)"
                 fillOpacity={0.85}
                 radius={[0, 3, 3, 0]}
                 style={{ cursor: "pointer" }}

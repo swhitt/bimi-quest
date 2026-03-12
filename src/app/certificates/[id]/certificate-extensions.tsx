@@ -12,7 +12,7 @@ import { decodeExtension } from "@/lib/x509/decode-extensions";
 import { OID_NAMES, BIMI_SUBJECT_OIDS, EV_SUBJECT_OIDS } from "@/lib/x509/oid-names";
 import type { Asn1Node } from "@/lib/x509/asn1-tree";
 import { buildAsn1Tree, pemToDerBytes } from "@/lib/x509/asn1-tree";
-import type { CertData } from "./certificate-types";
+import type { CertificateExtensionsData } from "./certificate-types";
 import { formatSerial } from "./certificate-types";
 
 const Asn1Tree = dynamic(
@@ -128,7 +128,7 @@ function CertSection({ title, indent, children }: { title: string; indent: numbe
   );
 }
 
-export function CertificateExtensions({ data }: { data: CertData }) {
+export function CertificateExtensions({ data }: { data: CertificateExtensionsData }) {
   const cert = data.certificate;
   const isExpired = new Date(cert.notAfter) < new Date();
 
