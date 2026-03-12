@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ExternalArrowIcon } from "@/components/ui/icons";
-import { hostUrl, validateUrl } from "@/lib/entity-urls";
+import { domainUrl, validateUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 
 interface HostChipProps {
@@ -27,7 +27,7 @@ export function HostChip({
   return (
     <span className={cn("inline-flex items-center gap-1", compact && "group/hostname", className)}>
       <Link
-        href={hostUrl(hostname)}
+        href={domainUrl(hostname)}
         className={cn(
           "font-mono text-muted-foreground hover:text-foreground hover:underline transition-colors duration-150",
           textSize,

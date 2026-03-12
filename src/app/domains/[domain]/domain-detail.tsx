@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { DnsSnapshot } from "@/lib/db/schema";
 import { computeReadinessScore, type ReadinessResult, type ReadinessTier } from "@/lib/bimi/readiness-score";
-import { hostUrl } from "@/lib/entity-urls";
+import { domainUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -513,7 +513,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
                     />
                   )}
                 </dl>
-                <Link href={hostUrl(domain)} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                <Link href={domainUrl(domain)} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
                   View certificates for {domain}
                 </Link>
               </>
