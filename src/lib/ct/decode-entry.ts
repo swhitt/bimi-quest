@@ -1,7 +1,7 @@
 import { X509Certificate } from "@peculiar/x509";
 import { bytesToHex } from "@/lib/hex";
 import { toArrayBuffer } from "@/lib/pem";
-import { ALL_OID_NAMES } from "@/lib/x509/asn1-tree";
+import { OID_NAMES } from "@/lib/x509/oid-names";
 import type { CTLogEntry } from "./gorgon";
 import {
   base64ToBuffer,
@@ -195,7 +195,7 @@ function parseExtKeyUsage(cert: X509Certificate): string[] {
       offset += len;
       // Decode OID from DER
       const oid = derOidToString(oidBytes);
-      oids.push(ALL_OID_NAMES[oid] ?? oid);
+      oids.push(OID_NAMES[oid] ?? oid);
     }
     return oids;
   } catch {
@@ -243,10 +243,10 @@ async function parseCertMetadata(certDer: Uint8Array): Promise<DecodedCert | nul
       extKeyUsage: parseExtKeyUsage(cert),
       extensions: cert.extensions.map((ext) => ({
         oid: ext.type,
-        name: ALL_OID_NAMES[ext.type] ?? null,
+        name: OID_NAMES[ext.type] ?? null,
         critical: ext.critical,
       })),
-      hasUnknownCriticalExtensions: cert.extensions.some((ext) => ext.critical && !ALL_OID_NAMES[ext.type]),
+      hasUnknownCriticalExtensions: cert.extensions.some((ext) => ext.critical && !OID_NAMES[ext.type]),
       logotypeSvg: extractLogotypeSvg(cert).svgContent,
       certPem: derToPem(certDer),
     };

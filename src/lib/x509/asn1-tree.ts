@@ -6,97 +6,7 @@
  * Uses multiplication (not bit-shift) for OID decoding to avoid 32-bit overflow.
  */
 
-// ── Consolidated OID name map ───────────────────────────────────────
-
-export const ALL_OID_NAMES: Record<string, string> = {
-  // X.509 extensions
-  "2.5.29.14": "Subject Key Identifier",
-  "2.5.29.15": "Key Usage",
-  "2.5.29.17": "Subject Alternative Name",
-  "2.5.29.19": "Basic Constraints",
-  "2.5.29.20": "CRL Number",
-  "2.5.29.31": "CRL Distribution Points",
-  "2.5.29.32": "Certificate Policies",
-  "2.5.29.35": "Authority Key Identifier",
-  "2.5.29.37": "Extended Key Usage",
-  "1.3.6.1.5.5.7.1.1": "Authority Information Access",
-  "1.3.6.1.5.5.7.1.12": "Logotype (BIMI)",
-  "1.3.6.1.4.1.11129.2.4.2": "CT Precert SCTs",
-  "1.3.6.1.4.1.11129.2.4.3": "CT Precert Poison",
-  "1.3.6.1.4.1.11129.2.4.5": "CT Precert Signing Cert",
-
-  // EKU
-  "1.3.6.1.5.5.7.3.1": "serverAuth",
-  "1.3.6.1.5.5.7.3.2": "clientAuth",
-  "1.3.6.1.5.5.7.3.3": "codeSigning",
-  "1.3.6.1.5.5.7.3.4": "emailProtection",
-  "1.3.6.1.5.5.7.3.8": "timeStamping",
-  "1.3.6.1.5.5.7.3.9": "OCSPSigning",
-  "1.3.6.1.5.5.7.3.31": "BIMI",
-
-  // AIA
-  "1.3.6.1.5.5.7.48.1": "OCSP",
-  "1.3.6.1.5.5.7.48.2": "CA Issuers",
-
-  // DN attributes
-  "2.5.4.3": "Common Name",
-  "2.5.4.4": "Surname",
-  "2.5.4.5": "Serial Number",
-  "2.5.4.6": "Country",
-  "2.5.4.7": "Locality",
-  "2.5.4.8": "State/Province",
-  "2.5.4.9": "Street Address",
-  "2.5.4.10": "Organization",
-  "2.5.4.11": "Organizational Unit",
-  "2.5.4.12": "Title",
-  "2.5.4.15": "Business Category",
-  "2.5.4.97": "Organization Identifier",
-
-  // Signature algorithms
-  "1.2.840.113549.1.1.1": "RSA",
-  "1.2.840.113549.1.1.5": "SHA-1 with RSA",
-  "1.2.840.113549.1.1.11": "SHA-256 with RSA",
-  "1.2.840.113549.1.1.12": "SHA-384 with RSA",
-  "1.2.840.113549.1.1.13": "SHA-512 with RSA",
-  "1.2.840.10045.2.1": "EC Public Key",
-  "1.2.840.10045.4.3.2": "ECDSA with SHA-256",
-  "1.2.840.10045.4.3.3": "ECDSA with SHA-384",
-
-  // Named curves
-  "1.2.840.10045.3.1.7": "P-256 (secp256r1)",
-  "1.3.132.0.34": "P-384 (secp384r1)",
-  "1.3.132.0.35": "P-521 (secp521r1)",
-
-  // CA/Browser Forum
-  "2.23.140.1.1": "CA/Browser Forum EV",
-  "2.23.140.1.2.1": "CA/Browser Forum DV",
-  "2.23.140.1.2.2": "CA/Browser Forum OV",
-
-  // DigiCert
-  "2.16.840.1.114412.2.1": "DigiCert EV",
-  "2.16.840.1.114412.0.2.5": "DigiCert VMC",
-
-  // BIMI Group
-  "1.3.6.1.4.1.53087.1.1": "BIMI General Policy",
-  "1.3.6.1.4.1.53087.1.2": "BIMI Trademark Office",
-  "1.3.6.1.4.1.53087.1.3": "BIMI Trademark Country",
-  "1.3.6.1.4.1.53087.1.4": "BIMI Trademark ID",
-  "1.3.6.1.4.1.53087.1.5": "BIMI LEI",
-  "1.3.6.1.4.1.53087.1.6": "BIMI Word Mark",
-  "1.3.6.1.4.1.53087.1.13": "BIMI Mark Type",
-  "1.3.6.1.4.1.53087.3.2": "BIMI Statute Country",
-  "1.3.6.1.4.1.53087.3.3": "BIMI Statute State",
-  "1.3.6.1.4.1.53087.3.4": "BIMI Statute Locality",
-
-  // Entrust, GlobalSign
-  "2.16.840.1.114028.10.1.100": "Entrust VMC",
-  "1.3.6.1.4.1.4146.1.95": "GlobalSign VMC",
-
-  // PKCS
-  "1.2.840.113549.1.7.1": "PKCS#7 Data",
-  "1.2.840.113549.1.7.2": "PKCS#7 Signed Data",
-  "1.2.840.113549.1.9.1": "Email Address",
-};
+import { OID_NAMES } from "./oid-names";
 
 // ── Universal tag names ─────────────────────────────────────────────
 
@@ -303,7 +213,7 @@ function decodeValue(
     case 0x06: {
       // OBJECT IDENTIFIER
       const dotted = decodeOidBytes(valueBytes);
-      const name = ALL_OID_NAMES[dotted] ?? null;
+      const name = OID_NAMES[dotted] ?? null;
       return { decoded: dotted, oidName: name };
     }
 

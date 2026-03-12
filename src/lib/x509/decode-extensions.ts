@@ -2,7 +2,7 @@
 // Decodes well-known extension OIDs into human-readable text.
 // Runs client-side (no Node.js dependencies).
 
-import { ALL_OID_NAMES } from "./asn1-tree";
+import { OID_NAMES, resolveOidDisplayName } from "./oid-names";
 
 // ── ASN.1 tag constants ──────────────────────────────────────────────
 
@@ -101,36 +101,7 @@ function decodeOid(bytes: number[]): string {
   return parts.join(".");
 }
 
-// Extended display names for extension decoder UI — overrides for entries where
-// the extension decoder needs more verbose names than ALL_OID_NAMES provides.
-const EXTENSION_DISPLAY_OVERRIDES: Record<string, string> = {
-  "1.3.6.1.5.5.7.3.1": "TLS Server Authentication",
-  "1.3.6.1.5.5.7.3.2": "TLS Client Authentication",
-  "1.3.6.1.5.5.7.3.3": "Code Signing",
-  "1.3.6.1.5.5.7.3.4": "Email Protection",
-  "1.3.6.1.5.5.7.3.8": "Time Stamping",
-  "1.3.6.1.5.5.7.3.31": "Brand Indicator for Message Identification (BIMI)",
-  "2.23.140.1.1": "CA/Browser Forum EV Guidelines",
-  "2.16.840.1.114412.2.1": "DigiCert EV Policy",
-  "2.16.840.1.114412.0.2.5": "DigiCert VMC Policy",
-  "1.3.6.1.4.1.53087.1.1": "BIMI Mark Certificate General Policy",
-  "1.3.6.1.4.1.53087.1.2": "BIMI Trademark Office Name",
-  "1.3.6.1.4.1.53087.1.3": "BIMI Trademark Country/Region",
-  "1.3.6.1.4.1.53087.1.4": "BIMI Trademark Identifier",
-  "1.3.6.1.4.1.53087.1.5": "BIMI Legal Entity Identifier (LEI)",
-  "1.3.6.1.4.1.53087.1.6": "BIMI Word Mark",
-  "1.3.6.1.4.1.53087.3.3": "BIMI Statute State/Province",
-  "1.3.6.1.4.1.53087.3.5": "BIMI Statute Citation",
-  "1.3.6.1.4.1.53087.3.6": "BIMI Statute URL",
-  "1.3.6.1.4.1.53087.4.1": "BIMI Pilot Identifier (sunset 2025-03-15)",
-  "1.3.6.1.4.1.53087.5.1": "BIMI Prior Use Mark Source URL",
-  "2.16.840.1.114028.10.1.100": "Entrust VMC Policy",
-  "1.3.6.1.4.1.4146.1.95": "GlobalSign VMC Policy",
-};
-
-function resolveOidName(oid: string): string {
-  return EXTENSION_DISPLAY_OVERRIDES[oid] ?? ALL_OID_NAMES[oid] ?? oid;
-}
+// resolveOidDisplayName imported from oid-names.ts — single source of truth
 
 // ── String extraction helpers ────────────────────────────────────────
 
@@ -212,7 +183,7 @@ function decodeExtendedKeyUsage(hex: string): string {
   const bytes = hexToBytes(hex);
   const { node } = parseDer(bytes);
   const oids = collectOids(node);
-  return oids.map((oid) => resolveOidName(oid)).join(", ");
+  return oids.map((oid) => resolveOidDisplayName(oid)).join(", ");
 }
 
 function decodeKeyUsage(hex: string): string {
@@ -287,7 +258,7 @@ function decodeAuthorityInfoAccess(hex: string): string {
         const oid = child.children[0].tag === TAG_OID ? decodeOid(child.children[0].bytes) : null;
         const url = extractString(child.children[1]);
         if (oid && url) {
-          const method = resolveOidName(oid);
+          const method = resolveOidDisplayName(oid);
           entries.push(`${method}: ${url}`);
         }
       }
@@ -307,7 +278,7 @@ function decodeCertificatePolicies(hex: string): string {
         const oidNode = policyInfo.children[0];
         if (oidNode.tag === TAG_OID) {
           const oid = decodeOid(oidNode.bytes);
-          const name = resolveOidName(oid);
+          const name = resolveOidDisplayName(oid);
           parts.push(name);
         }
         // Extract any CPS URIs from qualifiers
@@ -344,7 +315,7 @@ const DECODED_EXTENSION_OIDS = new Set([
 ]);
 
 export function getExtensionName(oid: string): string {
-  return ALL_OID_NAMES[oid] || (DECODED_EXTENSION_OIDS.has(oid) ? oid : "Unknown");
+  return OID_NAMES[oid] || (DECODED_EXTENSION_OIDS.has(oid) ? oid : "Unknown");
 }
 
 export interface DecodedExtension {

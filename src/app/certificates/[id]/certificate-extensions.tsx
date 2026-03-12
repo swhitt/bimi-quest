@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { domainUrl } from "@/lib/entity-urls";
 import { decodeExtension } from "@/lib/x509/decode-extensions";
+import { OID_NAMES, BIMI_SUBJECT_OIDS, EV_SUBJECT_OIDS } from "@/lib/x509/oid-names";
 import type { Asn1Node } from "@/lib/x509/asn1-tree";
 import { buildAsn1Tree, pemToDerBytes } from "@/lib/x509/asn1-tree";
 import type { CertData } from "./certificate-types";
@@ -73,18 +74,16 @@ function formatCertDate(dateStr: string): string {
   return d.toUTCString().replace("GMT", "UTC");
 }
 
-function parseBimiSubjectFields(dn: string): [string, string][] {
-  const bimiOids: Record<string, string> = {
-    "1.3.6.1.4.1.53087.1.2": "BIMI Trademark Office",
-    "1.3.6.1.4.1.53087.1.3": "BIMI Trademark Country",
-    "1.3.6.1.4.1.53087.1.4": "BIMI Trademark ID",
-    "1.3.6.1.4.1.53087.1.13": "BIMI Mark Type",
-  };
+/** Extract non-standard OID-form attributes from a subject DN string.
+ *  Standard attributes (CN, O, C, ST, L) are shown separately;
+ *  this captures BIMI, EV jurisdiction, and other OID-form entries. */
+function parseExtraSubjectFields(dn: string): [string, string][] {
+  const oids = [...BIMI_SUBJECT_OIDS, ...EV_SUBJECT_OIDS];
   const results: [string, string][] = [];
-  for (const [oid, label] of Object.entries(bimiOids)) {
-    const re = new RegExp(`${oid.replace(/\./g, "\\.")}\\s*=\\s*([^,+]+)`);
-    const m = dn.match(re);
-    if (m) results.push([label, m[1].trim()]);
+  for (const oid of oids) {
+    const re = new RegExp(`${oid.replace(/\./g, "\\.")}\\s*=\\s*((?:[^,\\\\]|\\\\.)*)`, "g");
+    const m = re.exec(dn);
+    if (m) results.push([OID_NAMES[oid] ?? oid, m[1].replace(/\\(.)/g, "$1").trim()]);
   }
   return results;
 }
@@ -235,7 +234,7 @@ export function CertificateExtensions({ data }: { data: CertData }) {
               {cert.subjectCountry && <CertLine label="countryName" value={cert.subjectCountry} indent={3} />}
               {cert.subjectState && <CertLine label="stateOrProvinceName" value={cert.subjectState} indent={3} />}
               {cert.subjectLocality && <CertLine label="localityName" value={cert.subjectLocality} indent={3} />}
-              {parseBimiSubjectFields(cert.subjectDn).map(([oid, val]) => (
+              {parseExtraSubjectFields(cert.subjectDn).map(([oid, val]) => (
                 <CertLine key={oid} label={oid} value={val} indent={3} />
               ))}
             </CertSection>
