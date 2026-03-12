@@ -1,7 +1,8 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
+import { format, lastDayOfMonth, parseISO } from "date-fns";
 import { Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ function ExpiryTooltip({
 }
 
 export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
+  const router = useRouter();
   const colors = useChartColors();
   const { buildApiParams } = useGlobalFilters();
   const filterParams = buildApiParams();
@@ -71,7 +73,9 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   if (loading && data.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">expirations</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          expirations
+        </span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -105,7 +109,9 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">expirations</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          expirations
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"
@@ -128,17 +134,15 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
               <XAxis
                 dataKey="month"
                 tickFormatter={tickFormatter}
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
-                width={32}
+                width={48}
               />
               <Tooltip
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}
@@ -152,6 +156,15 @@ export function ExpiryChart({ initialData }: { initialData?: ExpiryRow[] }) {
                   stackId="expiry"
                   fill={getCAColor(colors, ca)}
                   fillOpacity={0.85}
+                  style={{ cursor: "pointer" }}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Recharts onClick data includes custom keys
+                  onClick={(d: any) => {
+                    const month = String(d.month ?? "");
+                    if (!month) return;
+                    const from = `${month}-01`;
+                    const end = lastDayOfMonth(parseISO(from));
+                    router.push(`/certificates?expiresFrom=${from}&expiresTo=${format(end, "yyyy-MM-dd")}`);
+                  }}
                 />
               ))}
             </BarChart>

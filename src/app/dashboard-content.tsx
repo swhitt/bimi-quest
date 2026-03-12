@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { DmarcDriftFeed } from "@/components/dashboard/dmarc-drift-feed";
+import { DnsChangesFeed } from "@/components/dashboard/dns-changes-feed";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
 import { TopOrgs } from "@/components/dashboard/top-orgs";
@@ -133,24 +133,12 @@ export async function DashboardContent({
         />
       </div>
 
-      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-lg border border-border p-2">
           <IndustryChart initialData={industryData ?? undefined} />
         </div>
         <div className="rounded-lg border border-border p-2">
           <ExpiryChart initialData={expiryData ?? undefined} />
-        </div>
-        <div className="rounded-lg border border-border p-2">
-          <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
-        </div>
-      </div>
-
-      <div data-dashboard-section="3b" className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-lg border border-border p-2">
-          <RuaProviderChart />
-        </div>
-        <div className="rounded-lg border border-border p-2">
-          <DmarcDriftFeed />
         </div>
       </div>
 
@@ -166,6 +154,19 @@ export async function DashboardContent({
             initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
             initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
           />
+        </div>
+      </div>
+
+      <div data-dashboard-section="5" className="rounded-lg border border-border p-2">
+        <DnsChangesFeed />
+      </div>
+
+      <div data-dashboard-section="6" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border p-2">
+          <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <RuaProviderChart />
         </div>
       </div>
     </div>

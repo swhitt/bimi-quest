@@ -1,10 +1,12 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { displayIntermediateCa } from "@/lib/ca-display";
+import { caNameToSlug } from "@/lib/ca-slugs";
 import { CA_COLOR_INDEX, useCertTypeColors } from "@/lib/chart-colors";
 
 interface CABreakdown {
@@ -65,6 +67,7 @@ function BarTooltip({
 }
 
 export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShareChartProps) {
+  const router = useRouter();
   const certColors = useCertTypeColors();
   const isFiltered = selectedCA !== "All Intermediates" && selectedCA in CA_COLOR_INDEX;
 
@@ -85,7 +88,9 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
   return (
     <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">market share</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          market share
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"
@@ -110,25 +115,34 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
               <CartesianGrid horizontal={false} className="stroke-border" />
               <XAxis
                 type="number"
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
                 width={110}
+                interval={0}
               />
               <Tooltip
                 cursor={{ fill: "var(--accent)", opacity: 0.3 }}
                 content={(props) => <BarTooltip {...props} vmcColor={certColors.VMC} cmcColor={certColors.CMC} />}
               />
-              <Bar dataKey="vmcCount" name="VMC" stackId="share" fill={certColors.VMC}>
+              <Bar
+                dataKey="vmcCount"
+                name="VMC"
+                stackId="share"
+                fill={certColors.VMC}
+                style={{ cursor: "pointer" }}
+                onClick={(d) => {
+                  const slug = caNameToSlug(String(d.name));
+                  if (slug) router.push(`/certificates/ca/${slug}`);
+                }}
+              >
                 {chartData.map((entry) => {
                   const isSelected = entry.name === selectedCA;
                   return (
@@ -140,7 +154,17 @@ export function MarketShareChart({ data, selectedCA, apiQuery = "" }: MarketShar
                   );
                 })}
               </Bar>
-              <Bar dataKey="cmcCount" name="CMC" stackId="share" fill={certColors.CMC}>
+              <Bar
+                dataKey="cmcCount"
+                name="CMC"
+                stackId="share"
+                fill={certColors.CMC}
+                style={{ cursor: "pointer" }}
+                onClick={(d) => {
+                  const slug = caNameToSlug(String(d.name));
+                  if (slug) router.push(`/certificates/ca/${slug}`);
+                }}
+              >
                 {chartData.map((entry) => {
                   const isSelected = entry.name === selectedCA;
                   return (

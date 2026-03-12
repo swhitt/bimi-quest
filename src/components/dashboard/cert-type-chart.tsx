@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ function DonutTooltip({
 }
 
 export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }: CertTypeChartProps) {
+  const router = useRouter();
   const certColors = useCertTypeColors();
   const vmcTotal = caBreakdown.reduce((s, d) => s + d.vmcCount, 0);
   const cmcTotal = caBreakdown.reduce((s, d) => s + d.cmcCount, 0);
@@ -72,7 +74,9 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
   return (
     <div className="px-3 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">vmc vs cmc</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          vmc vs cmc
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"
@@ -87,42 +91,85 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
         </Button>
       </div>
       {grandTotal > 0 ? (
-        <div role="img" aria-label="Donut chart showing VMC vs CMC certificate type distribution" className="h-[200px]">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />
-              <Pie
-                data={outerData}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                outerRadius="80%"
-                innerRadius="58%"
-                paddingAngle={2}
-                strokeWidth={0}
-              >
-                {outerData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-              </Pie>
-              {markTypes.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div
+            role="img"
+            aria-label="Donut chart showing VMC vs CMC certificate type distribution"
+            className="shrink-0"
+          >
+            <ResponsiveContainer width={160} height={160}>
+              <PieChart>
+                <Tooltip content={(props) => <DonutTooltip {...props} grandTotal={grandTotal} />} />
                 <Pie
-                  data={markTypes}
+                  data={outerData}
                   dataKey="value"
                   cx="50%"
                   cy="50%"
-                  outerRadius="50%"
-                  innerRadius="30%"
+                  outerRadius="80%"
+                  innerRadius="58%"
                   paddingAngle={2}
                   strokeWidth={0}
+                  style={{ cursor: "pointer" }}
+                  onClick={(d) => {
+                    if (d?.name) router.push(`/certificates?type=${d.name}`);
+                  }}
                 >
-                  {markTypes.map((entry) => (
+                  {outerData.map((entry) => (
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}
                 </Pie>
-              )}
-            </PieChart>
-          </ResponsiveContainer>
+                {markTypes.length > 0 && (
+                  <Pie
+                    data={markTypes}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="50%"
+                    innerRadius="30%"
+                    paddingAngle={2}
+                    strokeWidth={0}
+                  >
+                    {markTypes.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                )}
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="space-y-1.5 text-sm min-w-0">
+            {outerData.map((d) => {
+              const pct = grandTotal > 0 ? ((d.value / grandTotal) * 100).toFixed(1) : "0.0";
+              return (
+                <div key={d.name} className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: d.fill }} />
+                  <span className="text-muted-foreground truncate">{d.name}</span>
+                  <span className="ml-auto pl-2 font-mono text-xs tabular-nums">{d.value.toLocaleString()}</span>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground w-12 text-right">{pct}%</span>
+                </div>
+              );
+            })}
+            {markTypes.length > 0 && (
+              <>
+                <div className="border-t border-border/50 pt-1.5" />
+                {markTypes.map((d) => {
+                  const pct = grandTotal > 0 ? ((d.value / grandTotal) * 100).toFixed(1) : "0.0";
+                  return (
+                    <div key={d.name} className="flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.fill }} />
+                      <span className="text-muted-foreground text-xs whitespace-nowrap">{d.name}</span>
+                      <span className="ml-auto pl-2 font-mono text-[11px] tabular-nums">
+                        {d.value.toLocaleString()}
+                      </span>
+                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground w-12 text-right">
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex h-[120px] items-center justify-center text-muted-foreground">

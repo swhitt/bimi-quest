@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltipContent } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ function IndustryTooltip({
 }
 
 export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) {
+  const router = useRouter();
   const certColors = useCertTypeColors();
   const { buildApiParams } = useGlobalFilters();
   const filterParams = buildApiParams();
@@ -60,7 +62,9 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
   if (loading && data.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">by sector</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          by sector
+        </span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -78,7 +82,9 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">by sector</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          by sector
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"
@@ -100,23 +106,42 @@ export function IndustryChart({ initialData }: { initialData?: IndustryRow[] }) 
               <CartesianGrid horizontal={false} className="stroke-border" />
               <XAxis
                 type="number"
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
                 width={120}
+                interval={0}
               />
               <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.3 }} content={<IndustryTooltip />} />
-              <Bar dataKey="vmcCount" name="VMC" stackId="industry" fill={certColors.VMC} fillOpacity={0.9} />
-              <Bar dataKey="cmcCount" name="CMC" stackId="industry" fill={certColors.CMC} fillOpacity={0.7} />
+              <Bar
+                dataKey="vmcCount"
+                name="VMC"
+                stackId="industry"
+                fill={certColors.VMC}
+                fillOpacity={0.9}
+                style={{ cursor: "pointer" }}
+                onClick={(d) => {
+                  if (d?.name) router.push(`/certificates?industry=${encodeURIComponent(String(d.name))}`);
+                }}
+              />
+              <Bar
+                dataKey="cmcCount"
+                name="CMC"
+                stackId="industry"
+                fill={certColors.CMC}
+                fillOpacity={0.7}
+                style={{ cursor: "pointer" }}
+                onClick={(d) => {
+                  if (d?.name) router.push(`/certificates?industry=${encodeURIComponent(String(d.name))}`);
+                }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

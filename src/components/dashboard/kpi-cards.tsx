@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { RelativeTime } from "@/components/ui/relative-time";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { UtcTime } from "@/components/ui/utc-time";
 
 interface ActiveFilters {
   type: string | null;
@@ -147,7 +147,7 @@ export function KPICards({
           <>
             <span className="flex-1" />
             <span className="text-xs text-muted-foreground">
-              updated <RelativeTime date={lastUpdated} />
+              updated <UtcTime date={lastUpdated} compact />
             </span>
           </>
         )}

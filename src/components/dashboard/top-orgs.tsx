@@ -31,7 +31,9 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
   if (loading && orgs.length === 0) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          top orgs
+        </span>
         <Skeleton className="h-[200px] mt-1" />
       </div>
     );
@@ -40,7 +42,9 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
   if (error) {
     return (
       <div>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
+        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          top orgs
+        </span>
         <div className="flex h-[200px] flex-col items-center justify-center gap-2">
           <p className="text-sm text-destructive">Failed to load</p>
           <button className="text-xs underline text-muted-foreground hover:text-foreground" onClick={retry}>
@@ -53,12 +57,12 @@ export function TopOrgs({ initialData, initialTotalPages }: { initialData?: OrgR
 
   return (
     <div>
-      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
+      <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">top orgs</span>
       {orgs.length > 0 ? (
         <div className="space-y-1">
           <ol className="mt-1 space-y-0.5">
             {orgs.map((org, i) => (
-              <li key={org.org} className="flex items-center gap-1.5 text-[13px]">
+              <li key={org.org} className="flex items-center gap-1.5 text-[13px] font-medium">
                 <span className="font-mono tabular-nums text-muted-foreground w-5 text-right shrink-0 text-[11px]">
                   {String((page - 1) * PAGE_SIZE + i + 1).padStart(2, "0")}.
                 </span>
