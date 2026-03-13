@@ -155,7 +155,8 @@ function detectChanges(old: OldDomainState, fresh: BimiDnsRow): DnsChangeRecord[
       changes.push({
         domain: fresh.domain,
         recordType: "bimi",
-        changeType: deriveBimiChangeType(oldBimi, newBimi),
+        changeType:
+          !newBimi && fresh.bimi_record_count > 1 ? "record_ambiguous" : deriveBimiChangeType(oldBimi, newBimi),
         previousRaw: old.bimi_record_raw,
         newRaw: fresh.bimi_record_raw,
         previousRecord: oldBimi,
@@ -173,7 +174,8 @@ function detectChanges(old: OldDomainState, fresh: BimiDnsRow): DnsChangeRecord[
       changes.push({
         domain: fresh.domain,
         recordType: "dmarc",
-        changeType: deriveDmarcChangeType(oldDmarc, newDmarc),
+        changeType:
+          !newDmarc && fresh.dmarc_record_count > 1 ? "record_ambiguous" : deriveDmarcChangeType(oldDmarc, newDmarc),
         previousRaw: old.dmarc_record_raw,
         newRaw: fresh.dmarc_record_raw,
         previousRecord: oldDmarc,

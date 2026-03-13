@@ -23,6 +23,7 @@ const DMARC_POLICY_RANK: Record<string, number> = { none: 0, quarantine: 1, reje
 export type BimiChangeType =
   | "record_created"
   | "record_removed"
+  | "record_ambiguous"
   | "logo_url_changed"
   | "authority_url_changed"
   | "declination_set"
@@ -31,6 +32,7 @@ export type BimiChangeType =
 export type DmarcChangeType =
   | "record_created"
   | "record_removed"
+  | "record_ambiguous"
   | "policy_weakened"
   | "policy_strengthened"
   | "tags_modified";

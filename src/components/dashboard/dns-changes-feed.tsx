@@ -23,6 +23,7 @@ export const CHANGE_STYLE: Record<string, { label: string; color: string }> = {
   policy_weakened: { label: "policy weakened", color: "text-red-600 dark:text-red-400" },
   record_created: { label: "record created", color: "text-green-600 dark:text-green-400" },
   record_removed: { label: "record removed", color: "text-red-600 dark:text-red-400" },
+  record_ambiguous: { label: "ambiguous records", color: "text-amber-600 dark:text-amber-400" },
   logo_url_changed: { label: "logo url changed", color: "text-blue-600 dark:text-blue-400" },
   logo_changed: { label: "logo url changed", color: "text-blue-600 dark:text-blue-400" },
   authority_url_changed: { label: "authority url changed", color: "text-blue-600 dark:text-blue-400" },
