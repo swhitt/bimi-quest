@@ -44,12 +44,10 @@ export function deriveBimiChangeType(
   if (!old) return "record_created";
   if (!new_) return "record_removed";
   if (old.l !== new_.l) {
-    // Declination: new record has empty l= tag
     if (new_.l === "") return "declination_set";
     return "logo_url_changed";
   }
   if (old.a !== new_.a) return "authority_url_changed";
-  if (new_.l === "" && old.l !== "") return "declination_set";
   return "tags_modified";
 }
 
@@ -63,9 +61,9 @@ export function deriveDmarcChangeType(
   const oldRank = DMARC_POLICY_RANK[old.p?.toLowerCase() ?? ""] ?? -1;
   const newRank = DMARC_POLICY_RANK[new_.p?.toLowerCase() ?? ""] ?? -1;
 
-  if (oldRank >= 0 && newRank >= 0) {
+  if (oldRank !== newRank) {
     if (newRank < oldRank) return "policy_weakened";
-    if (newRank > oldRank) return "policy_strengthened";
+    return "policy_strengthened";
   }
 
   return "tags_modified";
@@ -80,7 +78,7 @@ export function recordsChanged(a: Record<string, string> | null, b: Record<strin
   if (keysA.length !== keysB.length) return true;
   for (let i = 0; i < keysA.length; i++) {
     if (keysA[i] !== keysB[i]) return true;
-    if (a[keysA[i]] !== b[keysB[i]]) return true;
+    if (a[keysA[i]] !== b[keysA[i]]) return true;
   }
   return false;
 }

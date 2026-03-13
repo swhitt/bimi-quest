@@ -18,7 +18,7 @@ export function computeGrade(checks: BimiCheckItem[], declined: boolean = false)
   const specChecks = checks.filter((c) => c.category === "spec");
   const compatChecks = checks.filter((c) => c.category === "compatibility");
 
-  const specFails = specChecks.filter((c) => c.status === "fail");
+  const specFails = specChecks.filter((c) => c.status === "fail" || c.status === "skip");
   const specWarns = specChecks.filter((c) => c.status === "warn");
   const compatWarns = compatChecks.filter((c) => c.status === "warn" || c.status === "fail");
 

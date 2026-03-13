@@ -302,7 +302,7 @@ describe("POST /api/validate", () => {
     const res = await POST(req);
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("Validation failed: DNS timeout");
+    expect(body.error).toBe("Validation failed due to an unexpected internal error");
   });
 
   it("includes rate limit headers in a 500 response", async () => {

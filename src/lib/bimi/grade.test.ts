@@ -164,14 +164,13 @@ describe("computeGrade", () => {
       expect(result.summary).toBe("Full BIMI compliance across all checks");
     });
 
-    it("returns A when all checks are skipped or info", () => {
+    it("returns C when a spec check is skipped (unevaluable)", () => {
       const checks = [
         makeCheck({ id: "check-a", category: "spec", status: "skip" }),
         makeCheck({ id: "check-b", category: "compatibility", status: "info" }),
       ];
       const result = computeGrade(checks);
-      expect(result.grade).toBe("A");
-      expect(result.summary).toBe("Full BIMI compliance across all checks");
+      expect(result.grade).toBe("C");
     });
 
     it("declined defaults to false when not provided", () => {

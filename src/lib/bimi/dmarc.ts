@@ -97,7 +97,7 @@ export function parseDMARCRecord(txt: string): DMARCRecord {
     raw: txt,
     version: tags["v"] || "DMARC1",
     policy,
-    pct: tags["pct"] ? parseInt(tags["pct"], 10) : 100,
+    pct: tags["pct"] ? (Number.isNaN(parseInt(tags["pct"], 10)) ? 100 : parseInt(tags["pct"], 10)) : 100,
     rua: tags["rua"] || null,
     ruf: tags["ruf"] || null,
     sp,

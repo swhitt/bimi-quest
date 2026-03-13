@@ -414,8 +414,9 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
     } else {
       consecutiveBatchFailures++;
       if (consecutiveBatchFailures >= MAX_BATCH_FAILURES) {
-        // Force-skip this batch to avoid jamming ingestion on the same broken entries
-        const skipTo = i + BATCH_SIZE;
+        // Force-skip only the entries actually returned in the last batch,
+        // not a full BATCH_SIZE window (CT servers may return fewer entries).
+        const skipTo = i + Math.max(response.entries.length, 1);
         onProgress?.(`${MAX_BATCH_FAILURES} consecutive batch failures at index ${i}, force-skipping to ${skipTo}`);
         const now = new Date();
         await db
@@ -427,6 +428,7 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
           });
         processed = skipTo;
         i = skipTo;
+        consecutiveBatchFailures = 0;
       } else {
         onProgress?.(
           `Batch starting at ${i} failed entirely (${consecutiveBatchFailures}/${MAX_BATCH_FAILURES}), retrying...`,
@@ -435,10 +437,10 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
       }
     }
 
+    batchesRun++;
+
     // If we hit a transient DB error mid-batch, stop processing to allow retry
     if (hadDbError) break;
-
-    batchesRun++;
 
     await throttle(150);
   }

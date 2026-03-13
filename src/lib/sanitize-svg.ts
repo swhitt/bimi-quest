@@ -11,12 +11,9 @@
 type PurifyInstance = { sanitize: (dirty: string, cfg: Record<string, unknown>) => string };
 
 let _purify: PurifyInstance | null = null;
-let _tried = false;
 
 function getPurify(): PurifyInstance | null {
   if (_purify) return _purify;
-  if (_tried) return null;
-  _tried = true;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

@@ -132,8 +132,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
                   }
                 }
               }
-            } catch {
-              // Timeout or fetch error
+            } catch (fetchErr) {
+              // Distinguish fetch failures from "no SVG" so the client
+              // doesn't incorrectly conclude the domain has no live SVG.
+              webSvgValidation = {
+                valid: false,
+                errors: [`SVG fetch failed: ${fetchErr instanceof Error ? fetchErr.message : "unknown error"}`],
+              };
             }
           }
 
