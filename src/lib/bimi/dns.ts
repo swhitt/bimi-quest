@@ -17,43 +17,48 @@ export interface BIMIRecord {
   orgDomain: string | null;
 }
 
+export interface BIMILookupResult {
+  record: BIMIRecord | null;
+  recordCount: number;
+}
+
 /** Look up the BIMI TXT record for a domain under the given selector,
  *  falling back to the org domain if no record is found. */
-export async function lookupBIMIRecord(domain: string, selector: string = "default"): Promise<BIMIRecord | null> {
+export async function lookupBIMIRecord(domain: string, selector: string = "default"): Promise<BIMILookupResult> {
   // Try the exact domain first
-  const record = await lookupBIMIRecordAt(domain, selector);
-  if (record) return record;
+  const result = await lookupBIMIRecordAt(domain, selector);
+  if (result.record) return result;
 
   // Fall back to organizational domain
   const orgDomain = getOrgDomain(domain);
-  if (!orgDomain) return null;
+  if (!orgDomain) return result;
 
-  const orgRecord = await lookupBIMIRecordAt(orgDomain, selector);
-  if (orgRecord) {
-    orgRecord.orgDomainFallback = true;
-    orgRecord.orgDomain = orgDomain;
+  const orgResult = await lookupBIMIRecordAt(orgDomain, selector);
+  if (orgResult.record) {
+    orgResult.record.orgDomainFallback = true;
+    orgResult.record.orgDomain = orgDomain;
   }
-  return orgRecord;
+  // Return whichever has the higher count (captures ambiguous records at either level)
+  return orgResult.recordCount > result.recordCount ? orgResult : { ...orgResult, recordCount: result.recordCount };
 }
 
-export async function lookupBIMIRecordAt(domain: string, selector: string): Promise<BIMIRecord | null> {
+export async function lookupBIMIRecordAt(domain: string, selector: string): Promise<BIMILookupResult> {
   try {
     const records = await withDnsTimeout(dns.resolveTxt(`${selector}._bimi.${domain}`));
-    // TXT records can be split across multiple strings, concatenate them
     const bimiRecords = records.map((r) => r.join("")).filter((txt) => txt.toLowerCase().startsWith("v=bimi1"));
 
     // Per BIMI spec, multiple BIMI records for the same selector is an error
     // condition — treat as if no record was published.
     if (bimiRecords.length > 1) {
-      throw new Error(`Multiple BIMI records found at ${selector}._bimi.${domain} (ambiguous, treated as error)`);
+      return { record: null, recordCount: bimiRecords.length };
     }
 
-    if (bimiRecords.length === 0) return null;
-    return parseBIMIRecord(bimiRecords[0], selector);
+    if (bimiRecords.length === 0) return { record: null, recordCount: 0 };
+    return { record: parseBIMIRecord(bimiRecords[0], selector), recordCount: 1 };
   } catch (err: unknown) {
-    if (isDnsNotFoundError(err)) return null;
+    if (isDnsNotFoundError(err)) return { record: null, recordCount: 0 };
     const code = (err as NodeJS.ErrnoException).code;
-    throw new Error(`DNS lookup failed for ${selector}._bimi.${domain}: ${code ?? errorMessage(err)}`);
+    throw new Error(code ?? errorMessage(err));
   }
 }
 

@@ -8,7 +8,6 @@ import { throttle } from "@/lib/ct/gorgon";
 import { parseCertBasicInfo } from "@/lib/ct/parser";
 import { upsertDomainStateSql } from "@/lib/dns/persist-domain-state";
 import { safeFetch } from "@/lib/net/safe-fetch";
-import { errorMessage } from "@/lib/utils";
 import type { DnsSnapshot } from "@/lib/db/schema";
 
 export interface BimiDnsRow {
@@ -34,6 +33,8 @@ export interface BimiDnsRow {
   svg_validation_errors: string[] | null;
   svg_indicator_hash: string | null;
   svg_tile_bg: string | null;
+  bimi_record_count: number;
+  dmarc_record_count: number;
   dns_snapshot: DnsSnapshot | null;
 }
 
@@ -61,13 +62,15 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     svg_validation_errors: null,
     svg_indicator_hash: null,
     svg_tile_bg: null,
+    bimi_record_count: 0,
+    dmarc_record_count: 0,
     dns_snapshot: null,
   };
 
-  // Parallel DNS lookups — distinguish "no record" (null) from resolver errors.
+  // Parallel DNS lookups — distinguish "no record" from resolver errors.
   // Allow partial results: if one lookup fails but the other succeeds,
   // populate what we can rather than discarding the entire domain.
-  let bimiRecord: Awaited<ReturnType<typeof lookupBIMIRecord>> | null = null;
+  let bimiResult: Awaited<ReturnType<typeof lookupBIMIRecord>> | null = null;
   let dmarcResult: Awaited<ReturnType<typeof lookupDMARC>> | null = null;
   let bimiFailed = false;
   let dmarcFailed = false;
@@ -75,21 +78,23 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
   const [bimiOutcome, dmarcOutcome] = await Promise.allSettled([lookupBIMIRecord(domain), lookupDMARC(domain)]);
 
   if (bimiOutcome.status === "fulfilled") {
-    bimiRecord = bimiOutcome.value;
+    bimiResult = bimiOutcome.value;
   } else {
-    console.warn(`  DNS error looking up BIMI for ${domain}: ${errorMessage(bimiOutcome.reason)}`);
     bimiFailed = true;
   }
 
   if (dmarcOutcome.status === "fulfilled") {
     dmarcResult = dmarcOutcome.value;
   } else {
-    console.warn(`  DNS error looking up DMARC for ${domain}: ${errorMessage(dmarcOutcome.reason)}`);
     dmarcFailed = true;
   }
 
   // Only skip the domain entirely if BOTH lookups failed
   if (bimiFailed && dmarcFailed) return null;
+
+  const bimiRecord = bimiResult?.record ?? null;
+  row.bimi_record_count = bimiResult?.recordCount ?? 0;
+  row.dmarc_record_count = dmarcResult?.recordCount ?? 0;
 
   if (bimiRecord) {
     row.bimi_record_raw = bimiRecord.raw;
@@ -103,7 +108,7 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     row.bimi_org_domain_fallback = bimiRecord.orgDomainFallback;
   }
 
-  if (dmarcResult) {
+  if (dmarcResult?.record) {
     row.dmarc_record_raw = dmarcResult.record.raw;
     row.dmarc_policy = dmarcResult.record.policy;
     row.dmarc_pct = dmarcResult.record.pct;
@@ -199,7 +204,7 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
           orgDomain: bimiRecord.orgDomain ?? null,
         }
       : null,
-    dmarcRecord: dmarcResult
+    dmarcRecord: dmarcResult?.record
       ? {
           raw: row.dmarc_record_raw,
           policy: row.dmarc_policy,

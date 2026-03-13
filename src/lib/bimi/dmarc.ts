@@ -30,29 +30,38 @@ export function getOrgDomain(domain: string): string | null {
 }
 
 export interface DMARCLookupResult {
-  record: DMARCRecord;
+  record: DMARCRecord | null;
   /** True when the record was found at the org domain, not the queried domain */
   isSubdomain: boolean;
+  recordCount: number;
 }
 
 /** Look up the DMARC TXT record for a domain, falling back to the
  *  organizational domain per RFC 7489 section 6.6.3 */
-export async function lookupDMARC(domain: string): Promise<DMARCLookupResult | null> {
+export async function lookupDMARC(domain: string): Promise<DMARCLookupResult> {
   // Try exact domain first
-  const record = await lookupDMARCAt(domain);
-  if (record) return { record, isSubdomain: false };
+  const result = await lookupDMARCAt(domain);
+  if (result.record) return { record: result.record, isSubdomain: false, recordCount: result.recordCount };
 
   // Fall back to organizational domain per RFC 7489 section 6.6.3
   const orgDomain = getOrgDomain(domain);
   if (orgDomain && orgDomain !== domain) {
-    const orgRecord = await lookupDMARCAt(orgDomain);
-    if (orgRecord) return { record: orgRecord, isSubdomain: true };
+    const orgResult = await lookupDMARCAt(orgDomain);
+    if (orgResult.record) return { record: orgResult.record, isSubdomain: true, recordCount: orgResult.recordCount };
+    if (orgResult.recordCount > result.recordCount) {
+      return { record: null, isSubdomain: true, recordCount: orgResult.recordCount };
+    }
   }
 
-  return null;
+  return { record: null, isSubdomain: false, recordCount: result.recordCount };
 }
 
-async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
+interface DMARCAtResult {
+  record: DMARCRecord | null;
+  recordCount: number;
+}
+
+async function lookupDMARCAt(domain: string): Promise<DMARCAtResult> {
   try {
     const records = await withDnsTimeout(dns.resolveTxt(`_dmarc.${domain}`));
     const dmarcRecords = records.map((r) => r.join("")).filter((txt) => txt.toLowerCase().startsWith("v=dmarc1"));
@@ -60,15 +69,15 @@ async function lookupDMARCAt(domain: string): Promise<DMARCRecord | null> {
     // RFC 7489 Section 6.6.3: if more than one DMARC record is found,
     // the result MUST be treated as if no record was published.
     if (dmarcRecords.length > 1) {
-      throw new Error(`Multiple DMARC records found at _dmarc.${domain} (RFC 7489 \u00a76.6.3 violation)`);
+      return { record: null, recordCount: dmarcRecords.length };
     }
 
-    if (dmarcRecords.length === 0) return null;
-    return parseDMARCRecord(dmarcRecords[0]);
+    if (dmarcRecords.length === 0) return { record: null, recordCount: 0 };
+    return { record: parseDMARCRecord(dmarcRecords[0]), recordCount: 1 };
   } catch (err: unknown) {
-    if (isDnsNotFoundError(err)) return null;
+    if (isDnsNotFoundError(err)) return { record: null, recordCount: 0 };
     const code = (err as NodeJS.ErrnoException).code;
-    throw new Error(`DNS lookup failed for _dmarc.${domain}: ${code ?? errorMessage(err)}`);
+    throw new Error(code ?? errorMessage(err));
   }
 }
 

@@ -216,6 +216,8 @@ export const domainBimiState = pgTable(
     bimiDeclination: boolean("bimi_declination").default(false),
     bimiSelector: text("bimi_selector").default("default"),
     bimiOrgDomainFallback: boolean("bimi_org_domain_fallback").default(false),
+    bimiRecordCount: integer("bimi_record_count"),
+    dmarcRecordCount: integer("dmarc_record_count"),
     svgIndicatorHash: text("svg_indicator_hash"),
     svgTileBg: text("svg_tile_bg"),
     bimiGrade: text("bimi_grade"),

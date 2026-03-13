@@ -76,18 +76,23 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
           let dmarcPolicy: string | null = cachedState?.dmarcPolicy || null;
           let dmarcValid: boolean | null = cachedState?.dmarcValid ?? null;
           let dmarcRecordRaw: string | null = cachedState?.dmarcRecordRaw || null;
+          let bimiRecordCount: number | null = cachedState?.bimiRecordCount ?? null;
+          let dmarcRecordCount: number | null = cachedState?.dmarcRecordCount ?? null;
 
           // If no cached state, do live DNS lookups
           if (!cachedState) {
-            const [bimiRecord, dmarcLookup] = await Promise.all([lookupBIMIRecord(domain), lookupDMARC(domain)]);
+            const [bimiLookup, dmarcLookup] = await Promise.all([lookupBIMIRecord(domain), lookupDMARC(domain)]);
 
-            if (bimiRecord) {
-              bimiRecordRaw = bimiRecord.raw;
-              logoUrl = bimiRecord.logoUrl;
-              authorityUrl = bimiRecord.authorityUrl;
+            bimiRecordCount = bimiLookup.recordCount;
+            dmarcRecordCount = dmarcLookup.recordCount;
+
+            if (bimiLookup.record) {
+              bimiRecordRaw = bimiLookup.record.raw;
+              logoUrl = bimiLookup.record.logoUrl;
+              authorityUrl = bimiLookup.record.authorityUrl;
             }
 
-            if (dmarcLookup) {
+            if (dmarcLookup.record) {
               dmarcRecordRaw = dmarcLookup.record.raw;
               dmarcPolicy = dmarcLookup.record.policy;
               dmarcValid = isDMARCValidForBIMI(dmarcLookup.record, dmarcLookup.isSubdomain);
@@ -135,7 +140,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
           return {
             domain,
             bimiRecord: bimiRecordRaw,
+            bimiRecordCount,
             dmarcRecord: dmarcRecordRaw,
+            dmarcRecordCount,
             logoUrl,
             authorityUrl,
             dmarcPolicy,
@@ -144,14 +151,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
             webSvgValidation,
             webSvgSizeBytes: webSvgContent ? new TextEncoder().encode(webSvgContent).length : null,
             svgMatch,
-            // Include web SVG source on mismatch so the client can render a diff
             webSvgSource: svgMatch === false ? webSvgContent : null,
           };
         } catch {
           return {
             domain,
             bimiRecord: null,
+            bimiRecordCount: null,
             dmarcRecord: null,
+            dmarcRecordCount: null,
             logoUrl: null,
             authorityUrl: null,
             dmarcPolicy: null,

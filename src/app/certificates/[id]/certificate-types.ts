@@ -89,7 +89,9 @@ export interface BimiCheckResult {
   domains: {
     domain: string;
     bimiRecord: string | null;
+    bimiRecordCount: number | null;
     dmarcRecord: string | null;
+    dmarcRecordCount: number | null;
     logoUrl: string | null;
     authorityUrl: string | null;
     dmarcPolicy: string | null;

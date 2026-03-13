@@ -105,7 +105,9 @@ export interface BIMIValidationResult {
 
 interface BimiDnsState {
   bimiRecord: BIMIRecord | null;
+  bimiRecordCount: number;
   dmarcRecord: DMARCRecord | null;
+  dmarcRecordCount: number;
   dmarcValid: boolean;
   dmarcReason: string | null;
   isSubdomain: boolean;
@@ -140,6 +142,7 @@ async function fetchBimiDnsState(
   // Extract BIMI record — may come from standard lookup or tiered LPS result
   let lpsTrace: LpsTieredResult | null = null;
   let bimiRecord: BIMIRecord | null = null;
+  let bimiRecordCount = 0;
   if (bimiResult instanceof Error) {
     errors.push(`BIMI DNS lookup failed (resolver error): ${errorMessage(bimiResult)}`);
   } else if (bimiResult && "steps" in bimiResult) {
@@ -149,9 +152,16 @@ async function fetchBimiDnsState(
       errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
     }
   } else {
-    bimiRecord = bimiResult;
+    bimiRecord = bimiResult.record;
+    bimiRecordCount = bimiResult.recordCount;
     if (!bimiRecord) {
-      errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
+      if (bimiRecordCount > 1) {
+        errors.push(
+          `${bimiRecordCount} BIMI records found at ${selector}._bimi.${domain} (ambiguous, treated as no record)`,
+        );
+      } else {
+        errors.push(`No BIMI record found at ${selector}._bimi.${domain}`);
+      }
     }
   }
 
@@ -162,13 +172,18 @@ async function fetchBimiDnsState(
 
   const dmarcLookup = dmarcResult instanceof Error ? null : dmarcResult;
   const dmarcRecord = dmarcLookup?.record ?? null;
+  const dmarcRecordCount = dmarcLookup?.recordCount ?? 0;
   const isSubdomain = dmarcLookup?.isSubdomain ?? false;
   let dmarcValid = false;
   let dmarcReason: string | null = null;
   if (dmarcResult instanceof Error) {
     errors.push(`DMARC DNS lookup failed (resolver error): ${errorMessage(dmarcResult)}`);
   } else if (!dmarcRecord) {
-    errors.push(`No DMARC record found at _dmarc.${domain}`);
+    if (dmarcRecordCount > 1) {
+      errors.push(`${dmarcRecordCount} DMARC records found at _dmarc.${domain} (ambiguous per RFC 7489 §6.6.3)`);
+    } else {
+      errors.push(`No DMARC record found at _dmarc.${domain}`);
+    }
   } else {
     dmarcValid = isDMARCValidForBIMI(dmarcRecord, isSubdomain);
     dmarcReason = getDMARCBIMIReason(dmarcRecord, isSubdomain);
@@ -182,7 +197,19 @@ async function fetchBimiDnsState(
     errors.push(`CAA DNS lookup failed (resolver error): ${errorMessage(caaResult)}`);
   }
 
-  return { bimiRecord, dmarcRecord, dmarcValid, dmarcReason, isSubdomain, caa, lpsTrace, receiverTrust, errors };
+  return {
+    bimiRecord,
+    bimiRecordCount,
+    dmarcRecord,
+    dmarcRecordCount,
+    dmarcValid,
+    dmarcReason,
+    isSubdomain,
+    caa,
+    lpsTrace,
+    receiverTrust,
+    errors,
+  };
 }
 
 interface SvgIndicatorResult {

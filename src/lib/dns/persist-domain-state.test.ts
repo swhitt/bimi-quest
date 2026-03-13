@@ -20,6 +20,8 @@ function makeRow(): BimiDnsRow {
     bimi_declination: false,
     bimi_selector: "default",
     bimi_org_domain_fallback: false,
+    bimi_record_count: 1,
+    dmarc_record_count: 1,
     dmarc_record_raw: "v=DMARC1; p=reject",
     dmarc_policy: "reject",
     dmarc_pct: 100,
@@ -89,8 +91,8 @@ describe("persist-domain-state", () => {
   });
 
   describe("field count consistency", () => {
-    it("DOMAIN_STATE_FIELDS has exactly 23 entries (22 data fields + domain)", () => {
-      expect(DOMAIN_STATE_FIELDS.length).toBe(23);
+    it("DOMAIN_STATE_FIELDS has exactly 25 entries (24 data fields + domain)", () => {
+      expect(DOMAIN_STATE_FIELDS.length).toBe(25);
     });
   });
 });

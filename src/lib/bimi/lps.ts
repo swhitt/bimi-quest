@@ -99,7 +99,7 @@ async function tryLpsOnDomain(
   const defaultDns = `${selector}._bimi.${domain}`;
 
   // Step: Look up default record
-  const defaultRecord = await lookupBIMIRecordAt(domain, selector);
+  const { record: defaultRecord } = await lookupBIMIRecordAt(domain, selector);
   steps.push({
     step: stepNum++,
     description: `Default BIMI record at ${domain}`,
@@ -137,7 +137,7 @@ async function tryLpsOnDomain(
 
   // Prefix matched — look up per-address record
   const perAddressDns = `${normalized}.${selector}._bimi.${domain}`;
-  const perAddressRecord = await lookupBIMIRecordAt(domain, `${normalized}.${selector}`);
+  const { record: perAddressRecord } = await lookupBIMIRecordAt(domain, `${normalized}.${selector}`);
   steps.push({
     step: stepNum++,
     description: `Per-address lookup for "${normalized}" (matched prefix "${matchedPrefix}")`,

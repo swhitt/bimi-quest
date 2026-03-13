@@ -30,6 +30,12 @@ function buildBimiChecks(
       status: "pass",
       detail: "Valid v=BIMI1 record found",
     });
+  } else if (dc.bimiRecordCount != null && dc.bimiRecordCount > 1) {
+    checks.push({
+      label: "BIMI Record",
+      status: "fail",
+      detail: `${dc.bimiRecordCount} records found at default._bimi.${dc.domain} — ambiguous per spec, treated as no record`,
+    });
   } else {
     checks.push({
       label: "BIMI Record",
@@ -43,6 +49,12 @@ function buildBimiChecks(
       label: "DMARC Policy",
       status: "pass",
       detail: `${dc.dmarcPolicy} (meets BIMI requirements)`,
+    });
+  } else if (dc.dmarcRecordCount != null && dc.dmarcRecordCount > 1) {
+    checks.push({
+      label: "DMARC Policy",
+      status: "fail",
+      detail: `${dc.dmarcRecordCount} DMARC records found — ambiguous per RFC 7489 §6.6.3, treated as no record`,
     });
   } else if (dc.dmarcValid === false) {
     checks.push({
