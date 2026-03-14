@@ -54,7 +54,7 @@ function lookupWithTimeout(domain: string): Promise<BimiDnsRow | null> {
   ]);
 }
 
-const BATCH = 10;
+const BATCH = 15;
 
 export async function refreshDnsBatch(adapter: DnsRefreshAdapter, limit: number): Promise<RefreshStats> {
   console.log(`Refreshing DNS state for up to ${limit} domains...\n`);
@@ -113,12 +113,14 @@ export async function refreshDnsBatch(adapter: DnsRefreshAdapter, limit: number)
       const changes = outcome.value;
       bimiChanges += changes.filter((c) => c.recordType === "bimi").length;
       dmarcChanges += changes.filter((c) => c.recordType === "dmarc").length;
-      for (const c of changes) {
-        console.log(`  ${c.recordType.toUpperCase()} ${c.changeType}: ${c.domain}`);
-      }
 
       processed++;
-      console.log(`  ${processed}/${domains.length}: ${entry.old.domain} [refreshed]`);
+      if (changes.length === 0) {
+        console.log(`  ${processed}/${domains.length}: ${entry.old.domain} \x1b[2m[no change]\x1b[0m`);
+      } else {
+        const tags = changes.map((c) => `${c.recordType} ${c.changeType}`).join(", ");
+        console.log(`  ${processed}/${domains.length}: ${entry.old.domain} \x1b[33m[${tags}]\x1b[0m`);
+      }
     }
 
     errors += batchErrors;

@@ -78,7 +78,17 @@ export async function POST(request: NextRequest) {
       }
       if (!lookup.record.authorityUrl) {
         return NextResponse.json(
-          { error: `BIMI record for ${domain} has no authority URL (a= tag) — no certificate to lint` },
+          {
+            error: "No certificate to lint — BIMI record has no authority URL (a= tag)",
+            bimiRecord: {
+              raw: lookup.record.raw,
+              domain,
+              selector: data.selector,
+              logoUrl: lookup.record.logoUrl,
+              authorityUrl: lookup.record.authorityUrl,
+              declined: lookup.record.declined,
+            },
+          },
           { status: 422, headers: rl.headers },
         );
       }

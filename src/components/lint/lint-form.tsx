@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,23 @@ import { Textarea } from "@/components/ui/textarea";
 import type { LintResult, LintSummary } from "@/lib/lint/types";
 import { LintResults } from "./lint-results";
 
+interface BimiRecordInfo {
+  raw: string;
+  domain: string;
+  selector: string;
+  logoUrl: string | null;
+  authorityUrl: string | null;
+  declined: boolean;
+}
+
 interface LintResponse {
   results: LintResult[];
   summary: LintSummary;
+}
+
+interface LintError {
+  error: string;
+  bimiRecord?: BimiRecordInfo;
 }
 
 async function fetchLint(body: Record<string, string>): Promise<LintResponse> {
@@ -22,10 +36,58 @@ async function fetchLint(body: Record<string, string>): Promise<LintResponse> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    const err: LintError = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    const error = new Error(err.error ?? `HTTP ${res.status}`);
+    if (err.bimiRecord) (error as Error & { bimiRecord?: BimiRecordInfo }).bimiRecord = err.bimiRecord;
+    throw error;
   }
   return res.json();
+}
+
+function BimiRecordCard({ record }: { record: BimiRecordInfo }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">
+          BIMI Record for {record.selector}._bimi.{record.domain}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-xs font-mono bg-muted rounded px-2 py-1.5 break-all">{record.raw}</p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          {record.logoUrl && (
+            <>
+              <dt className="text-muted-foreground">Logo (l=)</dt>
+              <dd className="truncate">
+                <a
+                  href={record.logoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {record.logoUrl}
+                </a>
+              </dd>
+            </>
+          )}
+          <dt className="text-muted-foreground">Authority (a=)</dt>
+          <dd className="text-muted-foreground italic">{record.authorityUrl ?? "not set"}</dd>
+          {record.declined && (
+            <>
+              <dt className="text-muted-foreground">Status</dt>
+              <dd className="text-destructive">Declined BIMI participation</dd>
+            </>
+          )}
+        </dl>
+        {!record.authorityUrl && !record.declined && (
+          <p className="text-xs text-muted-foreground">
+            This domain publishes a BIMI logo but no VMC/CMC certificate. Some mail clients display the logo without
+            certificate verification, but Gmail and others require a valid certificate.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export function LintForm() {
@@ -36,18 +98,28 @@ export function LintForm() {
   const [fingerprint, setFingerprint] = useState(searchParams.get("fingerprint") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bimiRecord, setBimiRecord] = useState<BimiRecordInfo | null>(null);
   const [response, setResponse] = useState<LintResponse | null>(null);
   const [activeTab, setActiveTab] = useState(searchParams.get("fingerprint") ? "fingerprint" : "domain");
+  const [dragging, setDragging] = useState(false);
+  const dragCounter = useRef(0);
 
   const submit = useCallback(async (body: Record<string, string>) => {
     setLoading(true);
     setError(null);
+    setBimiRecord(null);
     setResponse(null);
     try {
       const data = await fetchLint(body);
       setResponse(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      if (err instanceof Error) {
+        setError(err.message);
+        const rec = (err as Error & { bimiRecord?: BimiRecordInfo }).bimiRecord;
+        if (rec) setBimiRecord(rec);
+      } else {
+        setError("Unknown error");
+      }
     } finally {
       setLoading(false);
     }
@@ -63,8 +135,58 @@ export function LintForm() {
     }
   }, [searchParams, submit]);
 
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      setPem(text);
+      setActiveTab("pem");
+      submit({ pem: text.trim() });
+    };
+    reader.readAsText(file);
+  }
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounter.current++;
+    setDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setDragging(false);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      onDrop={handleDrop}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+    >
+      {dragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="rounded-xl border-2 border-dashed border-primary p-12 text-center">
+            <p className="text-lg font-medium">Drop PEM file to lint</p>
+            <p className="text-sm text-muted-foreground mt-1">Certificate will be parsed and linted automatically</p>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Certificate Input</CardTitle>
@@ -111,6 +233,7 @@ export function LintForm() {
                   rows={8}
                   className="font-mono text-xs"
                 />
+                <p className="text-xs text-muted-foreground">Or drag &amp; drop a PEM file anywhere on this page.</p>
                 <Button type="submit" disabled={loading || !pem.trim()}>
                   {loading ? "Linting…" : "Lint Certificate"}
                 </Button>
@@ -167,6 +290,8 @@ export function LintForm() {
           </CardContent>
         </Card>
       )}
+
+      {bimiRecord && <BimiRecordCard record={bimiRecord} />}
 
       {response && <LintResults results={response.results} summary={response.summary} />}
     </div>

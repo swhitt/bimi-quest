@@ -6,6 +6,9 @@ export function citationUrl(citation: string): string | null {
   // BIMI draft citations like "draft-12 section 4.2"
   const draftMatch = citation.match(/^draft-12\s+section\s+([\d.]+)/i);
   if (draftMatch) return `${BIMI_DRAFT_BASE}#section-${draftMatch[1]}`;
+  // SVG Tiny PS profile draft
+  if (citation.startsWith("draft-svg-tiny-ps"))
+    return "https://datatracker.ietf.org/doc/html/draft-svg-tiny-ps-abrotman";
   // RFC citations like "RFC 5280 §4.2.1.9"
   const rfcMatch = citation.match(/^RFC\s*(\d+)\s*(?:§([\d.]+))?/);
   if (rfcMatch) {
