@@ -99,6 +99,7 @@ interface ValidationResult {
   grade: BimiGrade;
   gradeSummary: string;
   checks: BimiCheckItem[];
+  lintChecks: BimiCheckItem[];
   authResult: string;
   responseHeaders: Record<string, string>;
   overallValid: boolean;
@@ -287,7 +288,7 @@ export function ValidateContent() {
           <NextSteps checks={result.checks} overallValid={result.overallValid} />
 
           {/* Tier 2: The Checklist (tabbed) */}
-          <ValidationChecklist checks={result.checks} />
+          <ValidationChecklist checks={result.checks} lintChecks={result.lintChecks} />
 
           {/* Receiver Trust results */}
           {result.receiverTrust && <ReceiverTrustResults entries={result.receiverTrust.entries} />}

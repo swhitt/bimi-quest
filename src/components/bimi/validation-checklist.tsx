@@ -72,12 +72,13 @@ function CheckItemCard({ item }: { item: BimiCheckItem }) {
   );
 }
 
-export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
+export function ValidationChecklist({ checks, lintChecks }: { checks: BimiCheckItem[]; lintChecks?: BimiCheckItem[] }) {
   const specChecks = checks.filter((c) => c.category === "spec");
   const compatChecks = checks.filter((c) => c.category === "compatibility");
 
   const specFailCount = specChecks.filter((c) => c.status === "fail" || c.status === "warn").length;
   const compatFailCount = compatChecks.filter((c) => c.status === "fail" || c.status === "warn").length;
+  const lintFailCount = lintChecks?.filter((c) => c.status === "fail" || c.status === "warn").length ?? 0;
 
   return (
     <Card>
@@ -100,6 +101,16 @@ export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
                 </Badge>
               )}
             </TabsTrigger>
+            {lintChecks && lintChecks.length > 0 && (
+              <TabsTrigger value="lint">
+                Certificate Lint
+                {lintFailCount > 0 && (
+                  <Badge variant="destructive" className="ml-2 text-[10px] px-1.5 py-0">
+                    {lintFailCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="spec">
             <div className="divide-y">
@@ -119,6 +130,15 @@ export function ValidationChecklist({ checks }: { checks: BimiCheckItem[] }) {
               )}
             </div>
           </TabsContent>
+          {lintChecks && lintChecks.length > 0 && (
+            <TabsContent value="lint">
+              <div className="divide-y">
+                {lintChecks.map((item) => (
+                  <CheckItemCard key={item.id} item={item} />
+                ))}
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </CardContent>
     </Card>

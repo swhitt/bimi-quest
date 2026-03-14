@@ -157,6 +157,12 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
               crt.sh
               <ExternalArrowIcon className="size-2.5" />
             </a>
+            <Link
+              href={`/tools/lint?fingerprint=${cert.fingerprint}`}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-secondary"
+            >
+              Lint
+            </Link>
           </div>
         </Field>
         <Field label="Sig Algo">

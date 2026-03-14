@@ -92,6 +92,7 @@ export interface BIMIValidationResult {
   grade: BimiGrade;
   gradeSummary: string;
   checks: BimiCheckItem[];
+  lintChecks: BimiCheckItem[];
   authResult: string;
   responseHeaders: Record<string, string>;
   dnsSnapshot: DnsSnapshot;
@@ -448,6 +449,19 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     }
   }
 
+  // 4b. Certificate lint checks (only when we have a cert PEM)
+  let lintChecks: BimiCheckItem[] = [];
+  if (certResult.rawPem) {
+    try {
+      const { lintPem } = await import("@/lib/lint/lint");
+      const { toLintCheckItems } = await import("@/lib/lint/to-check-items");
+      const lintResults = lintPem(certResult.rawPem);
+      lintChecks = toLintCheckItems(lintResults);
+    } catch {
+      // lint is non-critical — skip on failure
+    }
+  }
+
   // 5. Build structured checks
   const checks = buildChecks({
     bimiRecord,
@@ -554,6 +568,7 @@ export async function validateDomain(options: ValidateDomainOptions): Promise<BI
     grade,
     gradeSummary,
     checks,
+    lintChecks,
     authResult,
     responseHeaders,
     dnsSnapshot,
