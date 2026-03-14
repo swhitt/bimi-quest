@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { db } from "@/lib/db";
 import { certificates } from "@/lib/db/schema";
 import { lintPem, summarize } from "@/lib/lint/lint";
@@ -12,6 +13,7 @@ const lintBodySchema = z.union([
   z.object({ pem: z.string().min(1) }),
   z.object({ fingerprint: z.string().min(1) }),
   z.object({ url: z.string().url() }),
+  z.object({ domain: z.string().min(1), selector: z.string().default("default") }),
 ]);
 
 export async function POST(request: NextRequest) {
@@ -53,11 +55,37 @@ export async function POST(request: NextRequest) {
         );
       }
       pem = row[0].rawPem;
-    } else {
+    } else if ("url" in data) {
       const res = await safeFetch(data.url, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) {
         return NextResponse.json(
           { error: `Failed to fetch PEM: HTTP ${res.status}` },
+          { status: 422, headers: rl.headers },
+        );
+      }
+      pem = await res.text();
+    } else {
+      const domain = data.domain
+        .replace(/^https?:\/\//, "")
+        .split("/")[0]
+        .toLowerCase();
+      const lookup = await lookupBIMIRecord(domain, data.selector);
+      if (!lookup.record) {
+        return NextResponse.json(
+          { error: `No BIMI record found for ${data.selector}._bimi.${domain}` },
+          { status: 404, headers: rl.headers },
+        );
+      }
+      if (!lookup.record.authorityUrl) {
+        return NextResponse.json(
+          { error: `BIMI record for ${domain} has no authority URL (a= tag) — no certificate to lint` },
+          { status: 422, headers: rl.headers },
+        );
+      }
+      const res = await safeFetch(lookup.record.authorityUrl, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: `Failed to fetch certificate from ${lookup.record.authorityUrl}: HTTP ${res.status}` },
           { status: 422, headers: rl.headers },
         );
       }

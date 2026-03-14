@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
+import { extractDomain } from "@/lib/search-detect";
 import { errorMessage } from "@/lib/utils";
 
 interface ChainValidation {
@@ -127,7 +128,8 @@ export function ValidateContent() {
       setResult(null);
 
       try {
-        const body: Record<string, unknown> = { domain: target };
+        const cleanDomain = extractDomain(target);
+        const body: Record<string, unknown> = { domain: cleanDomain };
         const s = sel || selector;
         if (s && s !== "default") body.selector = s;
 

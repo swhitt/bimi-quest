@@ -90,8 +90,9 @@ const markTypeDnFields: LintRule = (cert) => {
   const results: LintResult[] = [];
   for (const [oid, label] of Object.entries(requiredOids)) {
     const value = extractSubjectAttribute(cert, oid);
+    const suffix = label.toLowerCase().replace(/\s+/g, "_");
     results.push({
-      rule: "e_bimi_mark_type_dn_fields",
+      rule: `e_bimi_mark_type_dn_${suffix}`,
       severity: "error",
       source: "MCR",
       citation: "MCR §7.1.4.2",

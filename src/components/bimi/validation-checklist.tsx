@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { BimiCheckItem } from "@/lib/bimi/types";
+import { citationUrl } from "@/lib/lint/citation-urls";
 
 const STATUS_ICON: Record<BimiCheckItem["status"], { icon: string; color: string; label: string }> = {
   pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400", label: "Passed" },
@@ -47,11 +48,24 @@ function CheckItemCard({ item }: { item: BimiCheckItem }) {
           ) : (
             <span className="font-medium text-sm">{item.label}</span>
           )}
-          {item.specRef && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {item.specRef}
-            </Badge>
-          )}
+          {item.specRef &&
+            (() => {
+              const url = citationUrl(item.specRef);
+              return url ? (
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-1.5 py-0 hover:text-primary hover:border-primary/50 transition-colors cursor-pointer"
+                  >
+                    {item.specRef} ↗
+                  </Badge>
+                </a>
+              ) : (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  {item.specRef}
+                </Badge>
+              );
+            })()}
         </div>
         <p className="text-sm text-muted-foreground">{item.summary}</p>
         {item.remediation && (item.status === "fail" || item.status === "warn") && (

@@ -30,13 +30,14 @@ async function fetchLint(body: Record<string, string>): Promise<LintResponse> {
 
 export function LintForm() {
   const searchParams = useSearchParams();
+  const [domain, setDomain] = useState("");
   const [pem, setPem] = useState("");
   const [url, setUrl] = useState("");
   const [fingerprint, setFingerprint] = useState(searchParams.get("fingerprint") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<LintResponse | null>(null);
-  const [activeTab, setActiveTab] = useState(searchParams.get("fingerprint") ? "fingerprint" : "pem");
+  const [activeTab, setActiveTab] = useState(searchParams.get("fingerprint") ? "fingerprint" : "domain");
 
   const submit = useCallback(async (body: Record<string, string>) => {
     setLoading(true);
@@ -71,10 +72,29 @@ export function LintForm() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
+              <TabsTrigger value="domain">Domain</TabsTrigger>
               <TabsTrigger value="pem">Paste PEM</TabsTrigger>
               <TabsTrigger value="url">Fetch URL</TabsTrigger>
               <TabsTrigger value="fingerprint">Lookup Fingerprint</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="domain">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (domain.trim()) submit({ domain: domain.trim() });
+                }}
+                className="space-y-3"
+              >
+                <Input placeholder="example.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
+                <p className="text-xs text-muted-foreground">
+                  Looks up the BIMI DNS record, fetches the certificate from the authority URL, and lints it.
+                </p>
+                <Button type="submit" disabled={loading || !domain.trim()}>
+                  {loading ? "Looking up…" : "Lookup & Lint"}
+                </Button>
+              </form>
+            </TabsContent>
 
             <TabsContent value="pem">
               <form

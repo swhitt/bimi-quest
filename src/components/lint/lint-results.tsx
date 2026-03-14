@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { citationUrl } from "@/lib/lint/citation-urls";
 import type { LintResult, LintSummary } from "@/lib/lint/types";
 
 const STATUS_ICON: Record<string, { icon: string; color: string }> = {
@@ -29,9 +30,23 @@ function ResultRow({ result }: { result: LintResult }) {
               {result.severity}
             </Badge>
           )}
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
-            {result.citation}
-          </Badge>
+          {(() => {
+            const url = citationUrl(result.citation);
+            return url ? (
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors cursor-pointer"
+                >
+                  {result.citation} ↗
+                </Badge>
+              </a>
+            ) : (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                {result.citation}
+              </Badge>
+            );
+          })()}
         </div>
         {result.detail && <p className="text-xs text-muted-foreground mt-0.5">{result.detail}</p>}
         <p className="text-[10px] text-muted-foreground/60 font-mono mt-0.5">{result.rule}</p>
