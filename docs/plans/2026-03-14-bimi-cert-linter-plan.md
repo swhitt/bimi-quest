@@ -12,6 +12,34 @@
 
 ---
 
+## Progress
+
+| Task | Status | Commit |
+|------|--------|--------|
+| 1. Types and Lint Engine Scaffold | ✅ Done | `0715f73` |
+| 2. EKU Rules | ✅ Done | `c249bcf` |
+| 3. Profile Rules | ✅ Done | `c249bcf` |
+| 4. SCT and Pilot ID Rules | ✅ Done | `c249bcf` |
+| 5. Certificate Policy Rules | ✅ Done | `c249bcf` |
+| 6. Mark Type and Subject DN Rules | ✅ Done | `c249bcf` |
+| 7. Logotype Extension Rules | ✅ Done | `c249bcf` |
+| 8. Algorithm Rules | ✅ Done | `c249bcf` |
+| 9. BimiCheckItem Mapper | ✅ Done | `c249bcf` |
+| 10. Integration Test with Real Cert | ✅ Done | `c249bcf` |
+| 11. API Route | 🔧 In progress | `src/app/api/lint/route.ts` created, needs tests |
+| 12. Standalone Lint Page | ⬜ Not started | |
+| 13. Integrate into Validation Checklist | ⬜ Not started | |
+| 14. CT Log Detail "Lint This Certificate" Link | ⬜ Not started | |
+| 15. Final Polish and Full Test Run | ⬜ Not started | |
+
+**Notes:**
+
+- Tasks 2–10 were combined into a single commit with 50 passing tests.
+- Test fixture uses a real DigiCert VMC for CNN (`cnn.com`). That cert uses SHA-1 for the logotype hash (not SHA-256), and lacks the trademark office OID — both are valid real-world behaviors reflected in the tests.
+- The API route (`POST /api/lint`) file is written but not yet tested or committed.
+
+---
+
 ## Task 1: Types and Lint Engine Scaffold
 
 **Files:**
