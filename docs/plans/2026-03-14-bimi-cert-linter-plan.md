@@ -26,17 +26,19 @@
 | 8. Algorithm Rules | ✅ Done | `c249bcf` |
 | 9. BimiCheckItem Mapper | ✅ Done | `c249bcf` |
 | 10. Integration Test with Real Cert | ✅ Done | `c249bcf` |
-| 11. API Route | 🔧 In progress | `src/app/api/lint/route.ts` created, needs tests |
-| 12. Standalone Lint Page | ⬜ Not started | |
-| 13. Integrate into Validation Checklist | ⬜ Not started | |
-| 14. CT Log Detail "Lint This Certificate" Link | ⬜ Not started | |
-| 15. Final Polish and Full Test Run | ⬜ Not started | |
+| 11. API Route | ✅ Done | `9a49e22` |
+| 12. Standalone Lint Page | ✅ Done | `64a34e8` |
+| 13. Integrate into Validation Checklist | ✅ Done | `174d63a` |
+| 14. CT Log Detail "Lint This Certificate" Link | ✅ Done | `174d63a` |
+| 15. Final Polish and Full Test Run | ✅ Done | this commit |
 
 **Notes:**
 
 - Tasks 2–10 were combined into a single commit with 50 passing tests.
 - Test fixture uses a real DigiCert VMC for CNN (`cnn.com`). That cert uses SHA-1 for the logotype hash (not SHA-256), and lacks the trademark office OID — both are valid real-world behaviors reflected in the tests.
-- The API route (`POST /api/lint`) file is written but not yet tested or committed.
+- Lint page is at `/tools/lint` (matches existing `/tools/asn1` pattern).
+- Validation checklist shows "Certificate Lint" tab only when cert PEM is available.
+- Full test suite: 635 tests passing, build clean.
 
 ---
 
