@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HostChip } from "@/components/host-chip";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
@@ -116,9 +117,12 @@ export function DnsChangesFeed() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground">
-          dns record changes
-        </span>
+        <Link
+          href="/dns-changes"
+          className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+        >
+          dns record changes →
+        </Link>
         <MiniPagination
           page={page}
           totalPages={totalPages}

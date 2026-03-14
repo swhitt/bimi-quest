@@ -30,6 +30,7 @@ const toolsItems = [
   { href: "/validate", label: "Validate" },
   { href: "/ct/gorgon", label: "CT Log" },
   { href: "/domains", label: "Domains" },
+  { href: "/dns-changes", label: "DNS Changes" },
   { href: "/map", label: "Map" },
   { href: "/tools/asn1", label: "ASN.1" },
 ];
