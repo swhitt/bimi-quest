@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { summarize } from "../lint";
+import { lintPem, summarize } from "../lint";
 import type { LintResult } from "../types";
+import { BIMI_VMC_PEM, NON_BIMI_PEM } from "./fixtures";
 
 function makeResult(severity: LintResult["severity"], status: LintResult["status"]): LintResult {
   return {
@@ -73,5 +74,37 @@ describe("summarize", () => {
   it("returns all zeros for empty results", () => {
     const summary = summarize([]);
     expect(summary).toEqual({ errors: 0, warnings: 0, notices: 0, passed: 0 });
+  });
+});
+
+describe("lintPem integration", () => {
+  it("returns expected results for a valid VMC", () => {
+    const results = lintPem(BIMI_VMC_PEM);
+    expect(results.length).toBeGreaterThan(10);
+
+    // EKU rules should pass
+    const ekuPresent = results.find((r) => r.rule === "e_bimi_eku_present");
+    expect(ekuPresent?.status).toBe("pass");
+
+    // Mark type should be valid
+    const markType = results.find((r) => r.rule === "e_bimi_mark_type_valid");
+    expect(markType?.status).toBe("pass");
+
+    // Logotype should be present
+    const logotype = results.find((r) => r.rule === "e_bimi_logotype_present");
+    expect(logotype?.status).toBe("pass");
+
+    // Summary should have reasonable counts
+    const summary = summarize(results);
+    expect(summary.passed).toBeGreaterThan(5);
+    expect(summary.errors + summary.warnings + summary.notices + summary.passed).toBe(
+      results.filter((r) => r.status !== "not_applicable").length,
+    );
+  });
+
+  it("returns many failures for a non-BIMI cert", () => {
+    const results = lintPem(NON_BIMI_PEM);
+    const summary = summarize(results);
+    expect(summary.errors).toBeGreaterThan(3);
   });
 });

@@ -1,8 +1,23 @@
 import { X509Certificate } from "@peculiar/x509";
 import { pemToDer, toArrayBuffer } from "@/lib/pem";
 import type { LintResult, LintRule, LintSummary } from "./types";
+import { rules as ekuRules } from "./rules/eku";
+import { rules as profileRules } from "./rules/profile";
+import { rules as sctRules } from "./rules/sct";
+import { rules as policyRules } from "./rules/policy";
+import { rules as markTypeRules } from "./rules/mark-type";
+import { rules as logotypeRules } from "./rules/logotype";
+import { rules as algorithmRules } from "./rules/algorithm";
 
-const allRules: LintRule[] = [];
+const allRules: LintRule[] = [
+  ...ekuRules,
+  ...profileRules,
+  ...sctRules,
+  ...policyRules,
+  ...markTypeRules,
+  ...logotypeRules,
+  ...algorithmRules,
+];
 
 export function lintBimiCert(cert: X509Certificate, pem: string): LintResult[] {
   return allRules.flatMap((rule) => {
