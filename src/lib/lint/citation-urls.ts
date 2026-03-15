@@ -18,6 +18,5 @@ export function citationUrl(citation: string): string | null {
     return `https://datatracker.ietf.org/doc/html/rfc${num}`;
   }
   if (citation === "CABF") return "https://cabforum.org/working-groups/server/baseline-requirements/requirements/";
-  if (citation === "VMC Requirements") return MCR_URL;
   return null;
 }

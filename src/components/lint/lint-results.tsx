@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
+import { Check, ClipboardCopy, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { citationUrl } from "@/lib/lint/citation-urls";
 import type { LintResult, LintSummary } from "@/lib/lint/types";
 
-const STATUS_ICON: Record<string, { icon: string; color: string }> = {
-  pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400" },
-  fail: { icon: "\u2717", color: "text-destructive" },
-  not_applicable: { icon: "\u2014", color: "text-muted-foreground" },
+const STATUS_ICON: Record<string, { icon: string; color: string; ariaLabel: string }> = {
+  pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400", ariaLabel: "Passed" },
+  fail: { icon: "\u2717", color: "text-destructive", ariaLabel: "Failed" },
+  not_applicable: { icon: "\u2014", color: "text-muted-foreground", ariaLabel: "Not applicable" },
 };
 
 const SEVERITY_BADGE: Record<string, string> = {
@@ -18,10 +21,12 @@ const SEVERITY_BADGE: Record<string, string> = {
 };
 
 function ResultRow({ result }: { result: LintResult }) {
-  const { icon, color } = STATUS_ICON[result.status] ?? STATUS_ICON.not_applicable;
+  const { icon, color, ariaLabel } = STATUS_ICON[result.status] ?? STATUS_ICON.not_applicable;
   return (
     <div className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
-      <span className={`mt-0.5 text-lg font-bold leading-none ${color}`}>{icon}</span>
+      <span className={`mt-0.5 text-lg font-bold leading-none ${color}`} aria-label={ariaLabel}>
+        {icon}
+      </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm">{result.title}</span>
@@ -62,7 +67,35 @@ const SOURCE_LABELS: Record<string, string> = {
   CABF: "CA/Browser Forum",
 };
 
-export function LintResults({ results, summary }: { results: LintResult[]; summary: LintSummary }) {
+function resultsToMarkdown(results: LintResult[]): string {
+  const lines = ["| Status | Rule | Title | Detail | Citation |", "| --- | --- | --- | --- | --- |"];
+  for (const r of results) {
+    const status = r.status === "pass" ? "Pass" : r.status === "fail" ? "Fail" : "N/A";
+    const detail = (r.detail ?? "\u2014").replace(/\|/g, "\\|");
+    lines.push(`| ${status} | ${r.rule} | ${r.title} | ${detail} | ${r.citation} |`);
+  }
+  return lines.join("\n");
+}
+
+interface CertMeta {
+  subject: string;
+  issuer: string;
+  serialNumber: string;
+  notBefore: string;
+  notAfter: string;
+  certType: "VMC" | "CMC" | null;
+  sanList: string[];
+}
+
+interface LintResultsProps {
+  results: LintResult[];
+  summary: LintSummary;
+  cert?: CertMeta;
+}
+
+export function LintResults({ results, summary, cert }: LintResultsProps) {
+  const [mdCopied, setMdCopied] = useState(false);
+
   const grouped = new Map<string, LintResult[]>();
   for (const r of results) {
     const group = grouped.get(r.source) ?? [];
@@ -72,7 +105,7 @@ export function LintResults({ results, summary }: { results: LintResult[]; summa
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center" role="status">
         {summary.errors > 0 && (
           <Badge variant="destructive">
             {summary.errors} error{summary.errors !== 1 ? "s" : ""}
@@ -91,6 +124,38 @@ export function LintResults({ results, summary }: { results: LintResult[]; summa
         <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
           {summary.passed} passed
         </Badge>
+        <div className="flex gap-1.5 ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const blob = new Blob([JSON.stringify({ cert, results, summary }, null, 2)], {
+                type: "application/json",
+              });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "lint-results.json";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="size-3.5" />
+            Export JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(resultsToMarkdown(results));
+              setMdCopied(true);
+              setTimeout(() => setMdCopied(false), 2000);
+            }}
+          >
+            {mdCopied ? <Check className="size-3.5 text-emerald-500" /> : <ClipboardCopy className="size-3.5" />}
+            {mdCopied ? "Copied!" : "Copy as Markdown"}
+          </Button>
+        </div>
       </div>
 
       {[...grouped.entries()].map(([source, items]) => {

@@ -2,7 +2,6 @@ import type { LintRule } from "../types";
 
 const SCT_OID = "1.3.6.1.4.1.11129.2.4.2";
 const PILOT_ID_OID = "1.3.6.1.4.1.53087.4.1";
-const PILOT_SUNSET_DATE = new Date("2025-03-15T00:00:00Z");
 
 const sctPresent: LintRule = (cert) => {
   const ext = cert.extensions.find((e) => e.type === SCT_OID);
@@ -17,28 +16,17 @@ const sctPresent: LintRule = (cert) => {
   };
 };
 
-const pilotIdSunset: LintRule = (cert) => {
-  if (cert.notBefore < PILOT_SUNSET_DATE) {
-    return {
-      rule: "w_bimi_pilot_id_sunset",
-      severity: "warning",
-      source: "MCR",
-      citation: "MCR §7.1.2.7",
-      title: "Pilot ID should not be present after 2025-03-15",
-      status: "not_applicable",
-      detail: "Certificate notBefore is before sunset date",
-    };
-  }
+const pilotIdAbsent: LintRule = (cert) => {
   const ext = cert.extensions.find((e) => e.type === PILOT_ID_OID);
   return {
-    rule: "w_bimi_pilot_id_sunset",
-    severity: "warning",
+    rule: "e_bimi_pilot_id_absent",
+    severity: "error",
     source: "MCR",
     citation: "MCR §7.1.2.7",
-    title: "Pilot ID should not be present after 2025-03-15",
+    title: "Pilot ID extension must not be present",
     status: ext ? "fail" : "pass",
-    detail: ext ? "Pilot ID extension is present but should not be after sunset date" : undefined,
+    detail: ext ? "Pilot ID extension is present but the pilot program has ended" : undefined,
   };
 };
 
-export const rules: LintRule[] = [sctPresent, pilotIdSunset];
+export const rules: LintRule[] = [sctPresent, pilotIdAbsent];

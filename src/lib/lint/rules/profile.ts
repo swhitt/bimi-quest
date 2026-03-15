@@ -11,8 +11,9 @@ const basicConstraints: LintRule = (cert) => {
       severity: "error",
       source: "RFC5280",
       citation: "RFC 5280 §4.2.1.9",
-      title: "Basic Constraints cA must be false",
+      title: "Certificate must not be a CA",
       status: "pass",
+      detail: "BasicConstraints extension absent (correct for end-entity certificates)",
     };
   }
   return {
@@ -20,7 +21,7 @@ const basicConstraints: LintRule = (cert) => {
     severity: "error",
     source: "RFC5280",
     citation: "RFC 5280 §4.2.1.9",
-    title: "Basic Constraints cA must be false",
+    title: "Certificate must not be a CA",
     status: ext.ca ? "fail" : "pass",
     detail: ext.ca ? "Basic Constraints cA is true; end-entity certs must not be CAs" : undefined,
   };
@@ -78,4 +79,54 @@ const validityPeriod: LintRule = (cert) => {
   };
 };
 
-export const rules: LintRule[] = [basicConstraints, noNameConstraints, keyUsage, validityPeriod];
+const keyUsageCritical: LintRule = (cert) => {
+  const ext = cert.getExtension(KeyUsagesExtension);
+  if (!ext) {
+    return {
+      rule: "e_bimi_key_usage_critical",
+      severity: "error",
+      source: "RFC5280",
+      citation: "RFC 5280 §4.2.1.3",
+      title: "Key Usage extension must be critical",
+      status: "not_applicable",
+    };
+  }
+  return {
+    rule: "e_bimi_key_usage_critical",
+    severity: "error",
+    source: "RFC5280",
+    citation: "RFC 5280 §4.2.1.3",
+    title: "Key Usage extension must be critical",
+    status: ext.critical ? "pass" : "fail",
+    detail: ext.critical ? undefined : "Key Usage extension is not marked critical (must be per RFC 5280)",
+  };
+};
+
+const serialEntropy: LintRule = (cert) => {
+  const serialHex = cert.serialNumber;
+  // Serial number should have at least 64 bits of entropy per CABF BR §7.1
+  // A serial with >= 8 bytes of actual value (ignoring leading zeros) satisfies this
+  const trimmed = serialHex.replace(/^0+/, "");
+  // Each hex digit = 4 bits. 64 bits = 16 hex digits minimum
+  const hasEntropy = trimmed.length >= 16;
+  return {
+    rule: "w_bimi_serial_entropy",
+    severity: "warning",
+    source: "CABF",
+    citation: "CABF",
+    title: "Serial number should contain at least 64 bits of entropy",
+    status: hasEntropy ? "pass" : "fail",
+    detail: hasEntropy
+      ? undefined
+      : `Serial number has ${trimmed.length * 4} bits (${trimmed.length} hex digits); CABF requires at least 64 bits of entropy`,
+  };
+};
+
+export const rules: LintRule[] = [
+  basicConstraints,
+  noNameConstraints,
+  keyUsage,
+  keyUsageCritical,
+  validityPeriod,
+  serialEntropy,
+];

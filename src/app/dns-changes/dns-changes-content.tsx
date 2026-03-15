@@ -16,19 +16,21 @@ export async function DnsChangesContent({
 }) {
   const filterParams = toURLSearchParams(searchParams);
 
-  const page = filterParams.get("page") ?? undefined;
-  const limit = filterParams.get("limit") ?? undefined;
+  const pageStr = filterParams.get("page");
+  const limitStr = filterParams.get("limit");
+  const page = pageStr ? (Number.isFinite(Number(pageStr)) ? Number(pageStr) : undefined) : undefined;
+  const limit = limitStr ? (Number.isFinite(Number(limitStr)) ? Number(limitStr) : undefined) : undefined;
 
   let result;
   try {
-    result = await fetchDnsChanges(filterParams, {
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+    result = await fetchDnsChanges(filterParams, { page, limit });
   } catch {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
         <p className="text-destructive">Failed to load DNS changes</p>
+        <a href="/dns-changes" className="text-xs underline text-muted-foreground hover:text-foreground">
+          Retry
+        </a>
       </div>
     );
   }

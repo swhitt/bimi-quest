@@ -28,10 +28,7 @@ export function HostChip({
     <span className={cn("inline-flex items-center gap-1", compact && "group/hostname", className)}>
       <Link
         href={domainUrl(hostname)}
-        className={cn(
-          "font-mono text-muted-foreground hover:text-foreground hover:underline transition-colors duration-150",
-          textSize,
-        )}
+        className={cn("font-mono text-foreground hover:underline transition-colors duration-150", textSize)}
         onClick={(e) => e.stopPropagation()}
       >
         {hostname}

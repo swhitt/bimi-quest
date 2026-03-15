@@ -1,19 +1,23 @@
+import { X509Certificate } from "@peculiar/x509";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
+import { deriveCertType } from "@/lib/ct/parser";
 import { db } from "@/lib/db";
+import { extractSubjectAttribute } from "@/lib/x509/asn1";
 import { certificates } from "@/lib/db/schema";
 import { lintPem, summarize } from "@/lib/lint/lint";
 import { log } from "@/lib/logger";
 import { safeFetch } from "@/lib/net/safe-fetch";
+import { pemToDer, toArrayBuffer } from "@/lib/pem";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
 const lintBodySchema = z.union([
-  z.object({ pem: z.string().min(1) }),
-  z.object({ fingerprint: z.string().min(1) }),
-  z.object({ url: z.string().url() }),
-  z.object({ domain: z.string().min(1), selector: z.string().default("default") }),
+  z.object({ pem: z.string().min(1).max(100_000) }),
+  z.object({ fingerprint: z.string().min(1).max(128) }),
+  z.object({ url: z.string().url().max(2048) }),
+  z.object({ domain: z.string().min(1).max(253), selector: z.string().default("default") }),
 ]);
 
 export async function POST(request: NextRequest) {
@@ -69,6 +73,9 @@ export async function POST(request: NextRequest) {
         .replace(/^https?:\/\//, "")
         .split("/")[0]
         .toLowerCase();
+      if (!domain || domain.length > 253) {
+        return NextResponse.json({ error: "Invalid domain name" }, { status: 400, headers: rl.headers });
+      }
       const lookup = await lookupBIMIRecord(domain, data.selector);
       if (!lookup.record) {
         return NextResponse.json(
@@ -102,11 +109,41 @@ export async function POST(request: NextRequest) {
       pem = await res.text();
     }
 
-    const results = lintPem(pem);
+    let results;
+    let cert: X509Certificate;
+    try {
+      const der = pemToDer(pem);
+      cert = new X509Certificate(toArrayBuffer(der));
+      results = lintPem(pem);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to parse certificate";
+      return NextResponse.json({ error: message }, { status: 400, headers: rl.headers });
+    }
     const summary = summarize(results);
-    return NextResponse.json({ results, summary }, { headers: rl.headers });
+
+    const sans = cert.getExtension("2.5.29.17");
+    let sanList: string[] = [];
+    if (sans) {
+      const raw = new TextDecoder("ascii", { fatal: false }).decode(new Uint8Array(sans.value));
+      sanList = [...raw.matchAll(/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+/gi)].map(
+        (m) => m[0],
+      );
+    }
+
+    const markType = extractSubjectAttribute(cert, "1.3.6.1.4.1.53087.1.13");
+    const certMeta = {
+      subject: cert.subject,
+      issuer: cert.issuer,
+      serialNumber: cert.serialNumber,
+      notBefore: cert.notBefore.toISOString(),
+      notAfter: cert.notAfter.toISOString(),
+      certType: deriveCertType(markType),
+      sanList,
+    };
+
+    return NextResponse.json({ results, summary, cert: certMeta }, { headers: rl.headers });
   } catch (err) {
     log("error", "Lint API error", { error: String(err) });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: rl.headers });
   }
 }

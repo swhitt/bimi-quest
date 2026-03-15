@@ -11,6 +11,7 @@ import { UtcTime } from "@/components/ui/utc-time";
 import { cn } from "@/lib/utils";
 
 export interface DnsChange {
+  id: number;
   domain: string;
   recordType: string;
   changeType: string;
@@ -26,14 +27,12 @@ export const CHANGE_STYLE: Record<string, { label: string; color: string }> = {
   record_removed: { label: "record removed", color: "text-red-600 dark:text-red-400" },
   record_ambiguous: { label: "ambiguous records", color: "text-amber-600 dark:text-amber-400" },
   logo_url_changed: { label: "logo url changed", color: "text-blue-600 dark:text-blue-400" },
-  logo_changed: { label: "logo url changed", color: "text-blue-600 dark:text-blue-400" },
   authority_url_changed: { label: "authority url changed", color: "text-blue-600 dark:text-blue-400" },
-  authority_changed: { label: "authority url changed", color: "text-blue-600 dark:text-blue-400" },
   declination_set: { label: "declined", color: "text-amber-600 dark:text-amber-400" },
   tags_modified: { label: "tags modified", color: "text-muted-foreground" },
 };
 
-const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
+export const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
 
 /** Sort priority: bimi first, then dmarc, then anything else */
 const RECORD_TYPE_ORDER: Record<string, number> = { bimi: 0, dmarc: 1 };
@@ -133,8 +132,7 @@ export function DnsChangesFeed() {
       {pageChanges.length > 0 ? (
         <div className="relative mt-1">
           <ol className="max-h-[240px] overflow-y-auto space-y-1 pb-4 scrollbar-thin">
-            {pageChanges.map((c, i) => {
-              const globalIdx = (page - 1) * PAGE_SIZE + i;
+            {pageChanges.map((c) => {
               const style = CHANGE_STYLE[c.changeType] ?? {
                 label: c.changeType,
                 color: "text-muted-foreground",
@@ -142,10 +140,10 @@ export function DnsChangesFeed() {
               const showAll = POLICY_CHANGES.has(c.changeType);
               const diffs = computeDiff(c.previousRecord, c.newRecord, showAll);
               const hasDiffs = diffs.length > 0;
-              const isOpen = expanded.has(globalIdx);
+              const isOpen = expanded.has(c.id);
 
               return (
-                <li key={`${c.domain}-${c.recordType}-${i}`} className="rounded border px-2 py-1.5">
+                <li key={c.id} className="rounded border px-2 py-1.5">
                   <button
                     type="button"
                     className="flex items-center gap-1.5 text-[13px] w-full text-left"
@@ -153,8 +151,8 @@ export function DnsChangesFeed() {
                       if (!hasDiffs) return;
                       setExpanded((prev) => {
                         const next = new Set(prev);
-                        if (next.has(globalIdx)) next.delete(globalIdx);
-                        else next.add(globalIdx);
+                        if (next.has(c.id)) next.delete(c.id);
+                        else next.add(c.id);
                         return next;
                       });
                     }}

@@ -19,6 +19,8 @@ const VMC_REGISTERED_MARK_OIDS: Record<string, string> = {
 
 const VMC_GOVERNMENT_MARK_OIDS: Record<string, string> = {
   "1.3.6.1.4.1.53087.3.2": "Government Country",
+  "1.3.6.1.4.1.53087.3.5": "Statute Citation",
+  "1.3.6.1.4.1.53087.3.6": "Statute URL",
 };
 
 const CMC_PRIOR_USE_OIDS: Record<string, string> = {
@@ -52,6 +54,8 @@ const markTypeValid: LintRule = (cert) => {
 function getRequiredOids(markType: string): Record<string, string> | null {
   switch (markType) {
     case "Registered Mark":
+    case "Modified Registered Mark":
+    case "Pending Registration Mark":
       return VMC_REGISTERED_MARK_OIDS;
     case "Government Mark":
       return VMC_GOVERNMENT_MARK_OIDS;

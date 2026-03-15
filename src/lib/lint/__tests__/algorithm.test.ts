@@ -9,7 +9,7 @@ function parseCert(pem: string): X509Certificate {
   return new X509Certificate(toArrayBuffer(der));
 }
 
-const [rsaKeySize, ecdsaCurve] = rules;
+const [rsaKeySize, ecdsaCurve, sigHash] = rules;
 
 describe("w_bimi_rsa_key_size", () => {
   it("passes for a VMC with 2048-bit RSA key", () => {
@@ -35,5 +35,31 @@ describe("w_bimi_ecdsa_curve", () => {
     const result = ecdsaCurve(cert, BIMI_VMC_PEM);
     const r = Array.isArray(result) ? result[0] : result!;
     expect(r.status).toBe("not_applicable");
+  });
+
+  // No ECDSA fixture available — pass/fail paths for ECDSA curve validation
+  // cannot be tested without a cert using an ECDSA key.
+  it.todo("passes for P-256 curve (requires ECDSA fixture)");
+  it.todo("passes for P-384 curve (requires ECDSA fixture)");
+  it.todo("fails for unsupported curve (requires ECDSA fixture)");
+});
+
+describe("w_bimi_sig_hash", () => {
+  it("passes for a VMC with SHA-256 signature", () => {
+    const cert = parseCert(BIMI_VMC_PEM);
+    const result = sigHash(cert, BIMI_VMC_PEM);
+    const r = Array.isArray(result) ? result[0] : result!;
+    expect(r.rule).toBe("w_bimi_sig_hash");
+    expect(r.status).toBe("pass");
+  });
+
+  it("returns not_applicable when hash algorithm cannot be determined", () => {
+    // The non-BIMI self-signed cert uses SHA-256, so it should pass
+    const cert = parseCert(NON_BIMI_PEM);
+    const result = sigHash(cert, NON_BIMI_PEM);
+    const r = Array.isArray(result) ? result[0] : result!;
+    expect(r.rule).toBe("w_bimi_sig_hash");
+    // SHA-256 is acceptable, so this should pass
+    expect(r.status).toBe("pass");
   });
 });

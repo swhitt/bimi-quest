@@ -59,6 +59,14 @@ export interface CountResult {
   count: string;
 }
 
+// ── SCT backfill mode ──────────────────────────────────────────────
+
+export interface SctBackfillRow {
+  id: number;
+  not_before: string;
+  extensions_json: Record<string, string | { v: string }> | null;
+}
+
 // ── Shared row-to-BrandInput mapper ─────────────────────────────────
 
 /**

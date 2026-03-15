@@ -1,5 +1,6 @@
-import { and, desc, eq, ilike, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { escapeLike } from "@/lib/db/certificate-filters";
 import { dnsRecordChanges } from "@/lib/db/schema";
 
 export interface DnsChangeRow {
@@ -48,10 +49,20 @@ export async function fetchDnsChanges(
   if (recordType) conditions.push(eq(dnsRecordChanges.recordType, recordType));
   if (changeType) conditions.push(eq(dnsRecordChanges.changeType, changeType));
   if (search) {
-    conditions.push(ilike(dnsRecordChanges.domain, `%${search}%`));
+    conditions.push(ilike(dnsRecordChanges.domain, `%${escapeLike(search)}%`));
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const VALID_SORT_COLUMNS = {
+    domain: dnsRecordChanges.domain,
+    changeType: dnsRecordChanges.changeType,
+    detectedAt: dnsRecordChanges.detectedAt,
+  } as const;
+
+  const sortCol =
+    VALID_SORT_COLUMNS[filterParams.get("sort") as keyof typeof VALID_SORT_COLUMNS] ?? dnsRecordChanges.detectedAt;
+  const sortDir = filterParams.get("dir") === "asc" ? asc : desc;
 
   const rows = await db
     .select({
@@ -66,7 +77,7 @@ export async function fetchDnsChanges(
     })
     .from(dnsRecordChanges)
     .where(where)
-    .orderBy(desc(dnsRecordChanges.detectedAt))
+    .orderBy(sortDir(sortCol))
     .limit(limit)
     .offset(offset);
 

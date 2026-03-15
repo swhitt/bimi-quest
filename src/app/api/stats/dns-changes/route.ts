@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const rows = await db
       .select({
+        id: dnsRecordChanges.id,
         domain: dnsRecordChanges.domain,
         recordType: dnsRecordChanges.recordType,
         changeType: dnsRecordChanges.changeType,
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         data: rows.map((r) => ({
+          id: r.id,
           domain: r.domain,
           recordType: r.recordType,
           changeType: r.changeType,
@@ -41,6 +43,6 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (error) {
-    return apiError(error, "dmarc-drift.api.failed", "/api/stats/dmarc-drift", "Failed to fetch DNS record changes");
+    return apiError(error, "dns-changes.api.failed", "/api/stats/dns-changes", "Failed to fetch DNS record changes");
   }
 }

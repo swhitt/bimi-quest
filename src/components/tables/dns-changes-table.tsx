@@ -1,10 +1,10 @@
 "use client";
 
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { ChevronRight, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { CHANGE_STYLE } from "@/components/dashboard/dns-changes-feed";
+import { CHANGE_STYLE, POLICY_CHANGES } from "@/components/dashboard/dns-changes-feed";
 import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
 import { HostChip } from "@/components/host-chip";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
@@ -36,14 +36,50 @@ const CHANGE_TYPES = [
   { value: "record_removed", label: "Record removed" },
   { value: "record_ambiguous", label: "Ambiguous records" },
   { value: "logo_url_changed", label: "Logo URL changed" },
-  { value: "logo_changed", label: "Logo changed" },
   { value: "authority_url_changed", label: "Authority URL changed" },
-  { value: "authority_changed", label: "Authority changed" },
   { value: "declination_set", label: "Declined" },
   { value: "tags_modified", label: "Tags modified" },
 ] as const;
 
-const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
+function SortHeader({
+  label,
+  sortKey,
+  currentSort,
+  currentDir,
+  onSort,
+}: {
+  label: string;
+  sortKey: string;
+  currentSort: string;
+  currentDir: string;
+  onSort: (key: string) => void;
+}) {
+  const isActive = currentSort === sortKey;
+  const ariaLabel = isActive
+    ? `Sort by ${label}, currently ${currentDir === "asc" ? "ascending" : "descending"}`
+    : `Sort by ${label}`;
+  return (
+    <button
+      className={cn(
+        "flex items-center gap-1 -ml-2 px-2 py-1.5 rounded",
+        isActive ? "text-foreground" : "hover:text-foreground",
+      )}
+      onClick={() => onSort(sortKey)}
+      aria-label={ariaLabel}
+    >
+      {label}
+      {isActive ? (
+        currentDir === "asc" ? (
+          <ArrowUp className="size-3.5 text-primary" />
+        ) : (
+          <ArrowDown className="size-3.5 text-primary" />
+        )
+      ) : (
+        <ArrowUpDown className="size-3.5 opacity-30" />
+      )}
+    </button>
+  );
+}
 
 interface DnsChangesTableProps {
   data: DnsChangeRow[];
@@ -76,6 +112,20 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
       router.push(`/dns-changes${qs ? `?${qs}` : ""}`);
     },
     [router, searchParams],
+  );
+
+  const currentSort = searchParams.get("sort") || "detectedAt";
+  const currentDir = searchParams.get("dir") || "desc";
+
+  const handleSort = useCallback(
+    (key: string) => {
+      if (currentSort === key) {
+        updateParams({ dir: currentDir === "asc" ? "desc" : "asc", page: "1" });
+      } else {
+        updateParams({ sort: key, dir: "desc", page: "1" });
+      }
+    },
+    [currentSort, currentDir, updateParams],
   );
 
   const columns = useMemo<ColumnDef<DnsChangeRow>[]>(
@@ -114,7 +164,15 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
       {
         accessorKey: "domain",
         meta: { className: "min-w-0" },
-        header: "Domain",
+        header: () => (
+          <SortHeader
+            label="Domain"
+            sortKey="domain"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
         cell: ({ row }) => (
           <div className="min-w-0 truncate">
             <HostChip hostname={row.original.domain} size="xs" compact />
@@ -124,7 +182,15 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
       {
         accessorKey: "changeType",
         meta: { className: "w-[140px] hidden sm:table-cell" },
-        header: "Change",
+        header: () => (
+          <SortHeader
+            label="Change"
+            sortKey="changeType"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
         cell: ({ row }) => {
           const style = CHANGE_STYLE[row.original.changeType] ?? {
             label: row.original.changeType,
@@ -136,14 +202,22 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
       {
         accessorKey: "detectedAt",
         meta: { className: "w-[80px] whitespace-nowrap" },
-        header: "Detected",
+        header: () => (
+          <SortHeader
+            label="Detected"
+            sortKey="detectedAt"
+            currentSort={currentSort}
+            currentDir={currentDir}
+            onSort={handleSort}
+          />
+        ),
         cell: ({ row }) => {
           if (!row.original.detectedAt) return <span className="text-muted-foreground">—</span>;
           return <UtcTime date={row.original.detectedAt} compact />;
         },
       },
     ],
-    [expanded],
+    [expanded, currentSort, currentDir, handleSort],
   );
 
   const table = useDnsChangesTable(data, columns);
@@ -219,6 +293,16 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
             </Button>
           )}
         </div>
+        <select
+          value={String(pagination.limit)}
+          onChange={(e) => updateParams({ limit: e.target.value, page: "1" })}
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+          aria-label="Page size"
+        >
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
         <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 tabular-nums ml-auto">
           {pagination.total.toLocaleString()} changes
         </span>

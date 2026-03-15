@@ -28,6 +28,7 @@ const navItems = [
 
 const toolsItems = [
   { href: "/validate", label: "Validate" },
+  { href: "/tools/lint", label: "Linter" },
   { href: "/ct/gorgon", label: "CT Log" },
   { href: "/domains", label: "Domains" },
   { href: "/dns-changes", label: "DNS Changes" },
