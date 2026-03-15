@@ -9,28 +9,42 @@ export interface CTLogInfo {
   mmd: number; // Maximum Merge Delay in seconds
 }
 
-interface LogListOperator {
-  name: string;
-  id: number;
-}
-
 interface LogListLog {
   description: string;
   log_id: string; // base64
   key: string;
-  url: string;
+  url?: string;
+  submission_url?: string;
   mmd: number;
   state?: Record<string, { timestamp: string }>;
-  operated_by: number[];
+}
+
+interface LogListOperator {
+  name: string;
+  logs: LogListLog[];
+  tiled_logs?: LogListLog[];
 }
 
 interface LogListJson {
   operators: LogListOperator[];
-  logs: LogListLog[];
 }
 
-const LOG_LIST_URL = "https://www.gstatic.com/ct/log_list/v3/log_list.json";
+const LOG_LIST_URL = "https://www.gstatic.com/ct/log_list/v3/all_logs_list.json";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Logs not in Google's public list (e.g. DigiCert's private Gorgon log)
+const KNOWN_EXTRA_LOGS: [string, CTLogInfo][] = [
+  [
+    "VVlTrjCWAIBs0utSCKbJnpMYKKwQVrRCHFU2FUxfdaw=",
+    {
+      description: "DigiCert 'Gorgon' log",
+      url: "https://gorgon.ct.digicert.com/log",
+      operator: "DigiCert",
+      state: "usable",
+      mmd: 86400,
+    },
+  ],
+];
 
 let cachedMap: Map<string, CTLogInfo> | null = null;
 let cachedAt = 0;
@@ -40,14 +54,6 @@ function resolveState(log: LogListLog): string {
   // State object has a single key like "usable", "readonly", "retired"
   const keys = Object.keys(log.state);
   return keys[0] || "unknown";
-}
-
-function buildOperatorMap(operators: LogListOperator[]): Map<number, string> {
-  const map = new Map<number, string>();
-  for (const op of operators) {
-    map.set(op.id, op.name);
-  }
-  return map;
 }
 
 /**
@@ -65,19 +71,19 @@ export async function getLogList(): Promise<Map<string, CTLogInfo>> {
   }
 
   const data: LogListJson = await res.json();
-  const operatorMap = buildOperatorMap(data.operators);
-  const map = new Map<string, CTLogInfo>();
+  const map = new Map<string, CTLogInfo>(KNOWN_EXTRA_LOGS);
 
-  for (const log of data.logs) {
-    const operator = log.operated_by.map((id) => operatorMap.get(id) || `Operator ${id}`).join(", ");
-
-    map.set(log.log_id, {
-      description: log.description,
-      url: log.url,
-      operator,
-      state: resolveState(log),
-      mmd: log.mmd,
-    });
+  for (const op of data.operators) {
+    const allLogs = [...(op.logs ?? []), ...(op.tiled_logs ?? [])];
+    for (const log of allLogs) {
+      map.set(log.log_id, {
+        description: log.description,
+        url: log.url ?? log.submission_url ?? "",
+        operator: op.name,
+        state: resolveState(log),
+        mmd: log.mmd,
+      });
+    }
   }
 
   cachedMap = map;
