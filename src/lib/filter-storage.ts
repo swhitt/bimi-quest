@@ -15,6 +15,8 @@ export const GLOBAL_FILTER_KEYS = [
   "country",
   "expiresFrom",
   "expiresTo",
+  "ctFrom",
+  "ctTo",
 ] as const;
 
 interface StoredFilters {

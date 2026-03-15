@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { ChevronDown, Link2, ListFilter, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -12,560 +13,24 @@ import {
   saveFilterState,
 } from "@/lib/filter-storage";
 import { type FilterChip, FilterChips } from "@/components/filter-chips";
+import { DateRangeFilter } from "@/components/date-range-filter";
+import { FilterPanel } from "@/components/filter-panel";
+import {
+  CASelect,
+  CountrySelect,
+  IndustrySelect,
+  MARK_OPTIONS,
+  MarkSelect,
+  PrecertSelect,
+  ROOT_CA_OPTIONS,
+  RootCASelect,
+  TypeSelect,
+  ValiditySelect,
+} from "@/components/filter-selects";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ALL_CA_SLUGS, CA_DISPLAY_NAMES, CA_SLUG_TO_NAME, ROOT_CA_OPTIONS } from "@/lib/ca-slugs";
+import { CA_DISPLAY_NAMES, CA_SLUG_TO_NAME } from "@/lib/ca-slugs";
 import { getDefaultFromDateISO } from "@/lib/default-dates";
-import { ALL_MARK_TYPES } from "@/lib/mark-types";
-
-function formatDateISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-interface DatePresetEntry {
-  label: string;
-  from: string;
-  to: string;
-  group: "rolling" | "calendar";
-}
-
-function computeDatePresets(direction: "past" | "future"): DatePresetEntry[] {
-  const now = new Date();
-  const year = now.getFullYear();
-
-  // Rolling window presets
-  const rollingLabels =
-    direction === "past"
-      ? ["Last 30d", "Last 90d", "Last 6mo", "Last year"]
-      : ["Next 30d", "Next 90d", "Next 6mo", "Next year"];
-  const offsets = [30, 90, 180, 365];
-  const rolling: DatePresetEntry[] = rollingLabels.map((label, i) => {
-    const d = new Date(now);
-    if (direction === "past") {
-      d.setDate(d.getDate() - offsets[i]);
-      return { label, from: formatDateISO(d), to: formatDateISO(now), group: "rolling" };
-    }
-    d.setDate(d.getDate() + offsets[i]);
-    return { label, from: formatDateISO(now), to: formatDateISO(d), group: "rolling" };
-  });
-
-  // Calendar presets
-  const calendar: DatePresetEntry[] =
-    direction === "past"
-      ? [
-          {
-            label: "Last month",
-            from: formatDateISO(new Date(year, now.getMonth() - 1, 1)),
-            to: formatDateISO(new Date(year, now.getMonth(), 0)),
-            group: "calendar",
-          },
-          {
-            label: "This month",
-            from: formatDateISO(new Date(year, now.getMonth(), 1)),
-            to: formatDateISO(now),
-            group: "calendar",
-          },
-          {
-            label: `${year - 1}`,
-            from: `${year - 1}-01-01`,
-            to: `${year - 1}-12-31`,
-            group: "calendar",
-          },
-          {
-            label: `${year}`,
-            from: `${year}-01-01`,
-            to: formatDateISO(now),
-            group: "calendar",
-          },
-        ]
-      : [
-          {
-            label: "This month",
-            from: formatDateISO(now),
-            to: formatDateISO(new Date(year, now.getMonth() + 1, 0)),
-            group: "calendar",
-          },
-          {
-            label: "Next month",
-            from: formatDateISO(new Date(year, now.getMonth() + 1, 1)),
-            to: formatDateISO(new Date(year, now.getMonth() + 2, 0)),
-            group: "calendar",
-          },
-          {
-            label: `${year}`,
-            from: formatDateISO(now),
-            to: `${year}-12-31`,
-            group: "calendar",
-          },
-          {
-            label: `${year + 1}`,
-            from: `${year + 1}-01-01`,
-            to: `${year + 1}-12-31`,
-            group: "calendar",
-          },
-        ];
-
-  return [...rolling, ...calendar];
-}
-
-function datesMatch(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  // Allow 1-day tolerance for rounding
-  const diff = Math.abs(new Date(a).getTime() - new Date(b).getTime());
-  return diff <= 86400000;
-}
-
-function DatePresets({
-  direction,
-  currentFrom,
-  currentTo,
-  fromKey,
-  toKey,
-  onSelect,
-}: {
-  direction: "past" | "future";
-  currentFrom: string;
-  currentTo: string;
-  fromKey: string;
-  toKey: string;
-  onSelect: (updates: Record<string, string | null>) => void;
-}) {
-  const presets = computeDatePresets(direction);
-  const isCustom =
-    currentFrom && currentTo && !presets.some((p) => datesMatch(p.from, currentFrom) && datesMatch(p.to, currentTo));
-  const hasAny = currentFrom || currentTo;
-
-  const rolling = presets.filter((p) => p.group === "rolling");
-  const calendar = presets.filter((p) => p.group === "calendar");
-
-  const presetButton = (p: DatePresetEntry) => {
-    const active = datesMatch(p.from, currentFrom) && datesMatch(p.to, currentTo);
-    return (
-      <button
-        key={p.label}
-        type="button"
-        onClick={() => onSelect({ [fromKey]: p.from, [toKey]: p.to })}
-        className={`px-1.5 py-0.5 rounded text-[11px] transition-colors ${
-          active ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted-foreground/20 text-muted-foreground"
-        }`}
-      >
-        {p.label}
-      </button>
-    );
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      {rolling.map(presetButton)}
-      <span className="text-[11px] text-muted-foreground/40 select-none">·</span>
-      {calendar.map(presetButton)}
-      {isCustom && <span className="px-1.5 py-0.5 rounded text-[11px] bg-primary text-primary-foreground">Custom</span>}
-      {hasAny && (
-        <button
-          type="button"
-          onClick={() => onSelect({ [fromKey]: null, [toKey]: null })}
-          className="px-1 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          <X className="size-3" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-const CERT_TYPES = [
-  { value: "all", label: "All Types" },
-  { value: "VMC", label: "VMC" },
-  { value: "CMC", label: "CMC" },
-];
-
-const MARK_OPTIONS = [
-  { value: "all", label: "All Marks" },
-  ...ALL_MARK_TYPES.map((m) => ({ value: m.value, label: m.title })),
-];
-
-const VALIDITY_OPTIONS = [
-  { value: "all", label: "Any Status" },
-  { value: "valid", label: "Valid" },
-  { value: "expired", label: "Expired" },
-];
-
-const PRECERT_OPTIONS = [
-  { value: "all", label: "Cert & Precert" },
-  { value: "cert", label: "Certs Only" },
-  { value: "precert", label: "Precerts Only" },
-];
-
-// --- Named filter components (module scope to avoid remounting on each render) ---
-
-function CASelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value || "all"} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by intermediate CA" className={className ?? "w-[175px]"}>
-        <SelectValue placeholder="All Intermediates" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Intermediates</SelectItem>
-        {ALL_CA_SLUGS.map((slug) => (
-          <SelectItem key={slug} value={slug}>
-            {CA_DISPLAY_NAMES[slug]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function RootCASelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by root CA" className={className ?? "w-[140px]"}>
-        <SelectValue placeholder="All Roots" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Roots</SelectItem>
-        {ROOT_CA_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function TypeSelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by certificate type" className={className ?? "w-[110px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {CERT_TYPES.map((t) => (
-          <SelectItem key={t.value} value={t.value}>
-            {t.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function MarkSelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by mark type" className={className ?? "w-[160px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {MARK_OPTIONS.map((m) => (
-          <SelectItem key={m.value} value={m.value}>
-            {m.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function ValiditySelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by validity status" className={className ?? "w-[120px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {VALIDITY_OPTIONS.map((v) => (
-          <SelectItem key={v.value} value={v.value}>
-            {v.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function PrecertSelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by precertificate status" className={className ?? "w-[140px]"}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {PRECERT_OPTIONS.map((p) => (
-          <SelectItem key={p.value} value={p.value}>
-            {p.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function IndustrySelect({
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  if (options.length === 0) return null;
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label="Filter by industry" className={className ?? "w-[170px]"}>
-        <SelectValue placeholder="All Industries" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Industries</SelectItem>
-        {options.map((i) => (
-          <SelectItem key={i.value} value={i.value}>
-            {i.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-/**
- * Date range filter with local state so URL updates only fire on blur, not on
- * every keystroke. Preset buttons still update immediately since they set a
- * complete, valid value.
- */
-function DateRangeFilter({
-  currentFrom,
-  currentTo,
-  fromKey,
-  toKey,
-  fromLabel,
-  toLabel,
-  direction,
-  onCommit,
-  onMultiUpdate,
-  fullWidth,
-}: {
-  currentFrom: string;
-  currentTo: string;
-  fromKey: string;
-  toKey: string;
-  fromLabel: string;
-  toLabel: string;
-  direction: "past" | "future";
-  onCommit: (key: string, value: string) => void;
-  onMultiUpdate: (updates: Record<string, string | null>) => void;
-  fullWidth?: boolean;
-}) {
-  // Local state buffers the typed value; URL is updated only on blur
-  const [localFrom, setLocalFrom] = useState(currentFrom);
-  const [localTo, setLocalTo] = useState(currentTo);
-
-  // Keep local state in sync when the URL-driven value changes (e.g. chip removal)
-  useEffect(() => {
-    setLocalFrom(currentFrom);
-  }, [currentFrom]);
-  useEffect(() => {
-    setLocalTo(currentTo);
-  }, [currentTo]);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <DatePresets
-        direction={direction}
-        currentFrom={currentFrom}
-        currentTo={currentTo}
-        fromKey={fromKey}
-        toKey={toKey}
-        onSelect={onMultiUpdate}
-      />
-      <div className="flex items-center gap-1.5">
-        <Input
-          type="date"
-          value={localFrom}
-          onChange={(e) => setLocalFrom(e.target.value)}
-          onBlur={(e) => onCommit(fromKey, e.target.value)}
-          aria-label={fromLabel}
-          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-        />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={localTo}
-          onChange={(e) => setLocalTo(e.target.value)}
-          onBlur={(e) => onCommit(toKey, e.target.value)}
-          aria-label={toLabel}
-          className={fullWidth ? "h-8 flex-1 text-xs" : "h-8 w-[130px] text-xs"}
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Grouped secondary filters panel — rendered both in the desktop popover and
- * inside the mobile bottom sheet.
- */
-function SecondaryFilters({
-  rootCa,
-  validity,
-  precert,
-  industry,
-  industryOptions,
-  dateFrom,
-  dateTo,
-  expiresFrom,
-  expiresTo,
-  onFilterChange,
-  onMultiUpdate,
-  fullWidth,
-}: {
-  rootCa: string;
-  validity: string;
-  precert: string;
-  industry: string;
-  industryOptions: { value: string; label: string }[];
-  dateFrom: string;
-  dateTo: string;
-  expiresFrom: string;
-  expiresTo: string;
-  onFilterChange: (key: string, value: string) => void;
-  onMultiUpdate: (updates: Record<string, string | null>) => void;
-  fullWidth?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Certificate</span>
-        <div className={fullWidth ? "flex flex-col gap-2" : "flex items-center gap-2 flex-wrap"}>
-          <RootCASelect
-            value={rootCa}
-            onChange={(v) => onFilterChange("root", v)}
-            className={fullWidth ? "w-full" : "w-[140px]"}
-          />
-          <ValiditySelect
-            value={validity}
-            onChange={(v) => onFilterChange("validity", v)}
-            className={fullWidth ? "w-full" : "w-[120px]"}
-          />
-          <PrecertSelect
-            value={precert}
-            onChange={(v) => onFilterChange("precert", v)}
-            className={fullWidth ? "w-full" : "w-[140px]"}
-          />
-        </div>
-      </div>
-      <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Issued Date</span>
-        <DateRangeFilter
-          direction="past"
-          currentFrom={dateFrom}
-          currentTo={dateTo}
-          fromKey="from"
-          toKey="to"
-          fromLabel="Issued from date"
-          toLabel="Issued to date"
-          onCommit={(key, value) => {
-            // Clearing the from date input should bypass the default, not reapply it
-            if (key === "from" && !value) {
-              onMultiUpdate({ from: "all" });
-            } else {
-              onFilterChange(key, value);
-            }
-          }}
-          onMultiUpdate={(updates) => {
-            // When clearing issued date presets, use "all" to bypass the default lookback
-            if ("from" in updates && !updates.from) {
-              onMultiUpdate({ ...updates, from: "all" });
-            } else {
-              onMultiUpdate(updates);
-            }
-          }}
-          fullWidth={fullWidth}
-        />
-      </div>
-      <div>
-        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Expiry Date</span>
-        <DateRangeFilter
-          direction="future"
-          currentFrom={expiresFrom}
-          currentTo={expiresTo}
-          fromKey="expiresFrom"
-          toKey="expiresTo"
-          fromLabel="Expires from date"
-          toLabel="Expires to date"
-          onCommit={onFilterChange}
-          onMultiUpdate={onMultiUpdate}
-          fullWidth={fullWidth}
-        />
-      </div>
-      {industryOptions.length > 0 && (
-        <div>
-          <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">Category</span>
-          <IndustrySelect
-            value={industry}
-            onChange={(v) => onFilterChange("industry", v)}
-            options={industryOptions}
-            className={fullWidth ? "w-full" : "w-[170px]"}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
 
 /** Gate component: skip rendering (and all hooks/fetches) on pages where filters don't apply. */
 const HIDDEN_PATHS = ["/check", "/privacy", "/transparency"];
@@ -579,7 +44,6 @@ function FilterBarInner() {
 
   const isHidden = HIDDEN_PATHS.includes(pathname) || HIDDEN_PREFIXES.some((p) => pathname.startsWith(p));
 
-  // Hydrate filters from sessionStorage when landing on a data page without params
   useEffect(() => {
     if (isHidden) return;
 
@@ -604,6 +68,8 @@ function FilterBarInner() {
 function getBasePath(p: string): string {
   return p.replace(/\/page\/\d+$/, "").replace(/\/ca\/[^/]+$/, "") || "/";
 }
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function FilterBarContent() {
   const router = useRouter();
@@ -632,16 +98,14 @@ function FilterBarContent() {
   // Read CA from /{page}/ca/{slug} pattern
   const pathMatch = pathname.match(/\/ca\/([^/]+)/);
 
-  // Pages where CA goes in query param instead of path (avoids conflict with dynamic route segments)
+  // Pages where CA goes in query param instead of path
   const basePath = getBasePath(pathname);
   const useQueryCa = basePath === "/domains";
 
   const caSlug = pathMatch ? pathMatch[1].toLowerCase() : useQueryCa ? (searchParams.get("ca") ?? "") : "";
   const ca = caSlug ? (CA_SLUG_TO_NAME[caSlug] ?? "") : "";
 
-  // Persist filter state to sessionStorage for cross-page navigation.
-  // Only saves when URL actually has filter params (avoids overwriting stored state
-  // during the brief moment before hydration fills in the params).
+  // Persist filter state to sessionStorage for cross-page navigation
   useEffect(() => {
     if (hasAnyFilterParams(searchParams, pathname)) {
       saveFilterState(searchParams, caSlug);
@@ -655,7 +119,6 @@ function FilterBarContent() {
     });
   }, [pathname, searchParams, caSlug]);
 
-  // Build a URL preserving secondary filters, with the CA in the path or query param
   const buildUrl = useCallback(
     (newCaSlug: string, updates?: Record<string, string | null>) => {
       const pagePath = getBasePath(pathname);
@@ -678,8 +141,6 @@ function FilterBarContent() {
           if (value === null || value === "") {
             params.delete(key);
           } else if (value === "all" && key !== "from") {
-            // Select-type filters use "all" to mean default/unset.
-            // "from=all" is special: it means "show all time" (bypass default lookback).
             params.delete(key);
           } else {
             params.set(key, value);
@@ -718,13 +179,17 @@ function FilterBarContent() {
   const precert = searchParams.get("precert") ?? "all";
   const industry = searchParams.get("industry") ?? "all";
   const country = searchParams.get("country") ?? "";
-  const fromRaw = searchParams.get("from"); // null = default lookback, "all" = no bound, string = explicit date
+  const fromRaw = searchParams.get("from");
   const dateFrom = fromRaw === "all" ? "" : (fromRaw ?? getDefaultFromDateISO());
   const dateTo = searchParams.get("to") ?? "";
   const expiresFrom = searchParams.get("expiresFrom") ?? "";
   const expiresTo = searchParams.get("expiresTo") ?? "";
+  const ctFrom = searchParams.get("ctFrom") ?? "";
+  const ctTo = searchParams.get("ctTo") ?? "";
+  const dow = searchParams.get("dow") ?? "";
+  const hour = searchParams.get("hour") ?? "";
+  const timeCol = searchParams.get("timeCol") ?? "";
 
-  // Only count explicit user-set filters (not the implicit default from date)
   const hasExplicitFrom = fromRaw !== null && fromRaw !== "all";
   const hasFilters =
     ca ||
@@ -738,9 +203,12 @@ function FilterBarContent() {
     hasExplicitFrom ||
     dateTo ||
     expiresFrom ||
-    expiresTo;
+    expiresTo ||
+    ctFrom ||
+    ctTo ||
+    dow ||
+    hour;
 
-  // Date ranges count as one filter each (not one per bound)
   const filterCount =
     (ca ? 1 : 0) +
     (rootCa !== "all" ? 1 : 0) +
@@ -751,16 +219,20 @@ function FilterBarContent() {
     (industry !== "all" ? 1 : 0) +
     (country ? 1 : 0) +
     (hasExplicitFrom || dateTo ? 1 : 0) +
-    (expiresFrom || expiresTo ? 1 : 0);
+    (expiresFrom || expiresTo ? 1 : 0) +
+    (ctFrom || ctTo ? 1 : 0) +
+    (dow || hour ? 1 : 0);
 
-  // Count only filters that live inside the "More Filters" popover
+  // Count filters inside the "More Filters" panel
   const secondaryFilterCount =
     (rootCa !== "all" ? 1 : 0) +
     (validity !== "all" ? 1 : 0) +
     (precert !== "all" ? 1 : 0) +
     (industry !== "all" ? 1 : 0) +
+    (country ? 1 : 0) +
     (hasExplicitFrom || dateTo ? 1 : 0) +
-    (expiresFrom || expiresTo ? 1 : 0);
+    (expiresFrom || expiresTo ? 1 : 0) +
+    (ctFrom || ctTo ? 1 : 0);
 
   // Build chips for all active filters
   const chips: FilterChip[] = [];
@@ -836,6 +308,20 @@ function FilterBarContent() {
       value: dateTo,
       onRemove: () => updateSecondaryFilter("to", ""),
     });
+  if (ctFrom)
+    chips.push({
+      key: "ctFrom",
+      label: "CT log from",
+      value: ctFrom,
+      onRemove: () => updateSecondaryFilter("ctFrom", ""),
+    });
+  if (ctTo)
+    chips.push({
+      key: "ctTo",
+      label: "CT log to",
+      value: ctTo,
+      onRemove: () => updateSecondaryFilter("ctTo", ""),
+    });
   if (expiresFrom)
     chips.push({
       key: "expiresFrom",
@@ -850,6 +336,20 @@ function FilterBarContent() {
       value: expiresTo,
       onRemove: () => updateSecondaryFilter("expiresTo", ""),
     });
+  // DOW/hour drilldown chip
+  if (dow || hour) {
+    const colLabel = timeCol === "ctLogTimestamp" ? "CT log" : "Issuance";
+    const dayLabel = dow ? DAY_NAMES[parseInt(dow) - 1] : "";
+    const hourLabel = hour
+      ? `${hour.padStart(2, "0")}:00\u2013${String((parseInt(hour) + 1) % 24).padStart(2, "0")}:00 UTC`
+      : "";
+    chips.push({
+      key: "dow-hour",
+      label: colLabel,
+      value: [dayLabel, hourLabel].filter(Boolean).join(" "),
+      onRemove: () => updateMultipleFilters({ dow: null, hour: null, timeCol: null }),
+    });
+  }
 
   return (
     <div className="border-b bg-muted/30">
@@ -896,20 +396,114 @@ function FilterBarContent() {
                       <MarkSelect value={mark} onChange={(v) => updateSecondaryFilter("mark", v)} className="w-full" />
                     </div>
                   </div>
-                  <SecondaryFilters
-                    rootCa={rootCa}
-                    validity={validity}
-                    precert={precert}
-                    industry={industry}
-                    industryOptions={industryOptions}
-                    dateFrom={dateFrom}
-                    dateTo={dateTo}
-                    expiresFrom={expiresFrom}
-                    expiresTo={expiresTo}
-                    onFilterChange={updateSecondaryFilter}
-                    onMultiUpdate={updateMultipleFilters}
-                    fullWidth
-                  />
+                  <div>
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
+                      Certificate
+                    </span>
+                    <div className="flex flex-col gap-2">
+                      <RootCASelect
+                        value={rootCa}
+                        onChange={(v) => updateSecondaryFilter("root", v)}
+                        className="w-full"
+                      />
+                      <ValiditySelect
+                        value={validity}
+                        onChange={(v) => updateSecondaryFilter("validity", v)}
+                        className="w-full"
+                      />
+                      <PrecertSelect
+                        value={precert}
+                        onChange={(v) => updateSecondaryFilter("precert", v)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
+                      Issued Date
+                    </span>
+                    <DateRangeFilter
+                      direction="past"
+                      currentFrom={dateFrom}
+                      currentTo={dateTo}
+                      fromKey="from"
+                      toKey="to"
+                      fromLabel="Issued from date"
+                      toLabel="Issued to date"
+                      onCommit={(key, value) => {
+                        if (key === "from" && !value) {
+                          updateMultipleFilters({ from: "all" });
+                        } else {
+                          updateSecondaryFilter(key, value);
+                        }
+                      }}
+                      onMultiUpdate={(updates) => {
+                        if ("from" in updates && !updates.from) {
+                          updateMultipleFilters({ ...updates, from: "all" });
+                        } else {
+                          updateMultipleFilters(updates);
+                        }
+                      }}
+                      fullWidth
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
+                      CT Log Date
+                    </span>
+                    <DateRangeFilter
+                      direction="past"
+                      currentFrom={ctFrom}
+                      currentTo={ctTo}
+                      fromKey="ctFrom"
+                      toKey="ctTo"
+                      fromLabel="CT log from date"
+                      toLabel="CT log to date"
+                      onCommit={updateSecondaryFilter}
+                      onMultiUpdate={updateMultipleFilters}
+                      fullWidth
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
+                      Expiry Date
+                    </span>
+                    <DateRangeFilter
+                      direction="future"
+                      currentFrom={expiresFrom}
+                      currentTo={expiresTo}
+                      fromKey="expiresFrom"
+                      toKey="expiresTo"
+                      fromLabel="Expires from date"
+                      toLabel="Expires to date"
+                      onCommit={updateSecondaryFilter}
+                      onMultiUpdate={updateMultipleFilters}
+                      fullWidth
+                    />
+                  </div>
+                  {industryOptions.length > 0 && (
+                    <div>
+                      <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
+                        Industry
+                      </span>
+                      <IndustrySelect
+                        value={industry}
+                        onChange={(v) => updateSecondaryFilter("industry", v)}
+                        options={industryOptions}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1.5 block">
+                      Country
+                    </span>
+                    <CountrySelect
+                      value={country}
+                      onChange={(v) => updateSecondaryFilter("country", v)}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
               {hasFilters && (
@@ -945,7 +539,7 @@ function FilterBarContent() {
           )}
         </div>
 
-        {/* ===== Desktop: Primary selects + More Filters popover ===== */}
+        {/* ===== Desktop: Primary selects + More Filters toggle ===== */}
         <div className="hidden md:flex items-center gap-2">
           <ListFilter className="size-4 text-muted-foreground shrink-0" />
           <CASelect value={caSlug} onChange={(v) => router.push(buildUrl(v === "all" ? "" : v))} />
@@ -954,48 +548,18 @@ function FilterBarContent() {
 
           <div className="w-px h-5 bg-border shrink-0" />
 
-          <Popover open={moreOpen} onOpenChange={setMoreOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
-                More Filters
-                {secondaryFilterCount > 0 && (
-                  <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full text-[10px] min-w-[18px] text-center leading-none">
-                    {secondaryFilterCount}
-                  </span>
-                )}
-                <ChevronDown className="size-3 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="w-[480px] p-4"
-              onInteractOutside={(e) => {
-                // Don't close popover when interacting with Select dropdowns
-                // (they portal outside the popover)
-                const target = e.target as HTMLElement | null;
-                if (target?.closest("[data-radix-select-content]")) {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <SecondaryFilters
-                rootCa={rootCa}
-                validity={validity}
-                precert={precert}
-                industry={industry}
-                industryOptions={industryOptions}
-                dateFrom={dateFrom}
-                dateTo={dateTo}
-                expiresFrom={expiresFrom}
-                expiresTo={expiresTo}
-                onFilterChange={updateSecondaryFilter}
-                onMultiUpdate={updateMultipleFilters}
-              />
-            </PopoverContent>
-          </Popover>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={() => setMoreOpen(!moreOpen)}>
+            More Filters
+            {secondaryFilterCount > 0 && (
+              <span className="bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full text-[10px] min-w-[18px] text-center leading-none">
+                {secondaryFilterCount}
+              </span>
+            )}
+            <ChevronDown className={cn("size-3 opacity-50 transition-transform", moreOpen && "rotate-180")} />
+          </Button>
         </div>
 
-        {/* ===== Chips row (desktop only — mobile chips are inline above) ===== */}
+        {/* ===== Chips row (desktop only) ===== */}
         <div className="hidden md:flex items-start gap-1.5">
           <div className="flex-1 min-w-0">
             <FilterChips chips={chips} onClearAll={clearFilters} />
@@ -1011,6 +575,27 @@ function FilterBarContent() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* ===== Desktop slide-down filter panel ===== */}
+      <div className="hidden md:block">
+        <FilterPanel
+          open={moreOpen}
+          rootCa={rootCa}
+          validity={validity}
+          precert={precert}
+          industry={industry}
+          industryOptions={industryOptions}
+          country={country}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          ctFrom={ctFrom}
+          ctTo={ctTo}
+          expiresFrom={expiresFrom}
+          expiresTo={expiresTo}
+          onFilterChange={updateSecondaryFilter}
+          onMultiUpdate={updateMultipleFilters}
+        />
       </div>
     </div>
   );

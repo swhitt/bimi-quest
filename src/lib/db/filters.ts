@@ -1,4 +1,4 @@
-import { and, eq, gte, like, lte, type SQL } from "drizzle-orm";
+import { and, eq, gte, isNotNull, like, lte, sql, type SQL } from "drizzle-orm";
 import { getDefaultFromDate } from "../default-dates";
 import { db } from "./index";
 import { certificates } from "./schema";
@@ -146,6 +146,39 @@ export function buildCommonFilterConditions(params: URLSearchParams): SQL[] {
   if (expiresToDate) conditions.push(lte(certificates.notAfter, expiresToDate));
   if (validity === "valid") conditions.push(gte(certificates.notAfter, new Date()));
   if (validity === "expired") conditions.push(lte(certificates.notAfter, new Date()));
+
+  // CT log timestamp date range
+  const ctFromDate = parseDate(params.get("ctFrom"));
+  const ctToDate = parseDate(params.get("ctTo"));
+  if (ctFromDate) conditions.push(gte(certificates.ctLogTimestamp, ctFromDate));
+  if (ctToDate) conditions.push(lte(certificates.ctLogTimestamp, ctToDate));
+
+  // DOW/hour on a configurable timestamp column
+  const timeColParam = params.get("timeCol") as string | null;
+  const timeColMap = {
+    notBefore: certificates.notBefore,
+    ctLogTimestamp: certificates.ctLogTimestamp,
+    notAfter: certificates.notAfter,
+  } as const;
+  const timeCol =
+    timeColParam && timeColParam in timeColMap
+      ? timeColMap[timeColParam as keyof typeof timeColMap]
+      : certificates.notBefore;
+  const dowParam = params.get("dow");
+  const hourParam = params.get("hour");
+
+  if (dowParam) {
+    const dow = parseInt(dowParam, 10);
+    if (dow >= 1 && dow <= 7) conditions.push(sql`EXTRACT(ISODOW FROM ${timeCol})::int = ${dow}`);
+  }
+  if (hourParam) {
+    const hour = parseInt(hourParam, 10);
+    if (hour >= 0 && hour <= 23) conditions.push(sql`EXTRACT(HOUR FROM ${timeCol})::int = ${hour}`);
+  }
+  // Ensure non-null when filtering on ctLogTimestamp
+  if ((dowParam || hourParam || ctFromDate || ctToDate) && timeColParam === "ctLogTimestamp") {
+    conditions.push(isNotNull(certificates.ctLogTimestamp));
+  }
 
   return conditions;
 }

@@ -26,6 +26,11 @@ export function buildApiParamsFromSearchParams(
     "precert",
     "industry",
     "test",
+    "ctFrom",
+    "ctTo",
+    "dow",
+    "hour",
+    "timeCol",
   ];
   for (const key of keys) {
     const val = searchParams[key];

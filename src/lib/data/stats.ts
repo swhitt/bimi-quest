@@ -5,6 +5,44 @@ import { parseDate } from "@/lib/db/filters";
 import { cmcCount, vmcCount } from "@/lib/db/query-fragments";
 import { certificates, domainBimiState } from "@/lib/db/schema";
 
+export interface HeatmapCell {
+  dow: number; // 1=Mon..7=Sun (ISO day of week)
+  hour: number; // 0-23
+  count: number;
+}
+
+export type HeatmapMetric = "issuance" | "ctlog";
+
+/**
+ * Fetch day-of-week × hour-of-day issuance counts.
+ * `metric=ctlog` uses ct_log_timestamp; default uses not_before.
+ */
+export async function fetchHeatmapData(
+  params: URLSearchParams,
+): Promise<{ data: HeatmapCell[]; metric: HeatmapMetric }> {
+  const metric = params.get("metric") === "ctlog" ? "ctlog" : "issuance";
+  const col = metric === "ctlog" ? certificates.ctLogTimestamp : certificates.notBefore;
+
+  const baseConditions = buildStatsConditions(params);
+  const where = metric === "ctlog" ? and(baseConditions, isNotNull(certificates.ctLogTimestamp)) : baseConditions;
+
+  const dow = sql<number>`EXTRACT(ISODOW FROM ${col})::int`;
+  const hour = sql<number>`EXTRACT(HOUR FROM ${col})::int`;
+
+  const rows = await db
+    .select({
+      dow: dow.as("dow"),
+      hour: hour.as("hour"),
+      count: count().as("count"),
+    })
+    .from(certificates)
+    .where(where)
+    .groupBy(dow, hour)
+    .orderBy(dow, hour);
+
+  return { data: rows, metric };
+}
+
 export interface IndustryRow {
   industry: string | null;
   total: number;
