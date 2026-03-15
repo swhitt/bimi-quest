@@ -57,6 +57,15 @@ vi.mock("@/lib/db/schema", () => ({
   },
   certificateChainLinks: { leafCertId: "leaf_cert_id", chainCertId: "chain_cert_id", chainPosition: "chain_position" },
   domainBimiState: { domain: "domain" },
+  certificateScts: {
+    id: "id",
+    certificateId: "certificate_id",
+    logId: "log_id",
+    logName: "log_name",
+    logOperator: "log_operator",
+    sctTimestamp: "sct_timestamp",
+    lagSeconds: "lag_seconds",
+  },
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -237,6 +246,7 @@ describe("GET /api/certificates/[id]", () => {
     expect(body).toHaveProperty("chain");
     expect(body).toHaveProperty("bimiStates");
     expect(body).toHaveProperty("sanCertCounts");
+    expect(body).toHaveProperty("scts");
     expect(body.certificate.id).toBe(1);
     expect(res.headers.get("Cache-Control")).toContain("s-maxage=120");
   });
