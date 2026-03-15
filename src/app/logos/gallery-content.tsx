@@ -4,6 +4,7 @@ import { ListFilter } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import Image from "next/image";
 import { PaginationBar } from "@/components/pagination-bar";
 import { ChainLinkIcon } from "@/components/ui/icons";
@@ -162,7 +163,6 @@ function LogoTile({ logo }: { logo: Logo }) {
   const linkHref = logo.svgHash
     ? `/logos/${logo.svgHash.slice(0, 16)}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
     : null;
-  const [copied, setCopied] = useState(false);
   const [lazyRef, isVisible] = useLazyRender<HTMLDivElement>("300px");
 
   const lightBg = logo.tileBg === "light";
@@ -176,8 +176,7 @@ function LogoTile({ logo }: { logo: Logo }) {
       if (!linkHref) return;
       const url = `${window.location.origin}${linkHref}`;
       navigator.clipboard.writeText(url).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        toast.success("Link copied");
       });
     },
     [linkHref],
@@ -219,21 +218,7 @@ function LogoTile({ logo }: { logo: Logo }) {
           className="absolute top-1 right-1 z-30 rounded bg-black/60 p-1 text-white/70 opacity-0 transition-opacity duration-150 hover:text-white group-hover:opacity-100"
           title="Copy share link"
         >
-          {copied ? (
-            <svg
-              className="size-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20 6L9 17l-5-5" />
-            </svg>
-          ) : (
-            <ChainLinkIcon />
-          )}
+          <ChainLinkIcon />
         </button>
       )}
       {/* Persistent mobile org label (touch devices lack hover) */}

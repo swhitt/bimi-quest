@@ -3,6 +3,7 @@
 import { ChevronDown, Link2, ListFilter, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   buildHydratedUrl,
   buildShareUrl,
@@ -647,12 +648,10 @@ function FilterBarContent() {
     }
   }, [searchParams, pathname, caSlug]);
 
-  const [copied, setCopied] = useState(false);
   const copyShareUrl = useCallback(() => {
     const url = buildShareUrl(pathname, searchParams, caSlug);
     navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast.success("Share URL copied");
     });
   }, [pathname, searchParams, caSlug]);
 
@@ -939,7 +938,7 @@ function FilterBarContent() {
               onClick={copyShareUrl}
               className="shrink-0 rounded p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
               aria-label="Copy share link"
-              title={copied ? "Copied!" : "Copy share link with current filters"}
+              title="Copy share link with current filters"
             >
               <Link2 className="size-3.5" />
             </button>
@@ -1006,7 +1005,7 @@ function FilterBarContent() {
               onClick={copyShareUrl}
               className="mt-1.5 shrink-0 rounded p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
               aria-label="Copy share link"
-              title={copied ? "Copied!" : "Copy share link with current filters"}
+              title="Copy share link with current filters"
             >
               <Link2 className="size-3.5" />
             </button>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DomainChip } from "@/components/domain-chip";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
-import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
+import { DiffBlock, hasDiffContent } from "@/components/dns/diff-block";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UtcTime } from "@/components/ui/utc-time";
 import { cn } from "@/lib/utils";
@@ -31,8 +31,6 @@ export const CHANGE_STYLE: Record<string, { label: string; color: string }> = {
   declination_set: { label: "declined", color: "text-amber-600 dark:text-amber-400" },
   tags_modified: { label: "tags modified", color: "text-muted-foreground" },
 };
-
-export const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
 
 /** Sort priority: bimi first, then dmarc, then anything else */
 const RECORD_TYPE_ORDER: Record<string, number> = { bimi: 0, dmarc: 1 };
@@ -137,9 +135,7 @@ export function DnsChangesFeed() {
                 label: c.changeType,
                 color: "text-muted-foreground",
               };
-              const showAll = POLICY_CHANGES.has(c.changeType);
-              const diffs = computeDiff(c.previousRecord, c.newRecord, showAll);
-              const hasDiffs = diffs.length > 0;
+              const hasDiffs = hasDiffContent(c.previousRecord, c.newRecord, c.changeType);
               const isOpen = expanded.has(c.id);
 
               return (
@@ -184,7 +180,9 @@ export function DnsChangesFeed() {
                       </span>
                     )}
                   </button>
-                  {isOpen && <DiffBlock diffs={diffs} />}
+                  {isOpen && (
+                    <DiffBlock previousRecord={c.previousRecord} newRecord={c.newRecord} changeType={c.changeType} />
+                  )}
                 </li>
               );
             })}

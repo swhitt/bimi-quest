@@ -4,8 +4,8 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tan
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { CHANGE_STYLE, POLICY_CHANGES } from "@/components/dashboard/dns-changes-feed";
-import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
+import { CHANGE_STYLE } from "@/components/dashboard/dns-changes-feed";
+import { DiffBlock, hasDiffContent } from "@/components/dns/diff-block";
 import { DomainChip } from "@/components/domain-chip";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
@@ -135,9 +135,8 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
         meta: { className: "w-8 !pr-0" },
         header: "",
         cell: ({ row }) => {
-          const showAll = POLICY_CHANGES.has(row.original.changeType);
-          const diffs = computeDiff(row.original.previousRecord, row.original.newRecord, showAll);
-          if (diffs.length === 0) return null;
+          if (!hasDiffContent(row.original.previousRecord, row.original.newRecord, row.original.changeType))
+            return null;
           const isOpen = expanded.has(row.original.id);
           return (
             <ChevronRight
@@ -337,9 +336,8 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.flatMap((row) => {
-                const showAll = POLICY_CHANGES.has(row.original.changeType);
-                const diffs = computeDiff(row.original.previousRecord, row.original.newRecord, showAll);
-                const hasDiffs = diffs.length > 0;
+                const { previousRecord, newRecord, changeType } = row.original;
+                const hasDiffs = hasDiffContent(previousRecord, newRecord, changeType);
                 const isOpen = expanded.has(row.original.id);
 
                 const rows = [
@@ -360,7 +358,7 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
                   rows.push(
                     <TableRow key={`${row.id}-diff`} className="hover:bg-transparent">
                       <TableCell colSpan={columns.length} className="py-0 px-2 pb-2">
-                        <DiffBlock diffs={diffs} />
+                        <DiffBlock previousRecord={previousRecord} newRecord={newRecord} changeType={changeType} />
                       </TableCell>
                     </TableRow>,
                   );

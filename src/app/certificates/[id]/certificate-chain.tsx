@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import { UtcTime } from "@/components/ui/utc-time";
 import type { CertificateChainData } from "./certificate-types";
 import { formatSerial } from "./certificate-types";
@@ -15,41 +17,20 @@ function chainLabel(chainCert: { chainPosition: number; subjectDn: string; issue
   return `Intermediate CA (${chainCert.chainPosition})`;
 }
 
-function CopyableFingerprint({
-  value,
-  copied,
-  onCopy,
-}: {
-  value: string;
-  copied: string | null;
-  onCopy: (text: string, label: string) => void;
-}) {
-  const label = `fp-${value.substring(0, 8)}`;
+function CopyableFingerprint({ value }: { value: string }) {
   return (
     <div className="flex items-center gap-1 mt-1">
       <span className="text-xs text-muted-foreground font-mono">
         SHA-256: {value.substring(0, 16)}...
         {value.substring(value.length - 8)}
       </span>
-      <button
-        className="text-xs text-muted-foreground hover:text-foreground underline min-h-8 px-1"
-        onClick={() => onCopy(value, label)}
-      >
-        {copied === label ? "Copied" : "Copy"}
-      </button>
+      <CopyButton value={value} label="Fingerprint" />
     </div>
   );
 }
 
 export function CertificateChain({ data }: { data: CertificateChainData }) {
   const cert = data.certificate;
-
-  const [copied, setCopied] = useState<string | null>(null);
-  const copyToClipboard = useCallback((text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
-  }, []);
 
   const [showPem, setShowPem] = useState(false);
 
@@ -96,7 +77,7 @@ export function CertificateChain({ data }: { data: CertificateChainData }) {
                         <span className="font-mono">{formatSerial(cert.serialNumber)}</span>
                       </div>
                     </div>
-                    <CopyableFingerprint value={cert.fingerprintSha256} copied={copied} onCopy={copyToClipboard} />
+                    <CopyableFingerprint value={cert.fingerprintSha256} />
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                       <UtcTime date={cert.notBefore} /> <span>–</span> <UtcTime date={cert.notAfter} />
                     </div>
@@ -139,7 +120,7 @@ export function CertificateChain({ data }: { data: CertificateChainData }) {
                             </div>
                           )}
                         </div>
-                        <CopyableFingerprint value={c.fingerprintSha256} copied={copied} onCopy={copyToClipboard} />
+                        <CopyableFingerprint value={c.fingerprintSha256} />
                         {c.notBefore && c.notAfter && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <UtcTime date={c.notBefore} /> <span>–</span> <UtcTime date={c.notAfter} />
@@ -163,8 +144,15 @@ export function CertificateChain({ data }: { data: CertificateChainData }) {
             <Button variant="outline" size="sm" onClick={() => setShowPem(!showPem)}>
               {showPem ? "Hide" : "Show"}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => copyToClipboard(cert.rawPem, "pem")}>
-              {copied === "pem" ? "Copied" : "Copy PEM"}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(cert.rawPem);
+                toast.success("PEM copied");
+              }}
+            >
+              Copy PEM
             </Button>
             <Button
               variant="outline"

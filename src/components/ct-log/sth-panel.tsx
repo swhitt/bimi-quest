@@ -1,8 +1,8 @@
 "use client";
 
-import { Copy, Check } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UtcTime } from "@/components/ui/utc-time";
 
@@ -26,7 +26,6 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export function STHPanel({ sth, loading, lastPolled }: STHPanelProps) {
-  const [copied, setCopied] = useState(false);
   const [, setTick] = useState(0);
 
   // Tick every 10s so relative times stay fresh
@@ -34,13 +33,6 @@ export function STHPanel({ sth, loading, lastPolled }: STHPanelProps) {
     const id = setInterval(() => setTick((n) => n + 1), 10_000);
     return () => clearInterval(id);
   }, []);
-
-  const copyHash = useCallback(() => {
-    if (!sth) return;
-    navigator.clipboard.writeText(sth.sha256_root_hash);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [sth]);
 
   return (
     <Card>
@@ -90,14 +82,7 @@ export function STHPanel({ sth, loading, lastPolled }: STHPanelProps) {
                   <p className="font-mono break-all max-w-80">{sth.sha256_root_hash}</p>
                 </TooltipContent>
               </Tooltip>
-              <button
-                type="button"
-                onClick={copyHash}
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Copy root hash"
-              >
-                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              </button>
+              <CopyButton value={sth.sha256_root_hash} label="Root hash" />
             </div>
           )}
         </div>

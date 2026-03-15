@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { BimiCheckItem } from "@/lib/bimi/types";
 
 interface CAAEntry {
@@ -123,26 +122,15 @@ export function TechnicalDetails({
 }
 
 function HeaderLine({ name, value }: { name: string; value: string }) {
-  const [copied, setCopied] = useState(false);
   const truncated = value.length > 64;
   const display = truncated ? value.slice(0, 64) + "..." : value;
-
-  async function copyFull() {
-    await navigator.clipboard.writeText(`${name}: ${value}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   return (
     <div className="flex items-start gap-1">
       <span>
         {name}: {display}
       </span>
-      {truncated && (
-        <Button variant="ghost" size="sm" className="h-auto px-1.5 py-0.5 text-[10px]" onClick={copyFull}>
-          {copied ? "Copied" : "Copy full"}
-        </Button>
-      )}
+      {truncated && <CopyButton value={`${name}: ${value}`} label={name} />}
       {"\n"}
     </div>
   );

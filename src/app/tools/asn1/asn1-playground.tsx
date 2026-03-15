@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Asn1Tree } from "@/components/x509/asn1-tree";
 import { DerHexViewer } from "@/components/x509/der-hex-viewer";
 import { Button } from "@/components/ui/button";
@@ -148,7 +149,6 @@ function findPathForNode(root: Asn1Node, target: Asn1Node): string | null {
 export function Asn1Playground() {
   const [input, setInput] = useState("");
   const [selectedNode, setSelectedNode] = useState<Asn1Node | null>(null);
-  const [copiedPermalink, setCopiedPermalink] = useState(false);
   const initializedFromHash = useRef(false);
 
   // Derive tree + DER bytes + error from input (no side effects in memo)
@@ -244,8 +244,7 @@ export function Asn1Playground() {
 
   const handleCopyPermalink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href);
-    setCopiedPermalink(true);
-    setTimeout(() => setCopiedPermalink(false), 1500);
+    toast.success("Permalink copied");
   }, []);
 
   const handleLoadSample = useCallback((data: string) => {
@@ -319,7 +318,7 @@ export function Asn1Playground() {
 
             {derBytes && (
               <Button variant="ghost" size="sm" className="ml-auto" onClick={handleCopyPermalink}>
-                {copiedPermalink ? "Copied!" : "Copy permalink"}
+                Copy permalink
               </Button>
             )}
           </div>

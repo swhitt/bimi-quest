@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ClipboardCopy, ExternalLink, Shield } from "lucide-react";
+import { ExternalLink, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,7 +115,6 @@ function extractCN(dn: string): string {
 }
 
 function CertSummaryCard({ cert }: { cert: CertMeta }) {
-  const [serialCopied, setSerialCopied] = useState(false);
   const notBefore = new Date(cert.notBefore);
   const notAfter = new Date(cert.notAfter);
   const now = new Date();
@@ -162,22 +162,7 @@ function CertSummaryCard({ cert }: { cert: CertMeta }) {
           <dt className="text-muted-foreground">Serial</dt>
           <dd className="truncate font-mono text-muted-foreground/60 flex items-center gap-1">
             <span className="truncate">{cert.serialNumber}</span>
-            <button
-              type="button"
-              className="inline-flex shrink-0"
-              onClick={() => {
-                navigator.clipboard.writeText(cert.serialNumber);
-                setSerialCopied(true);
-                setTimeout(() => setSerialCopied(false), 2000);
-              }}
-              aria-label="Copy serial number"
-            >
-              {serialCopied ? (
-                <Check className="size-3 text-emerald-500" />
-              ) : (
-                <ClipboardCopy className="size-3 text-muted-foreground hover:text-foreground" />
-              )}
-            </button>
+            <CopyButton value={cert.serialNumber} label="Serial number" />
           </dd>
         </dl>
         <div className="flex flex-wrap gap-3 mt-2">

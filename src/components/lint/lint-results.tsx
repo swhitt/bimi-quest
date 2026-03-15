@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ClipboardCopy, Download } from "lucide-react";
+import { ClipboardCopy, Download } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,8 +89,6 @@ interface LintResultsProps {
 }
 
 export function LintResults({ results, summary, cert }: LintResultsProps) {
-  const [mdCopied, setMdCopied] = useState(false);
-
   const grouped = new Map<string, LintResult[]>();
   for (const r of results) {
     const group = grouped.get(r.source) ?? [];
@@ -143,12 +141,11 @@ export function LintResults({ results, summary, cert }: LintResultsProps) {
             size="sm"
             onClick={() => {
               navigator.clipboard.writeText(resultsToMarkdown(results));
-              setMdCopied(true);
-              setTimeout(() => setMdCopied(false), 2000);
+              toast.success("Markdown copied");
             }}
           >
-            {mdCopied ? <Check className="size-3.5 text-emerald-500" /> : <ClipboardCopy className="size-3.5" />}
-            {mdCopied ? "Copied!" : "Copy as Markdown"}
+            <ClipboardCopy className="size-3.5" />
+            Copy as Markdown
           </Button>
         </div>
       </div>

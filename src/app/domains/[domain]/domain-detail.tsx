@@ -18,7 +18,7 @@ import { ExternalArrowIcon } from "@/components/ui/icons";
 import { BimiInboxPreview } from "@/components/bimi-inbox-preview";
 import { DomainWatchButton } from "@/components/domain-watch-button";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
-import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
+import { DiffBlock } from "@/components/dns/diff-block";
 import { type DnsChange, CHANGE_STYLE } from "@/components/dashboard/dns-changes-feed";
 import { UtcTime } from "@/components/ui/utc-time";
 import { useGlobalFilters } from "@/lib/use-global-filters";
@@ -402,8 +402,6 @@ function FreshCheckSection({ domain }: { domain: string }) {
   );
 }
 
-const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
-
 function DomainChangeHistory({ domain }: { domain: string }) {
   const [changes, setChanges] = useState<DnsChange[]>([]);
   const [loading, setLoading] = useState(true);
@@ -448,9 +446,6 @@ function DomainChangeHistory({ domain }: { domain: string }) {
               label: c.changeType,
               color: "text-muted-foreground",
             };
-            const showAll = POLICY_CHANGES.has(c.changeType);
-            const diffs = computeDiff(c.previousRecord, c.newRecord, showAll);
-
             return (
               <li key={`${c.recordType}-${c.changeType}-${i}`} className="rounded border px-2 py-1.5">
                 <div className="flex items-center gap-1.5 text-[13px]">
@@ -470,7 +465,7 @@ function DomainChangeHistory({ domain }: { domain: string }) {
                     </span>
                   )}
                 </div>
-                <DiffBlock diffs={diffs} />
+                <DiffBlock previousRecord={c.previousRecord} newRecord={c.newRecord} changeType={c.changeType} />
               </li>
             );
           })}
@@ -490,22 +485,27 @@ interface PaginationData {
 function DomainCertificates({ domain }: { domain: string }) {
   const { buildApiParams } = useGlobalFilters();
   const [data, setData] = useState<{ data: CertRow[]; pagination: PaginationData } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loading = !data && !error;
+  const fetchGenRef = useRef(0);
 
   const apiQuery = buildApiParams({ host: domain, sort: "notBefore", dir: "desc" });
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetch(`/api/certificates?${apiQuery}`)
+    const gen = ++fetchGenRef.current;
+    const controller = new AbortController();
+    fetch(`/api/certificates?${apiQuery}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load");
         return res.json();
       })
-      .then(setData)
-      .catch((err) => setError(errorMessage(err)))
-      .finally(() => setLoading(false));
+      .then((d) => {
+        if (gen === fetchGenRef.current) setData(d);
+      })
+      .catch((err) => {
+        if (gen === fetchGenRef.current) setError(errorMessage(err));
+      });
+    return () => controller.abort();
   }, [apiQuery]);
 
   if (error) {
