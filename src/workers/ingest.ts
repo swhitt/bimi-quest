@@ -104,6 +104,12 @@ if (mode === "stream") {
     console.error(err);
     process.exit(1);
   });
+} else if (mode === "backfill-scts") {
+  const { backfillScts } = await import("./modes/backfill-scts");
+  backfillScts(sql).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 } else if (mode === "backfill-certs") {
   const limit = parseInt(process.argv[3] || "1000", 10);
   const { backfillCerts } = await import("./modes/backfill-certs");

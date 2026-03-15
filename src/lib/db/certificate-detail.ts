@@ -4,7 +4,7 @@ import { extractDnField, pemToDer } from "@/lib/ct/parser";
 import { log } from "@/lib/logger";
 import { toArrayBuffer } from "@/lib/pem";
 import { db } from "./index";
-import { certificateChainLinks, certificates, chainCerts, domainBimiState } from "./schema";
+import { certificateChainLinks, certificates, certificateScts, chainCerts, domainBimiState } from "./schema";
 
 /**
  * Fetch full certificate detail by numeric ID.
@@ -17,7 +17,7 @@ export async function fetchCertificateDetail(certId: number) {
 
   const domains = cert.sanList.length > 0 ? cert.sanList : cert.subjectCn ? [cert.subjectCn] : [];
 
-  const [pairedCert, chainRaw, bimiStates, sanCountResult] = await Promise.all([
+  const [pairedCert, chainRaw, bimiStates, sanCountResult, scts] = await Promise.all([
     // Paired precert/final cert (same serial number, different isPrecert)
     db
       .select({
@@ -81,6 +81,20 @@ export async function fetchCertificateDetail(certId: number) {
             return { rows: [] as Record<string, unknown>[] };
           })
       : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+
+    // SCTs for this certificate
+    db
+      .select({
+        id: certificateScts.id,
+        logId: certificateScts.logId,
+        logName: certificateScts.logName,
+        logOperator: certificateScts.logOperator,
+        sctTimestamp: certificateScts.sctTimestamp,
+        lagSeconds: certificateScts.lagSeconds,
+      })
+      .from(certificateScts)
+      .where(eq(certificateScts.certificateId, certId))
+      .orderBy(certificateScts.sctTimestamp),
   ]);
 
   // Enrich chain certs with serial numbers and org names parsed from PEM
@@ -114,5 +128,6 @@ export async function fetchCertificateDetail(certId: number) {
     chain,
     bimiStates,
     sanCertCounts,
+    scts,
   };
 }

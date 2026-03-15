@@ -34,6 +34,7 @@ const toolsItems = [
   { href: "/dns-changes", label: "DNS Changes" },
   { href: "/map", label: "Map" },
   { href: "/tools/asn1", label: "ASN.1" },
+  { href: "/transparency", label: "Transparency" },
 ];
 
 // Secondary filter keys that travel as query params

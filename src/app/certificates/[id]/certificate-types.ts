@@ -69,6 +69,14 @@ export interface CertData {
     svgTinyPsValid: boolean | null;
   }[];
   sanCertCounts: Record<string, number>;
+  scts: {
+    id: number;
+    logId: string;
+    logName: string | null;
+    logOperator: string | null;
+    sctTimestamp: string;
+    lagSeconds: number | null;
+  }[];
 }
 
 export interface BimiCheckResult {

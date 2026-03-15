@@ -1,0 +1,2197 @@
+{
+  "id": "54f63780-d18b-4c73-b2a3-8a095572b914",
+  "prevId": "421f3eb0-f797-47a5-b251-0f62e36e8750",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.ca_certificates": {
+      "name": "ca_certificates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ccadb_record_id": {
+          "name": "ccadb_record_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "certificate_name": {
+          "name": "certificate_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "record_type": {
+          "name": "record_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint_sha256": {
+          "name": "fingerprint_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_fingerprint_sha256": {
+          "name": "parent_fingerprint_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_key_identifier": {
+          "name": "subject_key_identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authority_key_identifier": {
+          "name": "authority_key_identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_dn": {
+          "name": "subject_dn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "issuer_dn": {
+          "name": "issuer_dn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ca_owner": {
+          "name": "ca_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subordinate_ca_owner": {
+          "name": "subordinate_ca_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_from": {
+          "name": "valid_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_to": {
+          "name": "valid_to",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revocation_status": {
+          "name": "revocation_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "apple_status": {
+          "name": "apple_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "chrome_status": {
+          "name": "chrome_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "microsoft_status": {
+          "name": "microsoft_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mozilla_status": {
+          "name": "mozilla_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "derived_trust_bits": {
+          "name": "derived_trust_bits",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "technically_constrained": {
+          "name": "technically_constrained",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "ev_oids": {
+          "name": "ev_oids",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auditor_name": {
+          "name": "auditor_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standard_audit_url": {
+          "name": "standard_audit_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "crl_urls": {
+          "name": "crl_urls",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cp_cps_url": {
+          "name": "cp_cps_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_pem": {
+          "name": "raw_pem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cross_sign_group_id": {
+          "name": "cross_sign_group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_ca_certs_parent_fp": {
+          "name": "idx_ca_certs_parent_fp",
+          "columns": [
+            {
+              "expression": "parent_fingerprint_sha256",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ca_certs_ski": {
+          "name": "idx_ca_certs_ski",
+          "columns": [
+            {
+              "expression": "subject_key_identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ca_certs_ca_owner": {
+          "name": "idx_ca_certs_ca_owner",
+          "columns": [
+            {
+              "expression": "ca_owner",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ca_certs_record_type": {
+          "name": "idx_ca_certs_record_type",
+          "columns": [
+            {
+              "expression": "record_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ca_certs_cross_sign_group": {
+          "name": "idx_ca_certs_cross_sign_group",
+          "columns": [
+            {
+              "expression": "cross_sign_group_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ca_certificates_fingerprint_sha256_unique": {
+          "name": "ca_certificates_fingerprint_sha256_unique",
+          "nullsNotDistinct": false,
+          "columns": ["fingerprint_sha256"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ca_cross_signs": {
+      "name": "ca_cross_signs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cert_id_a": {
+          "name": "cert_id_a",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cert_id_b": {
+          "name": "cert_id_b",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shared_ski": {
+          "name": "shared_ski",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_ca_cross_signs_a": {
+          "name": "idx_ca_cross_signs_a",
+          "columns": [
+            {
+              "expression": "cert_id_a",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ca_cross_signs_b": {
+          "name": "idx_ca_cross_signs_b",
+          "columns": [
+            {
+              "expression": "cert_id_b",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ca_cross_signs_cert_id_a_ca_certificates_id_fk": {
+          "name": "ca_cross_signs_cert_id_a_ca_certificates_id_fk",
+          "tableFrom": "ca_cross_signs",
+          "tableTo": "ca_certificates",
+          "columnsFrom": ["cert_id_a"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ca_cross_signs_cert_id_b_ca_certificates_id_fk": {
+          "name": "ca_cross_signs_cert_id_b_ca_certificates_id_fk",
+          "tableFrom": "ca_cross_signs",
+          "tableTo": "ca_certificates",
+          "columnsFrom": ["cert_id_b"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ca_sync_cursors": {
+      "name": "ca_sync_cursors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_sync_at": {
+          "name": "last_sync_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "record_count": {
+          "name": "record_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ca_sync_cursors_source_name_unique": {
+          "name": "ca_sync_cursors_source_name_unique",
+          "nullsNotDistinct": false,
+          "columns": ["source_name"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.certificate_chain_links": {
+      "name": "certificate_chain_links",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "leaf_cert_id": {
+          "name": "leaf_cert_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chain_cert_id": {
+          "name": "chain_cert_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chain_position": {
+          "name": "chain_position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_chain_links_leaf_cert_id": {
+          "name": "idx_chain_links_leaf_cert_id",
+          "columns": [
+            {
+              "expression": "leaf_cert_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_chain_links_unique": {
+          "name": "idx_chain_links_unique",
+          "columns": [
+            {
+              "expression": "leaf_cert_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chain_cert_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "certificate_chain_links_leaf_cert_id_certificates_id_fk": {
+          "name": "certificate_chain_links_leaf_cert_id_certificates_id_fk",
+          "tableFrom": "certificate_chain_links",
+          "tableTo": "certificates",
+          "columnsFrom": ["leaf_cert_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "certificate_chain_links_chain_cert_id_chain_certs_id_fk": {
+          "name": "certificate_chain_links_chain_cert_id_chain_certs_id_fk",
+          "tableFrom": "certificate_chain_links",
+          "tableTo": "chain_certs",
+          "columnsFrom": ["chain_cert_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.certificate_scts": {
+      "name": "certificate_scts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "certificate_id": {
+          "name": "certificate_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sct_version": {
+          "name": "sct_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "log_id": {
+          "name": "log_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sct_timestamp": {
+          "name": "sct_timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash_algorithm": {
+          "name": "hash_algorithm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sig_algorithm": {
+          "name": "sig_algorithm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "log_name": {
+          "name": "log_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "log_operator": {
+          "name": "log_operator",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "log_url": {
+          "name": "log_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lag_seconds": {
+          "name": "lag_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_scts_certificate_id": {
+          "name": "idx_scts_certificate_id",
+          "columns": [
+            {
+              "expression": "certificate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_scts_log_id": {
+          "name": "idx_scts_log_id",
+          "columns": [
+            {
+              "expression": "log_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_scts_sct_timestamp": {
+          "name": "idx_scts_sct_timestamp",
+          "columns": [
+            {
+              "expression": "sct_timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_scts_log_name": {
+          "name": "idx_scts_log_name",
+          "columns": [
+            {
+              "expression": "log_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_scts_cert_log": {
+          "name": "idx_scts_cert_log",
+          "columns": [
+            {
+              "expression": "certificate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "log_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "certificate_scts_certificate_id_certificates_id_fk": {
+          "name": "certificate_scts_certificate_id_certificates_id_fk",
+          "tableFrom": "certificate_scts",
+          "tableTo": "certificates",
+          "columnsFrom": ["certificate_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.certificates": {
+      "name": "certificates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "fingerprint_sha256": {
+          "name": "fingerprint_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "serial_number": {
+          "name": "serial_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "not_before": {
+          "name": "not_before",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "not_after": {
+          "name": "not_after",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_dn": {
+          "name": "subject_dn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_cn": {
+          "name": "subject_cn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_org": {
+          "name": "subject_org",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_org_slug": {
+          "name": "subject_org_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_country": {
+          "name": "subject_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_state": {
+          "name": "subject_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_locality": {
+          "name": "subject_locality",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "issuer_dn": {
+          "name": "issuer_dn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issuer_cn": {
+          "name": "issuer_cn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "issuer_org": {
+          "name": "issuer_org",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "root_ca_org": {
+          "name": "root_ca_org",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "san_list": {
+          "name": "san_list",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "mark_type": {
+          "name": "mark_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cert_type": {
+          "name": "cert_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logotype_svg_hash": {
+          "name": "logotype_svg_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logotype_svg": {
+          "name": "logotype_svg",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_pem": {
+          "name": "raw_pem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_precert": {
+          "name": "is_precert",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "ct_log_timestamp": {
+          "name": "ct_log_timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ct_log_index": {
+          "name": "ct_log_index",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ct_log_name": {
+          "name": "ct_log_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'gorgon'"
+        },
+        "extensions_json": {
+          "name": "extensions_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "crtsh_id": {
+          "name": "crtsh_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notability_score": {
+          "name": "notability_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notability_reason": {
+          "name": "notability_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "company_description": {
+          "name": "company_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "industry": {
+          "name": "industry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_color_richness": {
+          "name": "logo_color_richness",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_quality_score": {
+          "name": "logo_quality_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_quality_reason": {
+          "name": "logo_quality_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_tile_bg": {
+          "name": "logo_tile_bg",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logotype_visual_hash": {
+          "name": "logotype_visual_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_test": {
+          "name": "is_test",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "is_superseded": {
+          "name": "is_superseded",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "sct_count": {
+          "name": "sct_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discovery_source": {
+          "name": "discovery_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ct-gorgon'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_certificates_serial_number": {
+          "name": "idx_certificates_serial_number",
+          "columns": [
+            {
+              "expression": "serial_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_not_before": {
+          "name": "idx_certificates_not_before",
+          "columns": [
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_issuer_org": {
+          "name": "idx_certificates_issuer_org",
+          "columns": [
+            {
+              "expression": "issuer_org",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_issuer_notbefore": {
+          "name": "idx_certs_issuer_notbefore",
+          "columns": [
+            {
+              "expression": "issuer_org",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_subject_country": {
+          "name": "idx_certificates_subject_country",
+          "columns": [
+            {
+              "expression": "subject_country",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_serial_precert": {
+          "name": "idx_certificates_serial_precert",
+          "columns": [
+            {
+              "expression": "serial_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_precert",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_type_notbefore": {
+          "name": "idx_certs_type_notbefore",
+          "columns": [
+            {
+              "expression": "cert_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_rootca_notbefore": {
+          "name": "idx_certs_rootca_notbefore",
+          "columns": [
+            {
+              "expression": "root_ca_org",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_type_rootca_notbefore": {
+          "name": "idx_certs_type_rootca_notbefore",
+          "columns": [
+            {
+              "expression": "cert_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "root_ca_org",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_notafter_precert": {
+          "name": "idx_certs_notafter_precert",
+          "columns": [
+            {
+              "expression": "not_after",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_precert",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_san_list_gin": {
+          "name": "idx_certificates_san_list_gin",
+          "columns": [
+            {
+              "expression": "san_list",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "idx_certificates_subject_org": {
+          "name": "idx_certificates_subject_org",
+          "columns": [
+            {
+              "expression": "subject_org",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_subject_org_lower": {
+          "name": "idx_certificates_subject_org_lower",
+          "columns": [
+            {
+              "expression": "LOWER(\"subject_org\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_fingerprint_prefix": {
+          "name": "idx_certificates_fingerprint_prefix",
+          "columns": [
+            {
+              "expression": "fingerprint_sha256",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_subject_org_slug": {
+          "name": "idx_certificates_subject_org_slug",
+          "columns": [
+            {
+              "expression": "subject_org_slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_industry": {
+          "name": "idx_certificates_industry",
+          "columns": [
+            {
+              "expression": "industry",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_svg_hash": {
+          "name": "idx_certificates_svg_hash",
+          "columns": [
+            {
+              "expression": "logotype_svg_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certificates_visual_hash": {
+          "name": "idx_certificates_visual_hash",
+          "columns": [
+            {
+              "expression": "logotype_visual_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_active_notbefore": {
+          "name": "idx_certs_active_notbefore",
+          "columns": [
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"certificates\".\"is_superseded\" = false",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_notability_score": {
+          "name": "idx_certs_notability_score",
+          "columns": [
+            {
+              "expression": "notability_score",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_notability_null": {
+          "name": "idx_certs_notability_null",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"certificates\".\"notability_score\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_org_notbefore": {
+          "name": "idx_certs_org_notbefore",
+          "columns": [
+            {
+              "expression": "subject_org",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_industry_notbefore": {
+          "name": "idx_certs_industry_notbefore",
+          "columns": [
+            {
+              "expression": "industry",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_marktype_notbefore": {
+          "name": "idx_certs_marktype_notbefore",
+          "columns": [
+            {
+              "expression": "mark_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "not_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_certs_serial_lower": {
+          "name": "idx_certs_serial_lower",
+          "columns": [
+            {
+              "expression": "LOWER(\"serial_number\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "certificates_fingerprint_sha256_unique": {
+          "name": "certificates_fingerprint_sha256_unique",
+          "nullsNotDistinct": false,
+          "columns": ["fingerprint_sha256"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chain_certs": {
+      "name": "chain_certs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "fingerprint_sha256": {
+          "name": "fingerprint_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_dn": {
+          "name": "subject_dn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issuer_dn": {
+          "name": "issuer_dn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_pem": {
+          "name": "raw_pem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "not_before": {
+          "name": "not_before",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "not_after": {
+          "name": "not_after",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "chain_certs_fingerprint_sha256_unique": {
+          "name": "chain_certs_fingerprint_sha256_unique",
+          "nullsNotDistinct": false,
+          "columns": ["fingerprint_sha256"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ct_log_entries": {
+      "name": "ct_log_entries",
+      "schema": "",
+      "columns": {
+        "index": {
+          "name": "index",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "log_name": {
+          "name": "log_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'gorgon'"
+        },
+        "leaf_input": {
+          "name": "leaf_input",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extra_data": {
+          "name": "extra_data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_ct_entries_log_index": {
+          "name": "idx_ct_entries_log_index",
+          "columns": [
+            {
+              "expression": "log_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dmarc_policy_changes": {
+      "name": "dmarc_policy_changes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_policy": {
+          "name": "previous_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_policy": {
+          "name": "new_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_pct": {
+          "name": "previous_pct",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_pct": {
+          "name": "new_pct",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detected_at": {
+          "name": "detected_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_dmarc_changes_domain": {
+          "name": "idx_dmarc_changes_domain",
+          "columns": [
+            {
+              "expression": "domain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_dmarc_changes_detected_at": {
+          "name": "idx_dmarc_changes_detected_at",
+          "columns": [
+            {
+              "expression": "detected_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "dmarc_policy_changes_domain_domain_bimi_state_domain_fk": {
+          "name": "dmarc_policy_changes_domain_domain_bimi_state_domain_fk",
+          "tableFrom": "dmarc_policy_changes",
+          "tableTo": "domain_bimi_state",
+          "columnsFrom": ["domain"],
+          "columnsTo": ["domain"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dns_record_changes": {
+      "name": "dns_record_changes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "record_type": {
+          "name": "record_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "change_type": {
+          "name": "change_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_raw": {
+          "name": "previous_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_raw": {
+          "name": "new_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_record": {
+          "name": "previous_record",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_record": {
+          "name": "new_record",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detected_at": {
+          "name": "detected_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_dns_changes_detected_at": {
+          "name": "idx_dns_changes_detected_at",
+          "columns": [
+            {
+              "expression": "detected_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_dns_changes_domain_detected": {
+          "name": "idx_dns_changes_domain_detected",
+          "columns": [
+            {
+              "expression": "domain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "detected_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "dns_record_changes_domain_domain_bimi_state_domain_fk": {
+          "name": "dns_record_changes_domain_domain_bimi_state_domain_fk",
+          "tableFrom": "dns_record_changes",
+          "tableTo": "domain_bimi_state",
+          "columnsFrom": ["domain"],
+          "columnsTo": ["domain"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.domain_bimi_state": {
+      "name": "domain_bimi_state",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bimi_record_raw": {
+          "name": "bimi_record_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_version": {
+          "name": "bimi_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_logo_url": {
+          "name": "bimi_logo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_authority_url": {
+          "name": "bimi_authority_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dmarc_record_raw": {
+          "name": "dmarc_record_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dmarc_policy": {
+          "name": "dmarc_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dmarc_pct": {
+          "name": "dmarc_pct",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dmarc_valid": {
+          "name": "dmarc_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_fetched": {
+          "name": "svg_fetched",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "svg_content": {
+          "name": "svg_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_content_type": {
+          "name": "svg_content_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_size_bytes": {
+          "name": "svg_size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_tiny_ps_valid": {
+          "name": "svg_tiny_ps_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_validation_errors": {
+          "name": "svg_validation_errors",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_lps_tag": {
+          "name": "bimi_lps_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_avp_tag": {
+          "name": "bimi_avp_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_declination": {
+          "name": "bimi_declination",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "bimi_selector": {
+          "name": "bimi_selector",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'default'"
+        },
+        "bimi_org_domain_fallback": {
+          "name": "bimi_org_domain_fallback",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "bimi_record_count": {
+          "name": "bimi_record_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dmarc_record_count": {
+          "name": "dmarc_record_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_indicator_hash": {
+          "name": "svg_indicator_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_tile_bg": {
+          "name": "svg_tile_bg",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bimi_grade": {
+          "name": "bimi_grade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dns_snapshot": {
+          "name": "dns_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_checked": {
+          "name": "last_checked",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_domain_bimi_dns_snapshot": {
+          "name": "idx_domain_bimi_dns_snapshot",
+          "columns": [
+            {
+              "expression": "dns_snapshot",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "idx_domain_bimi_last_checked": {
+          "name": "idx_domain_bimi_last_checked",
+          "columns": [
+            {
+              "expression": "last_checked",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domain_bimi_grade": {
+          "name": "idx_domain_bimi_grade",
+          "columns": [
+            {
+              "expression": "bimi_grade",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domain_bimi_dmarc_policy": {
+          "name": "idx_domain_bimi_dmarc_policy",
+          "columns": [
+            {
+              "expression": "dmarc_policy",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "domain_bimi_state_domain_unique": {
+          "name": "domain_bimi_state_domain_unique",
+          "nullsNotDistinct": false,
+          "columns": ["domain"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.domain_watches": {
+      "name": "domain_watches",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "webhook_url": {
+          "name": "webhook_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_domain_watches_domain_webhook": {
+          "name": "idx_domain_watches_domain_webhook",
+          "columns": [
+            {
+              "expression": "domain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "webhook_url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ingestion_cursors": {
+      "name": "ingestion_cursors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "log_name": {
+          "name": "log_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_index": {
+          "name": "last_index",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "tree_size": {
+          "name": "tree_size",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_run": {
+          "name": "last_run",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ingestion_cursors_log_name_unique": {
+          "name": "ingestion_cursors_log_name_unique",
+          "nullsNotDistinct": false,
+          "columns": ["log_name"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.og_cache": {
+      "name": "og_cache",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "png": {
+          "name": "png",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

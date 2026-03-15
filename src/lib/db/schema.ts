@@ -69,6 +69,8 @@ export const certificates = pgTable(
     isTest: boolean("is_test").default(false),
     // True when a precert has been superseded by its matching final certificate
     isSuperseded: boolean("is_superseded").default(false),
+    // Denormalized count of SCTs embedded in this certificate
+    sctCount: integer("sct_count"),
     // How the cert was discovered: "ct-gorgon" (CT log scan), "validation" (user-initiated lookup), etc.
     discoverySource: text("discovery_source").default("ct-gorgon"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -191,6 +193,37 @@ export interface DnsSnapshot {
     grade: string | null;
   };
 }
+
+// ---------------------------------------------------------------------------
+// Certificate SCTs (Signed Certificate Timestamps)
+// ---------------------------------------------------------------------------
+
+export const certificateScts = pgTable(
+  "certificate_scts",
+  {
+    id: serial("id").primaryKey(),
+    certificateId: integer("certificate_id")
+      .notNull()
+      .references(() => certificates.id),
+    sctVersion: integer("sct_version"),
+    logId: text("log_id").notNull(),
+    sctTimestamp: timestamp("sct_timestamp", { withTimezone: true }).notNull(),
+    hashAlgorithm: integer("hash_algorithm"),
+    sigAlgorithm: integer("sig_algorithm"),
+    logName: text("log_name"),
+    logOperator: text("log_operator"),
+    logUrl: text("log_url"),
+    lagSeconds: integer("lag_seconds"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_scts_certificate_id").on(table.certificateId),
+    index("idx_scts_log_id").on(table.logId),
+    index("idx_scts_sct_timestamp").on(table.sctTimestamp),
+    index("idx_scts_log_name").on(table.logName),
+    uniqueIndex("idx_scts_cert_log").on(table.certificateId, table.logId),
+  ],
+);
 
 export const domainBimiState = pgTable(
   "domain_bimi_state",
