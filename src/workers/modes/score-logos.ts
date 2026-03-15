@@ -7,8 +7,7 @@ import type { LogoGroupRow } from "../types";
 
 /**
  * Score logo visual quality using Gemini Flash-Lite.
- * Groups by svg_hash to avoid re-scoring identical logos across certs.
- * Sends batches of 20 logos as 128x128 PNGs for multimodal scoring.
+ * Queries the logos table directly. Sends batches of 20 logos as 128x128 PNGs.
  *
  * @param maxLogos - 0 means no limit
  * @param recalc - if true, re-score all logos (not just unscored)
@@ -41,29 +40,35 @@ export async function scoreLogos(sql: NeonQueryFunction<false, false>, maxLogos 
     const rows = (
       recalc
         ? await sql`
-          SELECT logotype_svg_hash as hash,
-            (array_agg(logotype_svg ORDER BY notability_score DESC NULLS LAST))[1] as svg,
-            (array_agg(COALESCE(subject_org, san_list[1]) ORDER BY notability_score DESC NULLS LAST))[1] as label
-          FROM certificates
-          WHERE logotype_svg_hash IS NOT NULL
-            AND logotype_svg IS NOT NULL
-          GROUP BY logotype_svg_hash
-          ORDER BY logotype_svg_hash
+          SELECT svg_hash as hash, svg_content as svg,
+            svg_hash as label
+          FROM logos
+          ORDER BY svg_hash
           LIMIT ${remaining} OFFSET ${offset}
         `
         : await sql`
-          SELECT logotype_svg_hash as hash,
-            (array_agg(logotype_svg ORDER BY notability_score DESC NULLS LAST))[1] as svg,
-            (array_agg(COALESCE(subject_org, san_list[1]) ORDER BY notability_score DESC NULLS LAST))[1] as label
-          FROM certificates
-          WHERE logotype_svg_hash IS NOT NULL
-            AND logotype_svg IS NOT NULL
-            AND logo_quality_score IS NULL
-          GROUP BY logotype_svg_hash
+          SELECT svg_hash as hash, svg_content as svg,
+            svg_hash as label
+          FROM logos
+          WHERE quality_score IS NULL
           LIMIT ${remaining}
         `
     ) as LogoGroupRow[];
     if (rows.length === 0) break;
+
+    // Get representative org name for each logo from certificates
+    const hashes = rows.map((r) => r.hash);
+    const labelRows = (await sql`
+      SELECT logotype_svg_hash AS hash,
+        (array_agg(COALESCE(subject_org, san_list[1]) ORDER BY notability_score DESC NULLS LAST))[1] AS label
+      FROM certificates
+      WHERE logotype_svg_hash = ANY(${hashes})
+      GROUP BY logotype_svg_hash
+    `) as { hash: string; label: string | null }[];
+    const labelMap = new Map(labelRows.map((r) => [r.hash, r.label]));
+    for (const row of rows) {
+      row.label = labelMap.get(row.hash) ?? row.hash.slice(0, 12);
+    }
 
     // Convert SVGs to PNGs
     const logos: { svgHash: string; png: Buffer; label: string }[] = [];

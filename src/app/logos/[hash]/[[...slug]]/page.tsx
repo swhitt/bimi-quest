@@ -1,10 +1,10 @@
 import { cache } from "react";
-import { and, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
-import { certificates, domainBimiState } from "@/lib/db/schema";
+import { certificates, domainBimiState, logos } from "@/lib/db/schema";
 import { domainSlug } from "@/lib/domain-slug";
 import { LogoDetailClient } from "./logo-detail-client";
 
@@ -12,79 +12,148 @@ interface Props {
   params: Promise<{ hash: string; slug?: string[] }>;
 }
 
-const LOGO_COLUMNS = {
-  svgHash: certificates.logotypeSvgHash,
-  svg: certificates.logotypeSvg,
-  org: certificates.subjectOrg,
-  domain: certificates.sanList,
-  certType: certificates.certType,
-  markType: certificates.markType,
-  issuer: certificates.issuerOrg,
-  rootCa: certificates.rootCaOrg,
-  score: certificates.notabilityScore,
-  logoQuality: certificates.logoQualityScore,
-  reason: certificates.notabilityReason,
-  description: certificates.companyDescription,
-  country: certificates.subjectCountry,
-  notBefore: certificates.notBefore,
-  notAfter: certificates.notAfter,
-  fingerprintSha256: certificates.fingerprintSha256,
-  isPrecert: certificates.isPrecert,
-  ctLogIndex: certificates.ctLogIndex,
-};
-
-/** Deduplicated logo lookup shared by generateMetadata and the page component. */
+/** Look up a logo by hash (exact or prefix), returning logo + representative cert data. */
 const getLogo = cache(async (hash: string) => {
-  // Try certificate fingerprint prefix first
+  // Try fingerprint prefix first (for legacy /logos/{cert-fp-prefix} URLs)
   const [byFp] = await db
-    .select(LOGO_COLUMNS)
-    .from(certificates)
-    .where(and(sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
-    .limit(1);
-  if (byFp) return byFp;
-
-  // Fall back to SVG content hash in certificates table
-  const [bySvgHash] = await db
-    .select(LOGO_COLUMNS)
-    .from(certificates)
-    .where(and(sql`${certificates.logotypeSvgHash} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvg)))
-    .limit(1);
-  if (bySvgHash) return bySvgHash;
-
-  // Final fallback: domain_bimi_state (logos fetched from BIMI DNS, no cert in our DB)
-  const [byDomain] = await db
     .select({
-      svgContent: domainBimiState.svgContent,
-      svgHash: domainBimiState.svgIndicatorHash,
-      domain: domainBimiState.domain,
+      svgHash: certificates.logotypeSvgHash,
+      org: certificates.subjectOrg,
+      domain: certificates.sanList,
+      certType: certificates.certType,
+      markType: certificates.markType,
+      issuer: certificates.issuerOrg,
+      rootCa: certificates.rootCaOrg,
+      score: certificates.notabilityScore,
+      reason: certificates.notabilityReason,
+      description: certificates.companyDescription,
+      country: certificates.subjectCountry,
+      notBefore: certificates.notBefore,
+      notAfter: certificates.notAfter,
+      fingerprintSha256: certificates.fingerprintSha256,
+      isPrecert: certificates.isPrecert,
+      ctLogIndex: certificates.ctLogIndex,
     })
-    .from(domainBimiState)
-    .where(and(sql`${domainBimiState.svgIndicatorHash} LIKE ${hash + "%"}`, isNotNull(domainBimiState.svgContent)))
+    .from(certificates)
+    .where(and(sql`${certificates.fingerprintSha256} LIKE ${hash + "%"}`, isNotNull(certificates.logotypeSvgHash)))
     .limit(1);
-  if (byDomain) {
+  if (byFp?.svgHash) {
+    const [logo] = await db
+      .select({ svgContent: logos.svgContent, qualityScore: logos.qualityScore })
+      .from(logos)
+      .where(eq(logos.svgHash, byFp.svgHash))
+      .limit(1);
+    return { ...byFp, svg: logo?.svgContent ?? null, logoQuality: logo?.qualityScore ?? null };
+  }
+
+  // Primary: look up logo by SVG hash prefix, then get representative cert
+  const [logo] = await db
+    .select({
+      svgHash: logos.svgHash,
+      svgContent: logos.svgContent,
+      qualityScore: logos.qualityScore,
+    })
+    .from(logos)
+    .where(sql`${logos.svgHash} LIKE ${hash + "%"}`)
+    .limit(1);
+  if (!logo) return null;
+
+  // Get representative cert (highest notability) for this logo
+  const [cert] = await db
+    .select({
+      org: certificates.subjectOrg,
+      domain: certificates.sanList,
+      certType: certificates.certType,
+      markType: certificates.markType,
+      issuer: certificates.issuerOrg,
+      rootCa: certificates.rootCaOrg,
+      score: certificates.notabilityScore,
+      reason: certificates.notabilityReason,
+      description: certificates.companyDescription,
+      country: certificates.subjectCountry,
+      notBefore: certificates.notBefore,
+      notAfter: certificates.notAfter,
+      fingerprintSha256: certificates.fingerprintSha256,
+      isPrecert: certificates.isPrecert,
+      ctLogIndex: certificates.ctLogIndex,
+    })
+    .from(certificates)
+    .where(eq(certificates.logotypeSvgHash, logo.svgHash))
+    .orderBy(desc(certificates.notabilityScore))
+    .limit(1);
+
+  if (cert) {
     return {
-      svgHash: byDomain.svgHash,
-      svg: byDomain.svgContent,
-      org: byDomain.domain,
-      domain: [byDomain.domain],
-      certType: null,
-      markType: null,
-      issuer: null,
-      rootCa: null,
-      score: null,
-      logoQuality: null,
-      reason: null,
-      description: null,
-      country: null,
-      notBefore: null,
-      notAfter: null,
-      fingerprintSha256: byDomain.svgHash ?? hash,
-      isPrecert: false,
-      ctLogIndex: null,
+      svgHash: logo.svgHash,
+      svg: logo.svgContent,
+      logoQuality: logo.qualityScore,
+      ...cert,
     };
   }
 
-  return null;
+  // DNS-only logo: check domain_bimi_state for context
+  const [domainRow] = await db
+    .select({ domain: domainBimiState.domain })
+    .from(domainBimiState)
+    .where(eq(domainBimiState.svgIndicatorHash, logo.svgHash))
+    .limit(1);
+
+  return {
+    svgHash: logo.svgHash,
+    svg: logo.svgContent,
+    logoQuality: logo.qualityScore,
+    org: domainRow?.domain ?? null,
+    domain: domainRow ? [domainRow.domain] : [],
+    certType: null,
+    markType: null,
+    issuer: null,
+    rootCa: null,
+    score: null,
+    reason: null,
+    description: null,
+    country: null,
+    notBefore: null,
+    notAfter: null,
+    fingerprintSha256: logo.svgHash,
+    isPrecert: false,
+    ctLogIndex: null,
+  };
+});
+
+/** Fetch cross-reference data: all certs, domains, and orgs sharing this logo. */
+const getCrossRefs = cache(async (svgHash: string) => {
+  const [relatedCerts, relatedDomains] = await Promise.all([
+    db
+      .select({
+        fingerprintSha256: certificates.fingerprintSha256,
+        subjectOrg: certificates.subjectOrg,
+        certType: certificates.certType,
+        notBefore: certificates.notBefore,
+        notAfter: certificates.notAfter,
+        isPrecert: certificates.isPrecert,
+        sanList: certificates.sanList,
+      })
+      .from(certificates)
+      .where(eq(certificates.logotypeSvgHash, svgHash))
+      .orderBy(desc(certificates.notBefore))
+      .limit(50),
+    db
+      .select({ domain: domainBimiState.domain })
+      .from(domainBimiState)
+      .where(eq(domainBimiState.svgIndicatorHash, svgHash)),
+  ]);
+
+  // Distinct orgs from certs
+  const orgSet = new Set<string>();
+  for (const c of relatedCerts) {
+    if (c.subjectOrg) orgSet.add(c.subjectOrg);
+  }
+
+  return {
+    certs: relatedCerts,
+    domains: relatedDomains.map((d) => d.domain),
+    orgs: Array.from(orgSet),
+  };
 });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -137,6 +206,8 @@ export default async function LogoPage({ params }: Props) {
     redirect(`/logos/${hash}/${expectedSlug}`);
   }
 
+  const crossRefs = logo.svgHash ? await getCrossRefs(logo.svgHash) : null;
+
   return (
     <LogoDetailClient
       logo={{
@@ -160,6 +231,22 @@ export default async function LogoPage({ params }: Props) {
         isPrecert: logo.isPrecert ?? false,
         ctLogIndex: logo.ctLogIndex != null ? String(logo.ctLogIndex) : null,
       }}
+      crossRefs={
+        crossRefs
+          ? {
+              certs: crossRefs.certs.map((c) => ({
+                fingerprintSha256: c.fingerprintSha256,
+                subjectOrg: c.subjectOrg,
+                certType: c.certType,
+                notBefore: c.notBefore.toISOString(),
+                notAfter: c.notAfter.toISOString(),
+                isPrecert: c.isPrecert ?? false,
+              })),
+              domains: crossRefs.domains,
+              orgs: crossRefs.orgs,
+            }
+          : null
+      }
     />
   );
 }

@@ -27,13 +27,9 @@ function makeRow(): BimiDnsRow {
     dmarc_pct: 100,
     dmarc_valid: true,
     svg_fetched: true,
-    svg_content: "<svg>...</svg>",
     svg_content_type: "image/svg+xml",
     svg_size_bytes: 1234,
-    svg_tiny_ps_valid: true,
-    svg_validation_errors: null,
     svg_indicator_hash: "abc123",
-    svg_tile_bg: "light",
     dns_snapshot: { version: 2, checkedAt: "2025-01-01T00:00:00Z" } as never,
   };
 }
@@ -91,8 +87,8 @@ describe("persist-domain-state", () => {
   });
 
   describe("field count consistency", () => {
-    it("DOMAIN_STATE_FIELDS has exactly 25 entries (24 data fields + domain)", () => {
-      expect(DOMAIN_STATE_FIELDS.length).toBe(25);
+    it("DOMAIN_STATE_FIELDS has exactly 21 entries (20 data fields + domain)", () => {
+      expect(DOMAIN_STATE_FIELDS.length).toBe(21);
     });
   });
 });

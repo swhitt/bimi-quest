@@ -2,8 +2,6 @@ import { normalizeIssuerOrg } from "@/lib/ca-display";
 import type { BIMICertData } from "@/lib/ct/parser";
 import { isTestCert } from "@/lib/ct/test-detection";
 import { slugify } from "@/lib/slugify";
-import { computeColorRichness } from "@/lib/svg-color-richness";
-import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 
 /**
  * Build the values object for inserting a BIMI certificate into the
@@ -50,16 +48,6 @@ export function buildCertInsertValues(
     markType: bimiData.markType,
     certType: bimiData.certType,
     logotypeSvgHash: bimiData.logotypeSvgHash,
-    logotypeSvg: bimiData.logotypeSvg,
-    logoColorRichness: bimiData.logotypeSvg ? computeColorRichness(bimiData.logotypeSvg) : null,
-    logoTileBg: bimiData.logotypeSvg
-      ? isLightBg(tileBgForSvg(stripWhiteSvgBg(bimiData.logotypeSvg)))
-        ? "light"
-        : "dark"
-      : null,
-    // Visual hash is deferred to the backfillVisualHash worker to keep
-    // the ingestion hot path fast (sharp render is 50-200ms per cert)
-    logotypeVisualHash: null,
     rawPem: bimiData.rawPem,
     isTest: isTestCert(bimiData.sanList),
     isPrecert,

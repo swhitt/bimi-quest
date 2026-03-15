@@ -27,7 +27,7 @@ export interface CountRow {
 export interface ReparseRow {
   id: number;
   raw_pem: string;
-  logotype_svg: string | null;
+  logotype_svg_hash: string | null;
   mark_type: string | null;
 }
 

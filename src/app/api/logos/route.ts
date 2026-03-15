@@ -4,7 +4,7 @@ import { apiError } from "@/lib/api-utils";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { buildCertificateConditions } from "@/lib/db/certificate-filters";
-import { certificates } from "@/lib/db/schema";
+import { certificates, logos } from "@/lib/db/schema";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 import { serverTiming } from "@/lib/server-timing";
 
@@ -34,35 +34,31 @@ export async function GET(request: NextRequest) {
     const globalFilters = buildCertificateConditions(params);
     const baseWhere = and(
       isNotNull(certificates.logotypeSvgHash),
-      isNotNull(certificates.logotypeSvg),
       isNotNull(certificates.subjectOrg),
       gte(certificates.notabilityScore, minScore),
       ...(maxScore !== null ? [lte(certificates.notabilityScore, maxScore)] : []),
-      ...(minColorRichness !== null ? [gte(certificates.logoColorRichness, minColorRichness)] : []),
-      ...(minLogoQuality !== null ? [gte(certificates.logoQualityScore, minLogoQuality)] : []),
+      ...(minColorRichness !== null ? [gte(logos.colorRichness, minColorRichness)] : []),
+      ...(minLogoQuality !== null ? [gte(logos.qualityScore, minLogoQuality)] : []),
       globalFilters,
     );
 
     // Group by org name or SVG hash depending on dedup mode.
-    // Default groups by org (different orgs sharing the same SVG appear as separate rows).
-    // dedupSvg groups by SVG hash (only one row per unique visual logo).
     const groupExpr = dedupSvg
-      ? sql`COALESCE(${certificates.logotypeVisualHash}, ${certificates.logotypeSvgHash})`
+      ? sql`COALESCE(${logos.visualHash}, ${certificates.logotypeSvgHash})`
       : sql`lower(trim(${certificates.subjectOrg}))`;
 
     const orderClause =
       sort === "recent"
         ? sql`max(${certificates.notBefore}) desc`
         : sort === "quality"
-          ? sql`max(${certificates.logoQualityScore}) desc nulls last, max(${certificates.notBefore}) desc`
+          ? sql`max(${logos.qualityScore}) desc nulls last, max(${certificates.notBefore}) desc`
           : sql`max(${certificates.notabilityScore}) desc nulls last, max(${certificates.notBefore}) desc`;
 
-    // Determines which cert is "representative" within each org group
     const pickOrder =
       sort === "recent"
         ? sql`${certificates.notBefore} DESC, ${certificates.notabilityScore} DESC NULLS LAST`
         : sort === "quality"
-          ? sql`${certificates.logoQualityScore} DESC NULLS LAST, ${certificates.notabilityScore} DESC NULLS LAST`
+          ? sql`${logos.qualityScore} DESC NULLS LAST, ${certificates.notabilityScore} DESC NULLS LAST`
           : sql`${certificates.notabilityScore} DESC NULLS LAST, ${certificates.notBefore} DESC`;
 
     const [rows, [totalRow]] = await Promise.all([
@@ -72,7 +68,6 @@ export async function GET(request: NextRequest) {
             "fingerprint",
           ),
           svgHash: sql<string>`(array_agg(${certificates.logotypeSvgHash} ORDER BY ${pickOrder}))[1]`.as("svg_hash"),
-          svg: sql<string>`(array_agg(${certificates.logotypeSvg} ORDER BY ${pickOrder}))[1]`.as("svg"),
           org: sql<string>`(array_agg(${certificates.subjectOrg} ORDER BY ${pickOrder}))[1]`.as("org"),
           domain: sql<string>`(array_agg(${certificates.sanList}[1] ORDER BY ${pickOrder}))[1]`.as("domain"),
           certType: sql<string>`(array_agg(${certificates.certType} ORDER BY ${pickOrder}))[1]`.as("cert_type"),
@@ -80,15 +75,14 @@ export async function GET(request: NextRequest) {
           rootCa: sql<string>`(array_agg(${certificates.rootCaOrg} ORDER BY ${pickOrder}))[1]`.as("root_ca"),
           count: sql<number>`count(*)::int`.as("count"),
           score: sql<number>`max(${certificates.notabilityScore})`.as("score"),
-          logoQuality: sql<number>`(array_agg(${certificates.logoQualityScore} ORDER BY ${pickOrder}))[1]`.as(
-            "logo_quality",
-          ),
+          logoQuality: sql<number>`(array_agg(${logos.qualityScore} ORDER BY ${pickOrder}))[1]`.as("logo_quality"),
           ctLogTimestamp: sql<string>`(array_agg(${certificates.ctLogTimestamp} ORDER BY ${pickOrder}))[1]`.as(
             "ct_log_timestamp",
           ),
-          tileBg: sql<string>`(array_agg(${certificates.logoTileBg} ORDER BY ${pickOrder}))[1]`.as("tile_bg"),
+          tileBg: sql<string>`(array_agg(${logos.tileBg} ORDER BY ${pickOrder}))[1]`.as("tile_bg"),
         })
         .from(certificates)
+        .leftJoin(logos, sql`${certificates.logotypeSvgHash} = ${logos.svgHash}`)
         .where(baseWhere)
         .groupBy(groupExpr)
         .orderBy(orderClause)
@@ -99,6 +93,7 @@ export async function GET(request: NextRequest) {
           total: sql<number>`count(distinct ${groupExpr})::int`,
         })
         .from(certificates)
+        .leftJoin(logos, sql`${certificates.logotypeSvgHash} = ${logos.svgHash}`)
         .where(baseWhere),
     ]);
 

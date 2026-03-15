@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { LeaderboardContent } from "../leaderboard/leaderboard-content";
+import { LeaderboardContent } from "./leaderboard-content";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/organizations" },

@@ -52,9 +52,9 @@ export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          {cert.logotypeSvg && (
+          {cert.logotypeSvgHash && (
             <LogoCard
-              svg={cert.logotypeSvg}
+              svgUrl={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
               size="sm"
               fingerprint={cert.fingerprintSha256}
               className="shrink-0 [&>div]:size-16 [&>div]:p-1.5 [&>div]:rounded-lg"

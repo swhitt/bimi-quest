@@ -1,16 +1,11 @@
 import type { NeonQueryFunction } from "@neondatabase/serverless";
 import type { SvgGroupRow } from "../types";
 
-export const ALLOWED_COLUMNS = new Set([
-  "logo_color_richness",
-  "logo_tile_bg",
-  "logotype_visual_hash",
-  "logo_quality_score",
-]);
+export const ALLOWED_COLUMNS = new Set(["color_richness", "tile_bg", "visual_hash", "quality_score"]);
 
 /**
- * Standard cursor-based SVG batch query. Handles both recalc (all SVGs)
- * and non-recalc (only rows where targetColumn IS NULL) modes.
+ * Standard cursor-based SVG batch query from logos table.
+ * Handles both recalc (all SVGs) and non-recalc (only rows where targetColumn IS NULL) modes.
  */
 function defaultFetchBatch(targetColumn: string) {
   if (!ALLOWED_COLUMNS.has(targetColumn)) {
@@ -19,26 +14,25 @@ function defaultFetchBatch(targetColumn: string) {
   return async (sql: NeonQueryFunction<false, false>, lastHash: string, limit: number, recalc: boolean) => {
     if (recalc) {
       return (await sql`
-				SELECT logotype_svg_hash as hash, (array_agg(logotype_svg))[1] as svg
-				FROM certificates
-				WHERE logotype_svg IS NOT NULL AND logotype_svg_hash > ${lastHash}
-				GROUP BY logotype_svg_hash ORDER BY logotype_svg_hash LIMIT ${limit}
+				SELECT svg_hash as hash, svg_content as svg
+				FROM logos
+				WHERE svg_hash > ${lastHash}
+				ORDER BY svg_hash LIMIT ${limit}
 			`) as SvgGroupRow[];
     }
     return (await sql`
-			SELECT logotype_svg_hash as hash, (array_agg(logotype_svg))[1] as svg
-			FROM certificates
-			WHERE logotype_svg IS NOT NULL AND ${sql.unsafe(targetColumn)} IS NULL
-				AND logotype_svg_hash > ${lastHash}
-			GROUP BY logotype_svg_hash ORDER BY logotype_svg_hash LIMIT ${limit}
+			SELECT svg_hash as hash, svg_content as svg
+			FROM logos
+			WHERE ${sql.unsafe(targetColumn)} IS NULL
+				AND svg_hash > ${lastHash}
+			ORDER BY svg_hash LIMIT ${limit}
 		`) as SvgGroupRow[];
   };
 }
 
 /**
  * Generic backfill loop for computing a property from SVG content.
- * All 3 SVG backfill modes (visual-hash, color-richness, tile-bg) share
- * the same cursor-based pagination and batch-update pattern.
+ * All SVG backfill modes share the same cursor-based pagination and batch-update pattern.
  */
 export async function backfillSvgProperty<T>(
   sql: NeonQueryFunction<false, false>,

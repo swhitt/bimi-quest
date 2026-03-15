@@ -1,7 +1,7 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { ImageResponse } from "next/og";
 import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
+import { certificates, logos } from "@/lib/db/schema";
 import { colors, OG_HEIGHT, OG_WIDTH } from "@/lib/og/card-styles";
 import { getOgFonts } from "@/lib/og/fonts";
 import { renderLogoToPngDataUri } from "@/lib/og/render-logo";
@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ hos
   const rows = await db
     .select({
       subjectOrg: certificates.subjectOrg,
-      logotypeSvg: certificates.logotypeSvg,
+      logotypeSvgHash: certificates.logotypeSvgHash,
       certType: certificates.certType,
     })
     .from(certificates)
@@ -26,15 +26,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ hos
 
   const fonts = await getOgFonts();
   const certCount = rows.length;
-  const firstWithLogo = rows.find((r) => r.logotypeSvg);
+  const firstWithLogo = rows.find((r) => r.logotypeSvgHash);
   const org = rows[0]?.subjectOrg || decoded;
 
   let logoDataUri: string | null = null;
-  if (firstWithLogo?.logotypeSvg) {
-    try {
-      logoDataUri = await renderLogoToPngDataUri(firstWithLogo.logotypeSvg, 160, 160);
-    } catch {
-      // SVG rendering failure
+  if (firstWithLogo?.logotypeSvgHash) {
+    const [logo] = await db
+      .select({ svgContent: logos.svgContent })
+      .from(logos)
+      .where(eq(logos.svgHash, firstWithLogo.logotypeSvgHash))
+      .limit(1);
+    if (logo?.svgContent) {
+      try {
+        logoDataUri = await renderLogoToPngDataUri(logo.svgContent, 160, 160);
+      } catch {
+        // SVG rendering failure
+      }
     }
   }
 

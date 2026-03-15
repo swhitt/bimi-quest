@@ -30,13 +30,9 @@ export const DOMAIN_STATE_FIELDS: readonly [string, keyof BimiDnsRow][] = [
   ["dmarc_pct", "dmarc_pct"],
   ["dmarc_valid", "dmarc_valid"],
   ["svg_fetched", "svg_fetched"],
-  ["svg_content", "svg_content"],
   ["svg_content_type", "svg_content_type"],
   ["svg_size_bytes", "svg_size_bytes"],
-  ["svg_tiny_ps_valid", "svg_tiny_ps_valid"],
-  ["svg_validation_errors", "svg_validation_errors"],
   ["svg_indicator_hash", "svg_indicator_hash"],
-  ["svg_tile_bg", "svg_tile_bg"],
   ["dns_snapshot", "dns_snapshot"],
 ] as const;
 
@@ -64,13 +60,9 @@ export function buildDomainStateValues(row: BimiDnsRow) {
     dmarcPct: row.dmarc_pct,
     dmarcValid: row.dmarc_valid,
     svgFetched: row.svg_fetched,
-    svgContent: row.svg_content,
     svgContentType: row.svg_content_type,
     svgSizeBytes: row.svg_size_bytes,
-    svgTinyPsValid: row.svg_tiny_ps_valid,
-    svgValidationErrors: row.svg_validation_errors,
     svgIndicatorHash: row.svg_indicator_hash,
-    svgTileBg: row.svg_tile_bg,
     dnsSnapshot: row.dns_snapshot,
     lastChecked: new Date(),
   };

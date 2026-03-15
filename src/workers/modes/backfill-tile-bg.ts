@@ -6,7 +6,7 @@ import { backfillSvgProperty } from "./backfill-svg-property";
 export async function backfillTileBg(sql: NeonQueryFunction<false, false>, recalc = false) {
   await backfillSvgProperty<string>(sql, {
     label: "tile background hints",
-    targetColumn: "logo_tile_bg",
+    targetColumn: "tile_bg",
     recalc,
     compute: (svg) => {
       const stripped = stripWhiteSvgBg(svg);

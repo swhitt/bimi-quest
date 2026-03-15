@@ -12,7 +12,10 @@ import {
   parseCTLogEntry,
 } from "@/lib/ct/parser";
 import { getDb } from "@/lib/db";
+import { upsertLogo } from "@/lib/db/logo-ops";
 import { certificateChainLinks, certificates, chainCerts, ingestionCursors } from "@/lib/db/schema";
+import { computeColorRichness } from "@/lib/svg-color-richness";
+import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 import { type BrandInput, scoreNotabilityBatch } from "@/lib/notability";
 import { dispatchNewCertNotification } from "@/lib/notifications/dispatcher";
 import { errorMessage } from "@/lib/utils";
@@ -353,6 +356,23 @@ export async function processIngestBatch(options: IngestBatchOptions): Promise<I
           }
 
           found++;
+
+          // Upsert logo if cert has an SVG
+          if (bimiData.logotypeSvg && bimiData.logotypeSvgHash) {
+            try {
+              const tileBg = isLightBg(tileBgForSvg(stripWhiteSvgBg(bimiData.logotypeSvg))) ? "light" : "dark";
+              await upsertLogo(db, {
+                svgHash: bimiData.logotypeSvgHash,
+                svgContent: bimiData.logotypeSvg,
+                source: "cert",
+                seenAt: bimiData.notBefore,
+                colorRichness: computeColorRichness(bimiData.logotypeSvg),
+                tileBg,
+              });
+            } catch (err) {
+              onProgress?.(`Logo upsert failed for ${bimiData.logotypeSvgHash}: ${errorMessage(err)}`);
+            }
+          }
 
           // Collect for post-ingestion scoring (decoupled from main loop)
           allPendingScores.push({

@@ -6,7 +6,7 @@ import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { computeSvgHash, validateSVGTinyPS } from "@/lib/bimi/svg";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { certificates, domainBimiState } from "@/lib/db/schema";
+import { certificates, domainBimiState, logos } from "@/lib/db/schema";
 import { safeFetch } from "@/lib/net/safe-fetch";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -26,7 +26,6 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         id: certificates.id,
         sanList: certificates.sanList,
         subjectCn: certificates.subjectCn,
-        logotypeSvg: certificates.logotypeSvg,
         logotypeSvgHash: certificates.logotypeSvgHash,
         notBefore: certificates.notBefore,
         notAfter: certificates.notAfter,
@@ -43,10 +42,19 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     const domains = cert.sanList.length > 0 ? cert.sanList : cert.subjectCn ? [cert.subjectCn] : [];
 
-    // Validate cert-embedded SVG
+    // Validate cert-embedded SVG (fetch from logos table)
     let certSvgValidation = null;
-    if (cert.logotypeSvg) {
-      certSvgValidation = validateSVGTinyPS(cert.logotypeSvg);
+    let certSvgContent: string | null = null;
+    if (cert.logotypeSvgHash) {
+      const [logo] = await db
+        .select({ svgContent: logos.svgContent })
+        .from(logos)
+        .where(eq(logos.svgHash, cert.logotypeSvgHash))
+        .limit(1);
+      if (logo?.svgContent) {
+        certSvgContent = logo.svgContent;
+        certSvgValidation = validateSVGTinyPS(logo.svgContent);
+      }
     }
 
     // Check cert validity
@@ -184,7 +192,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         certSvgValidation,
         certValidity,
         certSvgHash: cert.logotypeSvgHash,
-        certSvgSizeBytes: cert.logotypeSvg ? new TextEncoder().encode(cert.logotypeSvg).length : null,
+        certSvgSizeBytes: certSvgContent ? new TextEncoder().encode(certSvgContent).length : null,
         domains: domainChecks,
       },
       {

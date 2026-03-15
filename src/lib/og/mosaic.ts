@@ -1,7 +1,7 @@
-import { and, desc, gte, isNotNull } from "drizzle-orm";
+import { and, desc, gte, isNotNull, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
+import { certificates, logos } from "@/lib/db/schema";
 import { renderLogoToPng } from "./render-logo";
 
 const GRID = 8;
@@ -17,11 +17,12 @@ const HEIGHT = 630;
 export async function generateMosaic(): Promise<Buffer> {
   const rows = await db
     .select({
-      logotypeSvg: certificates.logotypeSvg,
+      svgContent: logos.svgContent,
       subjectOrg: certificates.subjectOrg,
     })
     .from(certificates)
-    .where(and(isNotNull(certificates.logotypeSvg), gte(certificates.notabilityScore, 7)))
+    .innerJoin(logos, sql`${certificates.logotypeSvgHash} = ${logos.svgHash}`)
+    .where(and(isNotNull(certificates.logotypeSvgHash), gte(certificates.notabilityScore, 7)))
     .orderBy(desc(certificates.notBefore))
     .limit(GRID * GRID);
 
@@ -29,9 +30,9 @@ export async function generateMosaic(): Promise<Buffer> {
   const tiles: { buffer: Buffer; col: number; row: number }[] = [];
   await Promise.all(
     rows.map(async (row, i) => {
-      if (!row.logotypeSvg) return;
+      if (!row.svgContent) return;
       try {
-        const png = await renderLogoToPng(row.logotypeSvg, TILE_W, TILE_H);
+        const png = await renderLogoToPng(row.svgContent, TILE_W, TILE_H);
         tiles.push({
           buffer: png,
           col: i % GRID,

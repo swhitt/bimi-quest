@@ -44,7 +44,6 @@ export const certificates = pgTable(
     markType: text("mark_type"),
     certType: text("cert_type").$type<"VMC" | "CMC">(),
     logotypeSvgHash: text("logotype_svg_hash"),
-    logotypeSvg: text("logotype_svg"),
     rawPem: text("raw_pem").notNull(),
     isPrecert: boolean("is_precert").default(false),
     ctLogTimestamp: timestamp("ct_log_timestamp", { withTimezone: true }),
@@ -56,15 +55,6 @@ export const certificates = pgTable(
     notabilityReason: text("notability_reason"),
     companyDescription: text("company_description"),
     industry: text("industry"),
-    // 1-10 color richness score computed from SVG color extraction (pure regex, no LLM)
-    logoColorRichness: integer("logo_color_richness"),
-    // 1-10 visual quality score from multimodal LLM (Gemini Flash-Lite)
-    logoQualityScore: integer("logo_quality_score"),
-    logoQualityReason: text("logo_quality_reason"),
-    // Pre-computed tile background hint ("light" or "dark") for thumbnail rendering
-    logoTileBg: text("logo_tile_bg"),
-    // Perceptual dHash of the rendered SVG, invariant to XML formatting/padding/zoom
-    logotypeVisualHash: text("logotype_visual_hash"),
     // True when all SANs point to known test/demo domains (CA testing infrastructure)
     isTest: boolean("is_test").default(false),
     // True when a precert has been superseded by its matching final certificate
@@ -98,7 +88,6 @@ export const certificates = pgTable(
     index("idx_certificates_subject_org_slug").on(table.subjectOrgSlug),
     index("idx_certificates_industry").on(table.industry),
     index("idx_certificates_svg_hash").on(table.logotypeSvgHash),
-    index("idx_certificates_visual_hash").on(table.logotypeVisualHash),
     // Partial index: most queries filter out superseded certs
     index("idx_certs_active_notbefore").on(table.notBefore).where(sql`${table.isSuperseded} = false`),
     index("idx_certs_notability_score").on(table.notabilityScore),
@@ -239,11 +228,8 @@ export const domainBimiState = pgTable(
     dmarcPct: integer("dmarc_pct"),
     dmarcValid: boolean("dmarc_valid"),
     svgFetched: boolean("svg_fetched").default(false),
-    svgContent: text("svg_content"),
     svgContentType: text("svg_content_type"),
     svgSizeBytes: integer("svg_size_bytes"),
-    svgTinyPsValid: boolean("svg_tiny_ps_valid"),
-    svgValidationErrors: text("svg_validation_errors").array(),
     bimiLpsTag: text("bimi_lps_tag"),
     bimiAvpTag: text("bimi_avp_tag"),
     bimiDeclination: boolean("bimi_declination").default(false),
@@ -252,7 +238,6 @@ export const domainBimiState = pgTable(
     bimiRecordCount: integer("bimi_record_count"),
     dmarcRecordCount: integer("dmarc_record_count"),
     svgIndicatorHash: text("svg_indicator_hash"),
-    svgTileBg: text("svg_tile_bg"),
     bimiGrade: text("bimi_grade"),
     dnsSnapshot: jsonb("dns_snapshot").$type<DnsSnapshot>(),
     lastChecked: timestamp("last_checked", { withTimezone: true }),
@@ -266,6 +251,35 @@ export const domainBimiState = pgTable(
     index("idx_domain_bimi_last_checked").on(table.lastChecked),
     index("idx_domain_bimi_grade").on(table.bimiGrade),
     index("idx_domain_bimi_dmarc_policy").on(table.dmarcPolicy),
+  ],
+);
+
+export const logos = pgTable(
+  "logos",
+  {
+    svgHash: text("svg_hash").primaryKey(),
+    svgContent: text("svg_content").notNull(),
+    visualHash: text("visual_hash"),
+    tileBg: text("tile_bg"),
+    colorRichness: integer("color_richness"),
+    qualityScore: integer("quality_score"),
+    qualityReason: text("quality_reason"),
+    svgSizeBytes: integer("svg_size_bytes"),
+    svgTinyPsValid: boolean("svg_tiny_ps_valid"),
+    svgValidationErrors: text("svg_validation_errors").array(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+    firstSource: text("first_source").$type<"cert" | "dns">().notNull(),
+    certCount: integer("cert_count").default(0),
+    domainCount: integer("domain_count").default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_logos_visual_hash").on(table.visualHash),
+    index("idx_logos_quality_score").on(table.qualityScore),
+    index("idx_logos_first_seen").on(table.firstSeenAt),
+    index("idx_logos_cert_count").on(table.certCount),
   ],
 );
 

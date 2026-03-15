@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { desc, isNotNull, sql } from "drizzle-orm";
 import { ALL_CA_SLUGS } from "@/lib/ca-slugs";
 import { db } from "@/lib/db";
-import { certificates, domainBimiState } from "@/lib/db/schema";
+import { certificates, domainBimiState, logos } from "@/lib/db/schema";
 
 export const revalidate = 3600;
 
@@ -82,16 +82,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }));
 
-    // Logo pages (distinct SVG hashes, top 1000)
-    const logos = await db
-      .select({ hash: certificates.logotypeSvgHash })
-      .from(certificates)
-      .where(isNotNull(certificates.logotypeSvgHash))
-      .groupBy(certificates.logotypeSvgHash)
-      .orderBy(sql`max(${certificates.notBefore}) desc`)
-      .limit(1000);
+    // Logo pages (top 1000 from logos table)
+    const logoRows = await db.select({ hash: logos.svgHash }).from(logos).orderBy(desc(logos.lastSeenAt)).limit(1000);
 
-    const logoRoutes: MetadataRoute.Sitemap = logos
+    const logoRoutes: MetadataRoute.Sitemap = logoRows
       .filter((r) => r.hash)
       .map((r) => ({
         url: `${baseUrl}/logos/${r.hash}`,

@@ -567,7 +567,7 @@ function SecondaryFilters({
 }
 
 /** Gate component: skip rendering (and all hooks/fetches) on pages where filters don't apply. */
-const HIDDEN_PATHS = ["/validate", "/privacy"];
+const HIDDEN_PATHS = ["/check", "/privacy", "/transparency"];
 const HIDDEN_PREFIXES = ["/ct/", "/tools/"];
 
 function FilterBarInner() {

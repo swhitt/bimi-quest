@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { ImageResponse } from "next/og";
 import { db } from "@/lib/db";
-import { domainBimiState } from "@/lib/db/schema";
+import { domainBimiState, logos } from "@/lib/db/schema";
 import { colors, OG_HEIGHT, OG_WIDTH } from "@/lib/og/card-styles";
 import { getOgFonts } from "@/lib/og/fonts";
 import { renderLogoToPngDataUri } from "@/lib/og/render-logo";
@@ -47,20 +47,27 @@ export async function GET(_request: Request, { params }: { params: Promise<{ dom
   const row = rows[0] ?? null;
   const fonts = await getOgFonts();
 
-  // Try to render the SVG logo
+  // Try to render the SVG logo from logos table
   let logoDataUri: string | null = null;
-  if (row?.svgContent) {
-    try {
-      logoDataUri = await renderLogoToPngDataUri(row.svgContent, 140, 140);
-    } catch {
-      // SVG rendering failure — continue without logo
+  if (row?.svgIndicatorHash) {
+    const [logo] = await db
+      .select({ svgContent: logos.svgContent })
+      .from(logos)
+      .where(eq(logos.svgHash, row.svgIndicatorHash))
+      .limit(1);
+    if (logo?.svgContent) {
+      try {
+        logoDataUri = await renderLogoToPngDataUri(logo.svgContent, 140, 140);
+      } catch {
+        // SVG rendering failure — continue without logo
+      }
     }
   }
 
   const grade = row?.bimiGrade ?? null;
   const hasBimi = !!row?.bimiRecordRaw;
   const dmarcValid = row?.dmarcValid ?? false;
-  const svgValid = row?.svgTinyPsValid ?? false;
+  const svgValid = !!row?.dnsSnapshot?.svg?.tinyPsValid;
   const hasCert = !!(row?.dnsSnapshot as Record<string, unknown> | null)?.certificate;
 
   return new ImageResponse(

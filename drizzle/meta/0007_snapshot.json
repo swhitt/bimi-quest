@@ -1,6 +1,6 @@
 {
-  "id": "54f63780-d18b-4c73-b2a3-8a095572b914",
-  "prevId": "421f3eb0-f797-47a5-b251-0f62e36e8750",
+  "id": "604f12e0-3ec2-4399-b6a1-1ced965d8d11",
+  "prevId": "54f63780-d18b-4c73-b2a3-8a095572b914",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -829,12 +829,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "logotype_svg": {
-          "name": "logotype_svg",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "raw_pem": {
           "name": "raw_pem",
           "type": "text",
@@ -899,36 +893,6 @@
         },
         "industry": {
           "name": "industry",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "logo_color_richness": {
-          "name": "logo_color_richness",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "logo_quality_score": {
-          "name": "logo_quality_score",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "logo_quality_reason": {
-          "name": "logo_quality_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "logo_tile_bg": {
-          "name": "logo_tile_bg",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "logotype_visual_hash": {
-          "name": "logotype_visual_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1263,21 +1227,6 @@
           "columns": [
             {
               "expression": "logotype_svg_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_certificates_visual_hash": {
-          "name": "idx_certificates_visual_hash",
-          "columns": [
-            {
-              "expression": "logotype_visual_hash",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1838,12 +1787,6 @@
           "notNull": false,
           "default": false
         },
-        "svg_content": {
-          "name": "svg_content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "svg_content_type": {
           "name": "svg_content_type",
           "type": "text",
@@ -1853,18 +1796,6 @@
         "svg_size_bytes": {
           "name": "svg_size_bytes",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "svg_tiny_ps_valid": {
-          "name": "svg_tiny_ps_valid",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "svg_validation_errors": {
-          "name": "svg_validation_errors",
-          "type": "text[]",
           "primaryKey": false,
           "notNull": false
         },
@@ -1915,12 +1846,6 @@
         },
         "svg_indicator_hash": {
           "name": "svg_indicator_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "svg_tile_bg": {
-          "name": "svg_tile_bg",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2146,6 +2071,186 @@
           "columns": ["log_name"]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.logos": {
+      "name": "logos",
+      "schema": "",
+      "columns": {
+        "svg_hash": {
+          "name": "svg_hash",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "svg_content": {
+          "name": "svg_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visual_hash": {
+          "name": "visual_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tile_bg": {
+          "name": "tile_bg",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "color_richness": {
+          "name": "color_richness",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quality_score": {
+          "name": "quality_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quality_reason": {
+          "name": "quality_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_size_bytes": {
+          "name": "svg_size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_tiny_ps_valid": {
+          "name": "svg_tiny_ps_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "svg_validation_errors": {
+          "name": "svg_validation_errors",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_source": {
+          "name": "first_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cert_count": {
+          "name": "cert_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "domain_count": {
+          "name": "domain_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_logos_visual_hash": {
+          "name": "idx_logos_visual_hash",
+          "columns": [
+            {
+              "expression": "visual_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_logos_quality_score": {
+          "name": "idx_logos_quality_score",
+          "columns": [
+            {
+              "expression": "quality_score",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_logos_first_seen": {
+          "name": "idx_logos_first_seen",
+          "columns": [
+            {
+              "expression": "first_seen_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_logos_cert_count": {
+          "name": "idx_logos_cert_count",
+          "columns": [
+            {
+              "expression": "cert_count",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

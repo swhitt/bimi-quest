@@ -6,7 +6,7 @@ import { backfillSvgProperty } from "./backfill-svg-property";
 export async function backfillVisualHash(sql: NeonQueryFunction<false, false>, recalc = false) {
   await backfillSvgProperty<string | null>(sql, {
     label: "visual hashes",
-    targetColumn: "logotype_visual_hash",
+    targetColumn: "visual_hash",
     recalc,
     compute: (svg) => computeVisualHash(svg),
     batchUpdate: async (sql, updates) => {

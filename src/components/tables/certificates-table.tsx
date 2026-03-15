@@ -43,7 +43,6 @@ export interface CertRow {
   sanList: string[];
   ctLogTimestamp: string | null;
   logotypeSvgHash: string | null;
-  logoTileBg: string | null;
   hasLogo: boolean;
   isPrecert: boolean | null;
   notabilityScore: number | null;
@@ -178,13 +177,7 @@ export function CertificatesTable({
           const org = row.original.subjectOrg || row.original.subjectCn || row.original.sanList[0] || "Unknown";
           const svgUrl = `/api/logo/${hash}?format=svg`;
           return (
-            <LogoCard
-              svgUrl={svgUrl}
-              tileBg={row.original.logoTileBg as "light" | "dark" | null}
-              size="sm"
-              fingerprint={row.original.fingerprintSha256}
-              alt={`${org} logo`}
-            />
+            <LogoCard svgUrl={svgUrl} size="sm" fingerprint={row.original.fingerprintSha256} alt={`${org} logo`} />
           );
         },
       },

@@ -27,7 +27,6 @@ export interface CertData {
     sanList: string[];
     markType: string | null;
     certType: string | null;
-    logotypeSvg: string | null;
     logotypeSvgHash: string | null;
     rawPem: string;
     ctLogTimestamp: string | null;

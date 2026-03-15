@@ -3,8 +3,8 @@
 import { ChevronDown, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -56,6 +56,17 @@ const SECONDARY_FILTER_KEYS = [
   "country",
 ];
 
+function subscribePopstate(cb: () => void) {
+  window.addEventListener("popstate", cb);
+  return () => window.removeEventListener("popstate", cb);
+}
+function getLocationSearch() {
+  return window.location.search;
+}
+function getEmptyString() {
+  return "";
+}
+
 /**
  * Shared hook for nav link href building and active-state detection.
  * Both desktop NavLinks and MobileNavLinks use this to preserve
@@ -63,7 +74,11 @@ const SECONDARY_FILTER_KEYS = [
  */
 function useNavHelpers() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+
+  // Read search params via useSyncExternalStore to avoid useSearchParams(),
+  // which requires a Suspense boundary that disrupts Radix useId() hydration.
+  const searchStr = useSyncExternalStore(subscribePopstate, getLocationSearch, getEmptyString);
+  const searchParams = useMemo(() => new URLSearchParams(searchStr), [searchStr]);
 
   // CA can come from the path (/ca/{slug}) or middleware rewrite (?ca=Name)
   const pathCaMatch = pathname.match(/\/ca\/([^/]+)/);

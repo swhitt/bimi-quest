@@ -25,10 +25,7 @@ interface DomainResult {
   bimiLogoUrl: string | null;
   bimiRecordRaw: string | null;
   bimiAuthorityUrl: string | null;
-  svgTinyPsValid: boolean | null;
-  svgValidationErrors: string[] | null;
   svgIndicatorHash: string | null;
-  svgTileBg: string | null;
   dmarcValid: boolean | null;
   dmarcRua: string | null;
   svgDataUri: string | null;
@@ -504,13 +501,6 @@ export function DomainSearch() {
                                 ? `/api/logo/${row.svgIndicatorHash}?format=svg`
                                 : `/api/proxy/svg?url=${encodeURIComponent(row.bimiLogoUrl)}`
                             }
-                            tileBg={
-                              row.svgTileBg === "rgb(243 244 246)"
-                                ? "light"
-                                : row.svgTileBg === "rgb(38 38 38)"
-                                  ? "dark"
-                                  : null
-                            }
                             fingerprint={row.svgIndicatorHash}
                             size="sm"
                             alt={`${row.domain} logo`}
@@ -614,56 +604,7 @@ export function DomainSearch() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {row.svgTinyPsValid === null ? (
-                          <span className="text-muted-foreground">&mdash;</span>
-                        ) : (
-                          <HoverCard openDelay={300} closeDelay={100}>
-                            <HoverCardTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <span className="cursor-default">
-                                {row.svgTinyPsValid ? (
-                                  <Badge
-                                    variant="secondary"
-                                    className="bg-green-500/15 text-green-700 dark:text-green-400"
-                                  >
-                                    Valid
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="secondary" className="bg-red-500/15 text-red-700 dark:text-red-400">
-                                    Invalid
-                                  </Badge>
-                                )}
-                              </span>
-                            </HoverCardTrigger>
-                            <HoverCardContent
-                              side="top"
-                              align="start"
-                              className="w-auto max-w-[420px] px-3 py-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <p className="text-[10px] font-medium text-muted-foreground mb-1">
-                                SVG Tiny PS Validation
-                              </p>
-                              {row.bimiRecordRaw && (
-                                <p className="text-xs font-mono break-all leading-relaxed mb-1">{row.bimiRecordRaw}</p>
-                              )}
-                              {row.svgTinyPsValid ? (
-                                <p className="text-xs text-green-600 dark:text-green-400">
-                                  Passes SVG Tiny PS profile requirements
-                                </p>
-                              ) : row.svgValidationErrors && row.svgValidationErrors.length > 0 ? (
-                                <ul className="space-y-0.5">
-                                  {row.svgValidationErrors.map((err, i) => (
-                                    <li key={i} className="text-xs text-red-600 dark:text-red-400">
-                                      {err}
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="text-xs text-red-600 dark:text-red-400">Fails SVG Tiny PS validation</p>
-                              )}
-                            </HoverCardContent>
-                          </HoverCard>
-                        )}
+                        <span className="text-muted-foreground">&mdash;</span>
                       </td>
                     </tr>
                   );

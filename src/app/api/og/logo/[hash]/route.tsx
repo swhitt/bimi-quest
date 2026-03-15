@@ -1,8 +1,8 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { ImageResponse } from "next/og";
 import { displayIntermediateCa } from "@/lib/ca-display";
 import { db } from "@/lib/db";
-import { certificates } from "@/lib/db/schema";
+import { certificates, logos } from "@/lib/db/schema";
 import { colors, OG_HEIGHT, OG_WIDTH } from "@/lib/og/card-styles";
 import { getOgFonts } from "@/lib/og/fonts";
 import { renderLogoToPngDataUri } from "@/lib/og/render-logo";
@@ -12,32 +12,33 @@ export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ hash: string }> }) {
   const { hash } = await params;
 
+  const [logo] = await db.select({ svgContent: logos.svgContent }).from(logos).where(eq(logos.svgHash, hash)).limit(1);
+
+  if (!logo?.svgContent) {
+    return new Response("Not found", { status: 404 });
+  }
+
   const [cert] = await db
     .select({
       subjectOrg: certificates.subjectOrg,
       certType: certificates.certType,
       issuerOrg: certificates.issuerOrg,
       sanList: certificates.sanList,
-      logotypeSvg: certificates.logotypeSvg,
       industry: certificates.industry,
     })
     .from(certificates)
-    .where(and(eq(certificates.logotypeSvgHash, hash), isNotNull(certificates.logotypeSvg)))
+    .where(eq(certificates.logotypeSvgHash, hash))
     .limit(1);
 
-  if (!cert?.logotypeSvg) {
-    return new Response("Not found", { status: 404 });
-  }
-
   const fonts = await getOgFonts();
-  const org = cert.subjectOrg || "Unknown";
-  const primaryDomain = cert.sanList?.[0] ?? "";
-  const certType = cert.certType || "BIMI";
-  const issuer = displayIntermediateCa(cert.issuerOrg);
+  const org = cert?.subjectOrg || "Unknown";
+  const primaryDomain = cert?.sanList?.[0] ?? "";
+  const certType = cert?.certType || "BIMI";
+  const issuer = displayIntermediateCa(cert?.issuerOrg);
 
   let logoDataUri: string | null = null;
   try {
-    logoDataUri = await renderLogoToPngDataUri(cert.logotypeSvg, 440, 440);
+    logoDataUri = await renderLogoToPngDataUri(logo.svgContent, 440, 440);
   } catch {
     // SVG rendering failure
   }
@@ -117,7 +118,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ has
           <div style={{ fontSize: 20, color: colors.mono }}>{issuer}</div>
         </div>
 
-        {cert.industry && <div style={{ fontSize: 18, color: colors.mono, opacity: 0.7 }}>{cert.industry}</div>}
+        {cert?.industry && <div style={{ fontSize: 18, color: colors.mono, opacity: 0.7 }}>{cert.industry}</div>}
       </div>
 
       {/* Watermark */}

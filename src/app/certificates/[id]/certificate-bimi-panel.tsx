@@ -4,12 +4,10 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
-import { LogoSvg } from "@/components/logo-svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UtcTime } from "@/components/ui/utc-time";
-import { computeDiff } from "@/lib/diff";
 import { errorMessage } from "@/lib/utils";
 import { Row } from "./cert-row";
 import type { BimiCheckResult, CertificateBimiData, RevocationResult } from "./certificate-types";
@@ -281,27 +279,21 @@ interface SvgValidation {
 }
 
 function LogoComparison({
-  certSvg,
+  certSvgHash,
   certSvgSizeBytes,
   certSvgValidation,
   logoUrl,
   webSvgSizeBytes,
   webSvgValidation,
-  webSvgSource,
   svgMatch,
-  showDiff,
-  onToggleDiff,
 }: {
-  certSvg: string;
+  certSvgHash: string;
   certSvgSizeBytes: number | null;
   certSvgValidation: SvgValidation | null;
   logoUrl: string | null;
   webSvgSizeBytes: number | null;
   webSvgValidation: SvgValidation | null;
-  webSvgSource: string | null;
   svgMatch: boolean | null;
-  showDiff: boolean;
-  onToggleDiff: () => void;
 }) {
   return (
     <div className="rounded-md border bg-muted/30 p-3">
@@ -317,7 +309,14 @@ function LogoComparison({
             )}
           </div>
           <div className="aspect-square rounded-md border bg-background p-2 overflow-hidden">
-            <LogoSvg svg={certSvg} alt="Certificate SVG" className="h-full w-full" />
+            <Image
+              src={`/api/logo/${certSvgHash}?format=svg`}
+              alt="Certificate SVG"
+              width={200}
+              height={200}
+              unoptimized
+              className="h-full w-full object-contain"
+            />
           </div>
           <span className="text-xs text-muted-foreground mt-1 block text-center">
             {certSvgSizeBytes ? `${(certSvgSizeBytes / 1024).toFixed(1)} KB` : ""}
@@ -359,75 +358,11 @@ function LogoComparison({
           </span>
         </div>
       </div>
-      {svgMatch === false && webSvgSource && (
-        <div className="mt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-offset-2"
-            onClick={onToggleDiff}
-          >
-            {showDiff ? "Hide Diff" : "View Diff"}
-          </Button>
-          {showDiff && (
-            <div className="mt-2">
-              <SVGDiffViewer certSvg={certSvg} webSvg={webSvgSource} />
-            </div>
-          )}
+      {svgMatch === false && (
+        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+          SVG content differs between certificate and web
         </div>
       )}
-    </div>
-  );
-}
-
-function SVGDiffViewer({ certSvg, webSvg }: { certSvg: string; webSvg: string }) {
-  const certLines = certSvg.split("\n");
-  const webLines = webSvg.split("\n");
-
-  const diff = computeDiff(certLines, webLines);
-
-  return (
-    <div className="rounded-lg border overflow-hidden">
-      <div className="flex items-center justify-between border-b bg-muted/50 px-3 py-1.5">
-        <span className="text-xs font-medium">SVG Source Diff</span>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-500/20 border border-red-500/40" />
-            Certificate
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500/20 border border-emerald-500/40" />
-            Web
-          </span>
-        </div>
-      </div>
-      <div className="overflow-x-auto max-h-96 overflow-y-auto">
-        <pre className="text-xs leading-5">
-          {diff.map((line, i) => (
-            <div
-              key={i}
-              className={
-                line.type === "removed"
-                  ? "bg-red-500/10 text-red-700 dark:text-red-300"
-                  : line.type === "added"
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "text-muted-foreground/60"
-              }
-            >
-              <span className="inline-block w-8 text-right pr-2 select-none opacity-40 border-r border-border mr-2">
-                {line.certLineNo ?? ""}
-              </span>
-              <span className="inline-block w-8 text-right pr-2 select-none opacity-40 border-r border-border mr-2">
-                {line.webLineNo ?? ""}
-              </span>
-              <span className="select-none opacity-50 mr-1">
-                {line.type === "removed" ? "−" : line.type === "added" ? "+" : " "}
-              </span>
-              {line.text}
-            </div>
-          ))}
-        </pre>
-      </div>
     </div>
   );
 }
@@ -438,7 +373,6 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
   const [bimiCheck, setBimiCheck] = useState<BimiCheckResult | null>(null);
   const [bimiLoading, setBimiLoading] = useState(false);
   const [bimiError, setBimiError] = useState<string | null>(null);
-  const [showDiff, setShowDiff] = useState<string | null>(null);
 
   const [revocation, setRevocation] = useState<RevocationResult | null>(null);
   const [revocationLoading, setRevocationLoading] = useState(false);
@@ -479,7 +413,7 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
     <>
       {/* Embedded Logo + Revocation Status side by side */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {cert.logotypeSvg && (
+        {cert.logotypeSvgHash && (
           <Card className="self-start">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Embedded Logo</CardTitle>
@@ -494,7 +428,7 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                 <LogoCard
-                  svg={cert.logotypeSvg}
+                  svgUrl={`/api/logo/${cert.logotypeSvgHash}?format=svg`}
                   size="md"
                   fingerprint={cert.fingerprintSha256}
                   showShare
@@ -504,7 +438,7 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
                   {bimiCheck?.certSvgSizeBytes && (
                     <Row label="Size" value={`${(bimiCheck.certSvgSizeBytes / 1024).toFixed(1)} KB`} />
                   )}
-                  {cert.logotypeSvgHash && <Row label="SVG Hash" value={cert.logotypeSvgHash} mono />}
+                  <Row label="SVG Hash" value={cert.logotypeSvgHash} mono />
                   {bimiCheck?.certSvgValidation && (
                     <>
                       {bimiCheck.certSvgValidation.errors.length > 0 && (
@@ -534,15 +468,6 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
                   )}
                 </div>
               </div>
-
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                  View SVG source
-                </summary>
-                <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs font-mono">
-                  {cert.logotypeSvg}
-                </pre>
-              </details>
             </CardContent>
           </Card>
         )}
@@ -640,18 +565,15 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
                       </div>
                     </div>
 
-                    {dc.webSvgFound && cert.logotypeSvg && (
+                    {dc.webSvgFound && cert.logotypeSvgHash && (
                       <LogoComparison
-                        certSvg={cert.logotypeSvg}
+                        certSvgHash={cert.logotypeSvgHash}
                         certSvgSizeBytes={bimiCheck.certSvgSizeBytes}
                         certSvgValidation={bimiCheck.certSvgValidation}
                         logoUrl={dc.logoUrl}
                         webSvgSizeBytes={dc.webSvgSizeBytes}
                         webSvgValidation={dc.webSvgValidation}
-                        webSvgSource={dc.webSvgSource}
                         svgMatch={dc.svgMatch}
-                        showDiff={showDiff === dc.domain}
-                        onToggleDiff={() => setShowDiff(showDiff === dc.domain ? null : dc.domain)}
                       />
                     )}
                   </div>

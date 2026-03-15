@@ -50,6 +50,13 @@
       "when": 1772954348518,
       "tag": "0006_cooing_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773606036958,
+      "tag": "0007_lazy_wong",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,7 @@ import { HexViewer } from "./hex-viewer";
 import { LogoTab } from "./logo-tab";
 import { RawDataPanel } from "./raw-data-panel";
 
-export const ENTRY_TABS = ["overview", "binary", "chain", "logo", "raw"] as const;
+export const ENTRY_TABS = ["overview", "logo", "chain", "binary", "raw"] as const;
 
 interface EntryDetailProps {
   entry: DecodedCTEntry;
@@ -29,14 +29,14 @@ export function EntryDetail({ entry, activeTab = "overview", onTabChange }: Entr
               <TabsTrigger value="overview" className="text-xs">
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="binary" className="text-xs">
-                Binary
+              <TabsTrigger value="logo" className="text-xs">
+                Logo
               </TabsTrigger>
               <TabsTrigger value="chain" className="text-xs">
                 Chain
               </TabsTrigger>
-              <TabsTrigger value="logo" className="text-xs">
-                Logo
+              <TabsTrigger value="binary" className="text-xs">
+                Binary
               </TabsTrigger>
               <TabsTrigger value="raw" className="text-xs">
                 Raw
@@ -51,16 +51,16 @@ export function EntryDetail({ entry, activeTab = "overview", onTabChange }: Entr
               )}
             </TabsContent>
 
-            <TabsContent value="binary" className="min-h-0 mt-2">
-              <HexViewer data={entry.raw.leafHex} byteMap={entry.byteMap} />
+            <TabsContent value="logo" className="min-h-0 mt-2">
+              <LogoTab svg={entry.cert?.logotypeSvg ?? null} fingerprint={entry.cert?.fingerprint} />
             </TabsContent>
 
             <TabsContent value="chain" className="min-h-0 mt-2">
               <ChainViewer chain={entry.chain} cert={entry.cert} />
             </TabsContent>
 
-            <TabsContent value="logo" className="min-h-0 mt-2">
-              <LogoTab svg={entry.cert?.logotypeSvg ?? null} fingerprint={entry.cert?.fingerprint} />
+            <TabsContent value="binary" className="min-h-0 mt-2">
+              <HexViewer data={entry.raw.leafHex} byteMap={entry.byteMap} />
             </TabsContent>
 
             <TabsContent value="raw" className="min-h-0 mt-2">

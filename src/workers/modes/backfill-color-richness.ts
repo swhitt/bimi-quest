@@ -6,7 +6,7 @@ import { backfillSvgProperty } from "./backfill-svg-property";
 export async function backfillColorRichness(sql: NeonQueryFunction<false, false>, recalc = false) {
   await backfillSvgProperty<number>(sql, {
     label: "color richness scores",
-    targetColumn: "logo_color_richness",
+    targetColumn: "color_richness",
     recalc,
     compute: (svg) => computeColorRichness(svg),
     batchUpdate: async (sql, updates) => {

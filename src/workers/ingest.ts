@@ -117,6 +117,44 @@ if (mode === "stream") {
     console.error(err);
     process.exit(1);
   });
+} else if (mode === "backfill-logos") {
+  const { backfillLogos } = await import("./modes/backfill-logos");
+  backfillLogos(sql).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+} else if (mode === "recalc-logo-counts") {
+  console.log("Recalculating logo cert_count and domain_count...\n");
+  await sql`
+    UPDATE logos SET
+      cert_count = COALESCE(sub.cnt, 0)
+    FROM (
+      SELECT logotype_svg_hash AS hash, count(*)::int AS cnt
+      FROM certificates
+      WHERE logotype_svg_hash IS NOT NULL
+      GROUP BY logotype_svg_hash
+    ) sub
+    WHERE logos.svg_hash = sub.hash
+  `;
+  await sql`
+    UPDATE logos SET
+      domain_count = COALESCE(sub.cnt, 0)
+    FROM (
+      SELECT svg_hash, count(DISTINCT d)::int AS cnt FROM (
+        SELECT logotype_svg_hash AS svg_hash, unnest(san_list) AS d
+        FROM certificates
+        WHERE logotype_svg_hash IS NOT NULL
+        UNION ALL
+        SELECT svg_indicator_hash AS svg_hash, domain AS d
+        FROM domain_bimi_state
+        WHERE svg_indicator_hash IS NOT NULL
+      ) combined
+      GROUP BY svg_hash
+    ) sub
+    WHERE logos.svg_hash = sub.svg_hash
+  `;
+  const [{ count }] = (await sql`SELECT count(*)::int AS count FROM logos`) as [{ count: number }];
+  console.log(`Done. Updated counts for ${count} logos.`);
 } else {
   const { backfill } = await import("./modes/backfill");
   backfill().catch((err) => {

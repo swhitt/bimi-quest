@@ -1,15 +1,16 @@
 "use client";
 
-import { Award, Shield, Star } from "lucide-react";
+import { Award, Globe, Shield, Star, Users } from "lucide-react";
 import Link from "next/link";
 import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { formatUtcFull } from "@/components/ui/utc-time";
-import { certUrl, orgUrl, checkUrl } from "@/lib/entity-urls";
+import { certUrl, domainUrl, orgUrl, checkUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 
 interface LogoData {
@@ -69,7 +70,20 @@ function ScoreStars({ score }: { score: number }) {
   );
 }
 
-export function LogoDetailClient({ logo }: { logo: LogoData }) {
+interface CrossRefData {
+  certs: {
+    fingerprintSha256: string;
+    subjectOrg: string | null;
+    certType: string | null;
+    notBefore: string;
+    notAfter: string;
+    isPrecert: boolean;
+  }[];
+  domains: string[];
+  orgs: string[];
+}
+
+export function LogoDetailClient({ logo, crossRefs }: { logo: LogoData; crossRefs: CrossRefData | null }) {
   const now = new Date();
   const isExpired = logo.notAfter ? new Date(logo.notAfter) < now : false;
   const mtInfo = getMarkTypeInfo(logo.markType);
@@ -243,6 +257,88 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
         </div>
       </div>
+
+      {/* Cross-references */}
+      {crossRefs && (crossRefs.certs.length > 1 || crossRefs.domains.length > 0 || crossRefs.orgs.length > 1) && (
+        <div className="space-y-4">
+          {crossRefs.orgs.length > 1 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Users className="size-4" />
+                  Organizations ({crossRefs.orgs.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {crossRefs.orgs.map((org) => (
+                    <OrgChip key={org} org={org} compact className="text-primary" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {crossRefs.certs.length > 1 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Shield className="size-4" />
+                  Certificates ({crossRefs.certs.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1.5">
+                  {crossRefs.certs.map((c) => (
+                    <Link
+                      key={c.fingerprintSha256}
+                      href={certUrl(c.fingerprintSha256)}
+                      className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
+                    >
+                      <span className="flex items-center gap-2 min-w-0 truncate">
+                        {c.subjectOrg && <span className="font-medium truncate">{c.subjectOrg}</span>}
+                        {c.certType && (
+                          <Badge variant="outline" className="shrink-0 text-[10px] px-1 py-0">
+                            {c.certType}
+                          </Badge>
+                        )}
+                        {c.isPrecert && (
+                          <Badge variant="secondary" className="shrink-0 text-[10px] px-1 py-0">
+                            Precert
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                        {formatUtcFull(c.notBefore).split(" ")[0]}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {crossRefs.domains.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Globe className="size-4" />
+                  Domains publishing via DNS ({crossRefs.domains.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {crossRefs.domains.map((d) => (
+                    <Link key={d} href={domainUrl(d)}>
+                      <DomainChip domain={d} size="xs" />
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

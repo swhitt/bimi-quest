@@ -3,8 +3,9 @@ import { isDMARCValidForBIMI, lookupDMARC } from "@/lib/bimi/dmarc";
 import { lookupBIMIRecord } from "@/lib/bimi/dns";
 import { buildDnsSnapshot } from "@/lib/bimi/dns-snapshot";
 import { computeSvgHash, decompressSvgIfNeeded, validateSVGTinyPS } from "@/lib/bimi/svg";
-import { stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
+import { isLightBg, stripWhiteSvgBg, tileBgForSvg } from "@/lib/svg-bg";
 import { throttle } from "@/lib/ct/gorgon";
+import { upsertLogoSql } from "@/lib/db/logo-ops";
 import { parseCertBasicInfo } from "@/lib/ct/parser";
 import { upsertDomainStateSql } from "@/lib/dns/persist-domain-state";
 import { safeFetch } from "@/lib/net/safe-fetch";
@@ -26,16 +27,17 @@ export interface BimiDnsRow {
   dmarc_pct: number | null;
   dmarc_valid: boolean | null;
   svg_fetched: boolean;
-  svg_content: string | null;
   svg_content_type: string | null;
   svg_size_bytes: number | null;
-  svg_tiny_ps_valid: boolean | null;
-  svg_validation_errors: string[] | null;
   svg_indicator_hash: string | null;
-  svg_tile_bg: string | null;
   bimi_record_count: number;
   dmarc_record_count: number;
   dns_snapshot: DnsSnapshot | null;
+  // Transient fields for logo upsert (not persisted to domain_bimi_state)
+  _svgText?: string;
+  _svgTinyPsValid?: boolean | null;
+  _svgValidationErrors?: string[] | null;
+  _tileBg?: string;
 }
 
 export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
@@ -55,13 +57,9 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
     dmarc_pct: null,
     dmarc_valid: null,
     svg_fetched: false,
-    svg_content: null,
     svg_content_type: null,
     svg_size_bytes: null,
-    svg_tiny_ps_valid: null,
-    svg_validation_errors: null,
     svg_indicator_hash: null,
-    svg_tile_bg: null,
     bimi_record_count: 0,
     dmarc_record_count: 0,
     dns_snapshot: null,
@@ -127,13 +125,17 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
         const svgText = decompressSvgIfNeeded(buf);
         if (svgText.includes("<svg") || svgText.includes("<SVG")) {
           row.svg_fetched = true;
-          row.svg_content = svgText;
           row.svg_size_bytes = Buffer.byteLength(svgText, "utf8");
           row.svg_indicator_hash = computeSvgHash(svgText);
-          row.svg_tile_bg = tileBgForSvg(stripWhiteSvgBg(svgText));
           const validation = validateSVGTinyPS(svgText);
-          row.svg_tiny_ps_valid = validation.valid;
-          row.svg_validation_errors = validation.errors.length > 0 ? validation.errors : null;
+          const tileBg = isLightBg(tileBgForSvg(stripWhiteSvgBg(svgText))) ? "light" : "dark";
+
+          // Store the SVG data on the logos table, not domain_bimi_state
+          // _svgText is captured for dns_snapshot building below
+          row._svgText = svgText;
+          row._svgTinyPsValid = validation.valid;
+          row._svgValidationErrors = validation.errors.length > 0 ? validation.errors : null;
+          row._tileBg = tileBg;
         }
       }
     } catch {
@@ -223,9 +225,9 @@ export async function lookupDomain(domain: string): Promise<BimiDnsRow | null> {
           found: true,
           sizeBytes: row.svg_size_bytes,
           contentType: row.svg_content_type,
-          tinyPsValid: row.svg_tiny_ps_valid,
+          tinyPsValid: row._svgTinyPsValid ?? null,
           indicatorHash: row.svg_indicator_hash,
-          validationErrors: row.svg_validation_errors,
+          validationErrors: row._svgValidationErrors ?? null,
         }
       : null,
     certificate: certSnapshot,
@@ -286,6 +288,25 @@ export async function backfillBimiDns(sql: NeonQueryFunction<false, false>, limi
 
     for (const row of rows) {
       await upsertDomainStateSql(sql, row);
+
+      // Upsert logo if SVG was fetched
+      const svgText = row._svgText;
+      if (svgText && row.svg_indicator_hash) {
+        try {
+          await upsertLogoSql(sql, {
+            svgHash: row.svg_indicator_hash,
+            svgContent: svgText,
+            source: "dns",
+            seenAt: new Date(),
+            svgSizeBytes: row.svg_size_bytes,
+            svgTinyPsValid: row._svgTinyPsValid ?? null,
+            svgValidationErrors: row._svgValidationErrors ?? null,
+            tileBg: row._tileBg ?? null,
+          });
+        } catch (err) {
+          console.error(`  Logo upsert failed for ${row.domain}:`, err);
+        }
+      }
     }
 
     for (const row of rows) {

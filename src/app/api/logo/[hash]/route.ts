@@ -1,43 +1,26 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { CACHE_PRESETS } from "@/lib/cache";
 import { db } from "@/lib/db";
-import { certificates, domainBimiState } from "@/lib/db/schema";
+import { logos } from "@/lib/db/schema";
 import { sanitizeSvgForProxy } from "@/lib/sanitize-svg";
 
 const PNG_SIZE = 256;
 
-/** Look up SVG content by hash — try certificates first, fall back to domain_bimi_state */
-async function findSvgByHash(hash: string): Promise<string | null> {
-  const [cert] = await db
-    .select({ logotypeSvg: certificates.logotypeSvg })
-    .from(certificates)
-    .where(and(eq(certificates.logotypeSvgHash, hash), isNotNull(certificates.logotypeSvg)))
-    .limit(1);
-  if (cert?.logotypeSvg) return cert.logotypeSvg;
-
-  const [domain] = await db
-    .select({ svgContent: domainBimiState.svgContent })
-    .from(domainBimiState)
-    .where(and(eq(domainBimiState.svgIndicatorHash, hash), isNotNull(domainBimiState.svgContent)))
-    .limit(1);
-  return domain?.svgContent ?? null;
-}
-
 export async function GET(request: NextRequest, { params }: { params: Promise<{ hash: string }> }) {
   const { hash } = await params;
 
-  const svg = await findSvgByHash(hash);
+  const [logo] = await db.select({ svgContent: logos.svgContent }).from(logos).where(eq(logos.svgHash, hash)).limit(1);
 
-  if (!svg) {
+  if (!logo?.svgContent) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const format = request.nextUrl.searchParams.get("format");
 
   if (format === "svg") {
-    return new NextResponse(sanitizeSvgForProxy(svg), {
+    return new NextResponse(sanitizeSvgForProxy(logo.svgContent), {
       headers: {
         "Content-Type": "image/svg+xml",
         "Cache-Control": CACHE_PRESETS.IMMUTABLE,
@@ -48,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   try {
-    const png = await sharp(Buffer.from(svg)).resize(PNG_SIZE, PNG_SIZE).png().toBuffer();
+    const png = await sharp(Buffer.from(logo.svgContent)).resize(PNG_SIZE, PNG_SIZE).png().toBuffer();
 
     return new NextResponse(new Uint8Array(png), {
       headers: {

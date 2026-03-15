@@ -88,9 +88,9 @@ export async function batchUpdateColorRichness(
     const scores = chunk.map((r) => r.score);
 
     return sql`
-			UPDATE certificates AS c SET logo_color_richness = d.score
+			UPDATE logos SET color_richness = d.score
 			FROM unnest(${hashes}::text[], ${scores}::int[]) AS d(hash, score)
-			WHERE c.logotype_svg_hash = d.hash
+			WHERE logos.svg_hash = d.hash
 		`;
   });
 }
@@ -107,15 +107,15 @@ export async function batchUpdateVisualHash(
     const visualHashes = chunk.map((r) => r.visualHash);
 
     return sql`
-			UPDATE certificates AS c SET logotype_visual_hash = d.visual_hash
+			UPDATE logos SET visual_hash = d.visual_hash
 			FROM unnest(${hashes}::text[], ${visualHashes}::text[]) AS d(hash, visual_hash)
-			WHERE c.logotype_svg_hash = d.hash
+			WHERE logos.svg_hash = d.hash
 		`;
   });
 }
 
 /**
- * Batch-update tile background hint by SVG hash (certificates table).
+ * Batch-update tile background hint by SVG hash (logos table).
  */
 export async function batchUpdateTileBg(
   sql: NeonQueryFunction<false, false>,
@@ -126,9 +126,9 @@ export async function batchUpdateTileBg(
     const bgs = chunk.map((r) => r.bg);
 
     return sql`
-			UPDATE certificates AS c SET logo_tile_bg = d.bg
+			UPDATE logos SET tile_bg = d.bg
 			FROM unnest(${hashes}::text[], ${bgs}::text[]) AS d(hash, bg)
-			WHERE c.logotype_svg_hash = d.hash
+			WHERE logos.svg_hash = d.hash
 		`;
   });
 }
@@ -146,11 +146,11 @@ export async function batchUpdateLogoQuality(
     const reasons = chunk.map((r) => r.reason);
 
     return sql`
-			UPDATE certificates AS c SET
-				logo_quality_score = d.score,
-				logo_quality_reason = d.reason
+			UPDATE logos SET
+				quality_score = d.score,
+				quality_reason = d.reason
 			FROM unnest(${hashes}::text[], ${scores}::int[], ${reasons}::text[]) AS d(hash, score, reason)
-			WHERE c.logotype_svg_hash = d.hash
+			WHERE logos.svg_hash = d.hash
 		`;
   });
 }

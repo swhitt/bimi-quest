@@ -4,22 +4,21 @@ import { ListFilter } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { PaginationBar } from "@/components/pagination-bar";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useSmartBg } from "@/hooks/use-smart-bg";
 import { domainSlug } from "@/lib/domain-slug";
 import { errorMessage } from "@/lib/utils";
-import { LogoSvg } from "@/components/logo-svg";
+import { DARK_BG, LIGHT_BG } from "@/lib/svg-bg";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { useLazyRender } from "@/lib/use-lazy-render";
 
 interface Logo {
   fingerprint: string;
   svgHash: string;
-  svg: string | null;
   org: string | null;
   domain: string | null;
   certType: string | null;
@@ -160,19 +159,15 @@ function buildGalleryParams(preset: PresetKey | null, filters: CustomFilters): U
 /* ── LogoTile (unchanged except tooltip) ────────────────────────────── */
 
 function LogoTile({ logo }: { logo: Logo }) {
-  const linkHref = logo.fingerprint
-    ? `/logo/${logo.fingerprint.slice(0, 16)}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
+  const linkHref = logo.svgHash
+    ? `/logos/${logo.svgHash.slice(0, 16)}/${logo.domain ? domainSlug(logo.domain) : "logo"}`
     : null;
   const [copied, setCopied] = useState(false);
   const [lazyRef, isVisible] = useLazyRender<HTMLDivElement>("300px");
 
-  const {
-    bgColor,
-    isLight: lightBg,
-    displaySvg,
-  } = useSmartBg(logo.svg ?? null, logo.tileBg as "light" | "dark" | null);
-
-  const hasSvg = isVisible && !!displaySvg;
+  const lightBg = logo.tileBg === "light";
+  const bgColor = lightBg ? LIGHT_BG : DARK_BG;
+  const svgUrl = logo.svgHash ? `/api/logo/${logo.svgHash}?format=svg` : null;
 
   const handleCopyLink = useCallback(
     (e: React.MouseEvent) => {
@@ -192,11 +187,19 @@ function LogoTile({ logo }: { logo: Logo }) {
     <div
       ref={lazyRef}
       className="group relative aspect-square bg-neutral-800 transition-all duration-200 ease-out hover:z-20 hover:ring-2 hover:ring-primary/50"
-      style={bgColor ? { backgroundColor: bgColor } : undefined}
+      style={{ backgroundColor: bgColor }}
     >
       {isVisible ? (
-        hasSvg ? (
-          <LogoSvg svg={displaySvg!} className="flex h-full w-full items-center justify-center" />
+        svgUrl ? (
+          <Image
+            src={svgUrl}
+            alt={logo.org || logo.domain || "Logo"}
+            width={128}
+            height={128}
+            unoptimized
+            loading="lazy"
+            className="h-full w-full object-contain p-1"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-muted/30 text-xs text-muted-foreground">
             No image

@@ -103,7 +103,6 @@ const FLAT_COLUMN_MAP: Record<string, SQL> = {
   "dmarc.policy": sql`${domainBimiState.dmarcPolicy}`,
   "dmarc.validForBimi": sql`${domainBimiState.dmarcValid}::text`,
   "svg.found": sql`${domainBimiState.svgFetched}::text`,
-  "svg.tinyPsValid": sql`${domainBimiState.svgTinyPsValid}::text`,
   "svg.contentType": sql`${domainBimiState.svgContentType}`,
   "svg.sizeBytes": sql`${domainBimiState.svgSizeBytes}::text`,
   "svg.indicatorHash": sql`${domainBimiState.svgIndicatorHash}`,
@@ -264,17 +263,9 @@ export async function GET(request: NextRequest) {
         bimiLogoUrl: domainBimiState.bimiLogoUrl,
         bimiRecordRaw: domainBimiState.bimiRecordRaw,
         bimiAuthorityUrl: domainBimiState.bimiAuthorityUrl,
-        svgTinyPsValid: domainBimiState.svgTinyPsValid,
-        svgValidationErrors: domainBimiState.svgValidationErrors,
         svgIndicatorHash: domainBimiState.svgIndicatorHash,
-        svgTileBg: domainBimiState.svgTileBg,
         dmarcValid: domainBimiState.dmarcValid,
         dmarcRua: sql<string | null>`${domainBimiState.dnsSnapshot}->'dmarc'->>'rua'`.as("dmarcRua"),
-        svgContent: sql<
-          string | null
-        >`CASE WHEN length(${domainBimiState.svgContent}) <= 32768 THEN ${domainBimiState.svgContent} END`.as(
-          "svgContent",
-        ),
         lastChecked: domainBimiState.lastChecked,
         _total: sql<number>`count(*) OVER()`.as("_total"),
       })
@@ -285,9 +276,9 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     const total = rows.length > 0 ? rows[0]._total : 0;
-    const data = rows.map(({ _total: _, svgContent, ...rest }) => ({
+    const data = rows.map(({ _total: _, ...rest }) => ({
       ...rest,
-      svgDataUri: svgContent ? `data:image/svg+xml;base64,${Buffer.from(svgContent).toString("base64")}` : null,
+      svgDataUri: null,
     }));
 
     return NextResponse.json(
