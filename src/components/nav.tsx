@@ -124,7 +124,7 @@ function NavDropdown({
 }) {
   const active = items.some((item) => isActive(item.href));
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         className={cn(
           "flex items-center gap-0.5 px-2 py-1 text-sm transition-colors outline-none",
