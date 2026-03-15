@@ -1,12 +1,7 @@
 import type { BimiGrade } from "@/lib/bimi/types";
+import { GRADE_COLORS } from "@/lib/colors";
 
-const GRADE_STYLES: Record<BimiGrade, string> = {
-  A: "bg-emerald-600 text-white dark:bg-emerald-500",
-  B: "bg-emerald-600/80 text-white dark:bg-emerald-500/80",
-  C: "bg-amber-500 text-white dark:bg-amber-400 dark:text-black",
-  D: "bg-orange-500 text-white dark:bg-orange-400 dark:text-black",
-  F: "bg-destructive text-destructive-foreground",
-};
+const GRADE_STYLES: Record<BimiGrade, string> = GRADE_COLORS;
 
 export function ValidationGrade({ grade, summary }: { grade: BimiGrade; summary: string }) {
   return (

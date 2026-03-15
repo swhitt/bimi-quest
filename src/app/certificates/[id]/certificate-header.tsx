@@ -5,8 +5,7 @@ import { HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
-import { HostChip } from "@/components/host-chip";
-import { HostnameLink } from "@/components/hostname-link";
+import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +65,7 @@ export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
               {cert.subjectOrg || cert.subjectCn || cert.sanList[0] || "Certificate"}
             </h1>
             <p className="text-muted-foreground flex items-center gap-1">
-              {cert.sanList[0] ? <HostnameLink hostname={cert.sanList[0]} size="sm" /> : cert.subjectCn}
+              {cert.sanList[0] ? <DomainChip domain={cert.sanList[0]} size="sm" /> : cert.subjectCn}
               {cert.subjectCountry && ` · ${cert.subjectCountry}`}
               {cert.issuerOrg && ` · Issued by ${cert.issuerOrg}`}
             </p>
@@ -261,7 +260,7 @@ export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
                       return (
                         <span key={san} className="inline-flex items-center">
                           {i > 0 && <span className="mx-1 text-muted-foreground">,</span>}
-                          <HostChip hostname={san} showBimiCheck />
+                          <DomainChip domain={san} showBimiCheck />
                           <Link
                             href={domainUrl(san)}
                             className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"

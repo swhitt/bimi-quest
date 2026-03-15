@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HostChip } from "@/components/host-chip";
+import { DomainChip } from "@/components/domain-chip";
 import { MiniPagination } from "@/components/dashboard/mini-pagination";
 import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -175,7 +175,7 @@ export function DnsChangesFeed() {
                       {c.recordType}
                     </span>
                     <div className="min-w-0 flex-1 truncate">
-                      <HostChip hostname={c.domain} size="xs" compact />
+                      <DomainChip domain={c.domain} size="xs" compact />
                     </div>
                     <span className={cn("font-mono text-[10px] shrink-0", style.color)}>{style.label}</span>
                     {c.detectedAt && (

@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
-import { HostnameLink } from "@/components/hostname-link";
+import { DomainChip } from "@/components/domain-chip";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
 import { Badge } from "@/components/ui/badge";
 import { orgUrl } from "@/lib/entity-urls";
@@ -142,7 +142,7 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
                     className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"
                     aria-label={`${domain}, ${count} ${count === 1 ? "certificate" : "certificates"}`}
                   >
-                    <HostnameLink hostname={domain} size="xs" />
+                    <DomainChip domain={domain} size="xs" />
                     <span className="text-xs text-muted-foreground" aria-hidden="true">
                       {count} {count === 1 ? "cert" : "certs"}
                     </span>

@@ -177,7 +177,7 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
             No BIMI certificates found for <strong>{hostname}</strong>.
           </p>
           <p className="text-sm text-muted-foreground">
-            This hostname has not appeared in any VMC or CMC certificates in our CT log data.
+            This domain has not appeared in any VMC or CMC certificates in our CT log data.
           </p>
           <Link href={validateUrl(hostname)} className="text-sm text-primary hover:underline">
             Run a BIMI check to see if this domain has BIMI configured

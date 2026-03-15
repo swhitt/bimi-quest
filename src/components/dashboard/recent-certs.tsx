@@ -8,8 +8,9 @@ import { LogoCard } from "@/components/logo-card";
 import { Badge } from "@/components/ui/badge";
 import { UtcTime, formatUtcFull } from "@/components/ui/utc-time";
 import { displayIntermediateCa } from "@/lib/ca-display";
-import { HostChip } from "@/components/host-chip";
-import { certUrl, orgUrl } from "@/lib/entity-urls";
+import { DomainChip } from "@/components/domain-chip";
+import { OrgChip } from "@/components/org-chip";
+import { certUrl } from "@/lib/entity-urls";
 import { usePaginatedData } from "@/lib/use-paginated-data";
 
 export interface RecentCert {
@@ -112,19 +113,15 @@ export function RecentCerts({
                   )}
                   <span className="text-[13px] font-medium truncate flex-1 min-w-0">
                     {cert.sanList[0] ? (
-                      <HostChip hostname={cert.sanList[0]} size="xs" compact />
+                      <DomainChip domain={cert.sanList[0]} size="xs" compact />
                     ) : (
                       <span className="font-mono text-muted-foreground">{cert.subjectCn || "Unknown"}</span>
                     )}
                   </span>
                   {cert.subjectOrg && (
-                    <Link
-                      href={orgUrl(cert.subjectOrg)}
-                      className="hidden sm:inline text-[11px] text-muted-foreground truncate min-w-0 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {cert.subjectOrg}
-                    </Link>
+                    <span className="hidden sm:inline truncate min-w-0">
+                      <OrgChip org={cert.subjectOrg} size="xs" compact />
+                    </span>
                   )}
                   <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
                     {cert.certType || "BIMI"}

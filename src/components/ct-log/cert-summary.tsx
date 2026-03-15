@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CertChip } from "@/components/cert-chip";
-import { HostnameLink } from "@/components/hostname-link";
+import { DomainChip } from "@/components/domain-chip";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -130,7 +130,7 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
           {cert.sans.length > 0 ? (
             <div className="flex flex-wrap gap-x-2 gap-y-0.5">
               {cert.sans.map((san) => (
-                <HostnameLink key={san} hostname={san} size="xs" />
+                <DomainChip key={san} domain={san} size="xs" />
               ))}
             </div>
           ) : (

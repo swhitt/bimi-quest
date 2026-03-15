@@ -4,6 +4,7 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tan
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { EXPIRY_COLORS } from "@/lib/colors";
 import { certUrl, orgUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 
@@ -15,8 +16,8 @@ declare module "@tanstack/react-table" {
 }
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search } from "lucide-react";
-import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
-import { HostnameLink } from "@/components/hostname-link";
+import { DomainAutocomplete } from "@/components/domain-autocomplete";
+import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
@@ -224,7 +225,7 @@ export function CertificatesTable({
               </div>
               {firstDomain && (
                 <span className="text-[11px] md:hidden block truncate">
-                  <HostnameLink hostname={firstDomain} size="xs" compact />
+                  <DomainChip domain={firstDomain} size="xs" compact />
                   {row.original.sanList.length > 1 && (
                     <span className="text-muted-foreground"> +{row.original.sanList.length - 1}</span>
                   )}
@@ -237,7 +238,7 @@ export function CertificatesTable({
       {
         id: "sans",
         meta: { className: "hidden md:table-cell md:w-[140px] lg:w-[160px] xl:w-[200px]" },
-        header: "Hostnames",
+        header: "Domains",
         cell: ({ row }) => {
           const sans = row.original.sanList;
           if (sans.length === 0) return <span className="text-muted-foreground">—</span>;
@@ -245,7 +246,7 @@ export function CertificatesTable({
           return (
             <div className="min-w-0">
               <span className="block truncate">
-                <HostnameLink hostname={sans[0]} size="xs" compact />
+                <DomainChip domain={sans[0]} size="xs" compact />
               </span>
               {extraSans.length > 0 && (
                 <Tooltip>
@@ -258,7 +259,7 @@ export function CertificatesTable({
                     <ul className="space-y-0.5">
                       {extraSans.map((san) => (
                         <li key={san}>
-                          <HostnameLink hostname={san} size="xs" />
+                          <DomainChip domain={san} size="xs" />
                         </li>
                       ))}
                     </ul>
@@ -375,14 +376,9 @@ export function CertificatesTable({
         cell: ({ row }) => {
           if (!row.original.notAfter) return "-";
           const status = getCertValidity(row.original.notAfter);
-          const colorClass =
-            status === "active"
-              ? "text-green-700 dark:text-emerald-400/80"
-              : status === "expiring-soon"
-                ? "text-amber-700 dark:text-amber-400/70"
-                : "text-muted-foreground/70 line-through decoration-muted-foreground/30";
+          const colorCls = EXPIRY_COLORS[status];
           return (
-            <span className={colorClass}>
+            <span className={colorCls}>
               <UtcTime date={row.original.notAfter} compact expired={status === "expired"} />
             </span>
           );
@@ -423,7 +419,7 @@ export function CertificatesTable({
           <div className="flex items-center gap-2 sm:contents">
             <div className="relative flex-1 sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
-              <HostnameAutocomplete
+              <DomainAutocomplete
                 value={searchInput}
                 onChange={setSearchInput}
                 onSelect={(val) => {
@@ -444,7 +440,7 @@ export function CertificatesTable({
               size="sm"
               aria-label="Export current page as CSV"
               onClick={() => {
-                const csvHeader = "Organization,Domain,Hostnames,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
+                const csvHeader = "Organization,Domain,Domains,CA,Type,Country,Issued,Expires,CT Date,Serial Number";
                 const csvRows = data.map((r) =>
                   [
                     `"${(r.subjectOrg || "").replace(/"/g, '""')}"`,
@@ -556,9 +552,9 @@ export function CertificatesTable({
                   <div className="space-y-1">
                     <p>No certificates match your current filters.</p>
                     <p className="text-xs">
-                      Try adjusting your search or filters, or use the{" "}
+                      Try adjusting your search or filters, or use{" "}
                       <Link href="/validate" className="text-primary hover:underline">
-                        Validator
+                        BIMI Check
                       </Link>{" "}
                       to check a specific domain.
                     </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { STALENESS_COLORS } from "@/lib/colors";
 import { formatUtcFull } from "@/components/ui/utc-time";
 
 interface CtLogStatusProps {
@@ -32,11 +33,7 @@ function localStr(d: Date): string {
   }).format(d);
 }
 
-const colorClass: Record<ReturnType<typeof staleness>, string> = {
-  fresh: "text-muted-foreground",
-  stale: "text-amber-700 dark:text-amber-400/70",
-  critical: "text-foreground",
-};
+const colorClass: Record<ReturnType<typeof staleness>, string> = STALENESS_COLORS;
 
 export function CtLogStatus({ logName, lastChecked }: CtLogStatusProps) {
   const d = new Date(lastChecked);

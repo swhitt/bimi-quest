@@ -349,9 +349,6 @@ export function LintForm() {
                     className="max-w-[200px]"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Looks up the BIMI DNS record, fetches the certificate from the authority URL, and lints it.
-                </p>
                 <Button type="submit" disabled={loading || !domain.trim()}>
                   {loading ? "Looking up…" : "Lookup & Lint"}
                 </Button>
@@ -381,7 +378,6 @@ export function LintForm() {
                   className="font-mono text-xs"
                 />
                 {pemSizeError && <p className="text-xs text-destructive">PEM exceeds 100KB limit</p>}
-                <p className="text-xs text-muted-foreground">Or drag &amp; drop a PEM file anywhere on this page.</p>
                 <Button type="submit" disabled={loading || !pem.trim() || pemSizeError}>
                   {loading ? "Linting…" : "Lint Certificate"}
                 </Button>

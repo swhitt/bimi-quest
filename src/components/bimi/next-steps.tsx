@@ -92,8 +92,7 @@ export function NextSteps({ checks, overallValid }: NextStepsProps) {
             <div>
               <p className="font-medium text-sm">Everything looks good</p>
               <p className="text-sm text-muted-foreground mt-1">
-                This domain&apos;s BIMI setup passes all required checks. Email clients that support BIMI should display
-                the brand logo alongside messages from this domain.
+                This domain&apos;s BIMI setup passes all required checks.
               </p>
             </div>
           </div>

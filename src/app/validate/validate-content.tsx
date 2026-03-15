@@ -8,7 +8,7 @@ import { ReceiverTrustResults } from "@/components/bimi/receiver-trust-results";
 import { TechnicalDetails } from "@/components/bimi/technical-details";
 import { ValidationChecklist } from "@/components/bimi/validation-checklist";
 import { ValidationGrade } from "@/components/bimi/validation-grade";
-import { HostnameAutocomplete } from "@/components/hostname-autocomplete";
+import { DomainAutocomplete } from "@/components/domain-autocomplete";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -176,11 +176,11 @@ export function ValidateContent() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-lg font-semibold">BIMI Validator</h1>
+      <h1 className="text-lg font-semibold">BIMI Check</h1>
 
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          <HostnameAutocomplete
+          <DomainAutocomplete
             value={domain}
             onChange={setDomain}
             onSelect={(val) => {
@@ -191,7 +191,7 @@ export function ValidateContent() {
             className="sm:max-w-md flex-1"
           />
           <Button onClick={() => handleValidate()} disabled={loading}>
-            {loading ? "Validating..." : "Validate"}
+            {loading ? "Checking..." : "Check"}
           </Button>
         </div>
         <details open={showAdvanced} onToggle={(e) => setShowAdvanced((e.target as HTMLDetailsElement).open)}>
@@ -223,27 +223,7 @@ export function ValidateContent() {
         </details>
       </div>
 
-      {!result && !loading && !error && (
-        <div className="mt-6 space-y-3">
-          <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">quick check</p>
-          <div className="flex flex-wrap gap-2">
-            {["paypal.com", "linkedin.com", "cnn.com", "amazon.com", "ups.com", "stripe.com"].map((d) => (
-              <Button
-                key={d}
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs"
-                onClick={() => {
-                  setDomain(d);
-                  handleValidate(d);
-                }}
-              >
-                {d}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Empty state intentionally blank — power users know what to do */}
 
       {error && (
         <Card className="border-destructive" role="alert">

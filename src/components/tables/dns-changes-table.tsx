@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { CHANGE_STYLE, POLICY_CHANGES } from "@/components/dashboard/dns-changes-feed";
 import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
-import { HostChip } from "@/components/host-chip";
+import { DomainChip } from "@/components/domain-chip";
 import { type Pagination, PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,7 +175,7 @@ export function DnsChangesTable({ data, pagination }: DnsChangesTableProps) {
         ),
         cell: ({ row }) => (
           <div className="min-w-0 truncate">
-            <HostChip hostname={row.original.domain} size="xs" compact />
+            <DomainChip domain={row.original.domain} size="xs" compact />
           </div>
         ),
       },

@@ -19,10 +19,10 @@ interface UniversalSearchProps {
 }
 
 const TYPE_LABELS: Record<SearchType, string> = {
-  domain: "hostname",
+  domain: "domain",
   serial: "serial number",
   fingerprint: "fingerprint",
-  text: "organization or hostname",
+  text: "organization or domain",
 };
 
 export function UniversalSearch({ variant = "nav", autoFocus = false, onNavigate }: UniversalSearchProps) {

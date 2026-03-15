@@ -4,13 +4,12 @@ import { Suspense } from "react";
 import { ValidateContent } from "./validate-content";
 
 export const metadata: Metadata = {
-  title: "BIMI Validator",
-  description:
-    "Validate any domain's BIMI setup including DMARC policy, DNS records, SVG logo, and VMC/CMC certificates.",
+  title: "BIMI Check",
+  description: "Check any domain's BIMI setup including DMARC policy, DNS records, SVG logo, and VMC/CMC certificates.",
   openGraph: {
-    title: "Free BIMI Validator — Check Any Domain",
+    title: "BIMI Check — Validate Any Domain",
     description:
-      "Instantly check any domain's BIMI readiness: DNS records, DMARC policy, SVG logo compliance, and VMC/CMC certificate status.",
+      "Check any domain's BIMI readiness: DNS records, DMARC policy, SVG logo compliance, and VMC/CMC certificate status.",
     images: [{ url: "/api/og/default", width: 1200, height: 630 }],
   },
 };

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
-import { HostnameLink } from "@/components/hostname-link";
+import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
 import { LogoSvg } from "@/components/logo-svg";
 import { Badge } from "@/components/ui/badge";
@@ -574,7 +574,7 @@ export function CertificateBimiPanel({ id, data }: { id: string; data: Certifica
               return (
                 <div key={dc.domain} className="rounded-lg border p-4 space-y-4">
                   <div className="flex items-center justify-between">
-                    <HostnameLink hostname={dc.domain} />
+                    <DomainChip domain={dc.domain} />
                     <Badge
                       variant={failCount === 0 ? "default" : "secondary"}
                       className={

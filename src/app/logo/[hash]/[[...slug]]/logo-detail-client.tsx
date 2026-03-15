@@ -2,7 +2,7 @@
 
 import { Award, Shield, Star } from "lucide-react";
 import Link from "next/link";
-import { HostnameLink } from "@/components/hostname-link";
+import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
@@ -183,7 +183,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
 
           {logo.primaryDomain && (
             <DetailRow label="Domain">
-              <HostnameLink hostname={logo.primaryDomain} size="xs" />
+              <DomainChip domain={logo.primaryDomain} size="xs" />
               {logo.domains.length > 1 && (
                 <span className="text-muted-foreground ml-1">+{logo.domains.length - 1} more</span>
               )}

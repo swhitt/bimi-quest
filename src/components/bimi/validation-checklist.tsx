@@ -6,14 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { BimiCheckItem } from "@/lib/bimi/types";
+import { STATUS_COLORS } from "@/lib/colors";
 import { citationUrl } from "@/lib/lint/citation-urls";
 
 const STATUS_ICON: Record<BimiCheckItem["status"], { icon: string; color: string; label: string }> = {
-  pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400", label: "Passed" },
-  fail: { icon: "\u2717", color: "text-destructive", label: "Failed" },
-  warn: { icon: "\u26A0", color: "text-amber-500 dark:text-amber-400", label: "Warning" },
-  skip: { icon: "\u2014", color: "text-muted-foreground", label: "Skipped" },
-  info: { icon: "i", color: "text-blue-500 dark:text-blue-400", label: "Information" },
+  pass: { icon: "\u2713", color: STATUS_COLORS.pass, label: "Passed" },
+  fail: { icon: "\u2717", color: STATUS_COLORS.fail, label: "Failed" },
+  warn: { icon: "\u26A0", color: STATUS_COLORS.warn, label: "Warning" },
+  skip: { icon: "\u2014", color: STATUS_COLORS.skip, label: "Skipped" },
+  info: { icon: "i", color: STATUS_COLORS.info, label: "Information" },
 };
 
 const LPS_EXPLANATION =

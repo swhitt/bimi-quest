@@ -1,1 +1,2 @@
-export { HostChip as HostnameLink } from "@/components/host-chip";
+/** @deprecated Use DomainChip from "@/components/domain-chip" instead. */
+export { DomainChip as HostnameLink } from "@/components/domain-chip";

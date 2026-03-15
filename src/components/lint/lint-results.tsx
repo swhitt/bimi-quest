@@ -5,19 +5,14 @@ import { Check, ClipboardCopy, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SEVERITY_BADGE_COLORS, STATUS_COLORS, SUMMARY_BADGE_COLORS } from "@/lib/colors";
 import { citationUrl } from "@/lib/lint/citation-urls";
 import type { LintResult, LintSummary } from "@/lib/lint/types";
 
 const STATUS_ICON: Record<string, { icon: string; color: string; ariaLabel: string }> = {
-  pass: { icon: "\u2713", color: "text-emerald-600 dark:text-emerald-400", ariaLabel: "Passed" },
-  fail: { icon: "\u2717", color: "text-destructive", ariaLabel: "Failed" },
-  not_applicable: { icon: "\u2014", color: "text-muted-foreground", ariaLabel: "Not applicable" },
-};
-
-const SEVERITY_BADGE: Record<string, string> = {
-  error: "bg-destructive/10 text-destructive border-destructive/30",
-  warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
-  notice: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+  pass: { icon: "\u2713", color: STATUS_COLORS.pass, ariaLabel: "Passed" },
+  fail: { icon: "\u2717", color: STATUS_COLORS.fail, ariaLabel: "Failed" },
+  not_applicable: { icon: "\u2014", color: STATUS_COLORS.not_applicable, ariaLabel: "Not applicable" },
 };
 
 function ResultRow({ result }: { result: LintResult }) {
@@ -31,7 +26,7 @@ function ResultRow({ result }: { result: LintResult }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm">{result.title}</span>
           {result.status === "fail" && (
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${SEVERITY_BADGE[result.severity]}`}>
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${SEVERITY_BADGE_COLORS[result.severity]}`}>
               {result.severity}
             </Badge>
           )}
@@ -112,16 +107,16 @@ export function LintResults({ results, summary, cert }: LintResultsProps) {
           </Badge>
         )}
         {summary.warnings > 0 && (
-          <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">
+          <Badge variant="outline" className={SUMMARY_BADGE_COLORS.warnings}>
             {summary.warnings} warning{summary.warnings !== 1 ? "s" : ""}
           </Badge>
         )}
         {summary.notices > 0 && (
-          <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400">
+          <Badge variant="outline" className={SUMMARY_BADGE_COLORS.notices}>
             {summary.notices} notice{summary.notices !== 1 ? "s" : ""}
           </Badge>
         )}
-        <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+        <Badge variant="outline" className={SUMMARY_BADGE_COLORS.passed}>
           {summary.passed} passed
         </Badge>
         <div className="flex gap-1.5 ml-auto">
