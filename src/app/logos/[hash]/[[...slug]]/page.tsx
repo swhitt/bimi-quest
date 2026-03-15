@@ -94,6 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const primaryDomain = logo.domain?.[0] ?? "";
   const org = logo.org ?? primaryDomain;
+  const expectedSlug = primaryDomain ? domainSlug(primaryDomain) : "logo";
 
   const issuer = logo.issuer ? displayIntermediateCa(logo.issuer) : "unknown CA";
   const markLabel = logo.certType ?? "Certificate";
@@ -106,6 +107,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImageUrl = logo.svgHash ? `/api/og/logo/${logo.svgHash}` : undefined;
 
   return {
+    alternates: { canonical: `/logos/${hash}/${expectedSlug}` },
     title: `${org} BIMI Logo`,
     description,
     openGraph: {

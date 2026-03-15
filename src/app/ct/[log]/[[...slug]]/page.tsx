@@ -70,6 +70,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = `${type}${bimi} | Issued by ${issuer} | ${entry.leaf.timestampDate}`;
 
     return {
+      alternates: { canonical: `/ct/${log}/${entryIndex}` },
       title,
       description,
       openGraph: {
@@ -90,6 +91,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const listDescription =
     "Browse raw Certificate Transparency log entries from the Gorgon CT log with decoded certificates, annotated hex viewer, and chain analysis.";
   return {
+    alternates: { canonical: `/ct/${log}` },
     title: "CT Log Viewer",
     description: listDescription,
     openGraph: {

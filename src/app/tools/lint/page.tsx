@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { LintForm } from "@/components/lint/lint-form";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/tools/lint" },
   title: "BIMI Certificate Linter",
   description:
     "Lint BIMI VMC/CMC certificates against MCR v1.7, RFC 3709, RFC 5280, and CA/Browser Forum requirements.",

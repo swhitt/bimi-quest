@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CheckContent } from "./check-content";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/check" },
   title: "BIMI Check",
   description: "Check any domain's BIMI setup including DMARC policy, DNS records, SVG logo, and VMC/CMC certificates.",
   openGraph: {

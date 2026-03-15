@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { EntryDetail, ENTRY_TABS } from "@/components/ct-log/entry-detail";
 import { EntryList } from "@/components/ct-log/entry-list";
 import { EntryNavigator } from "@/components/ct-log/entry-navigator";
@@ -327,7 +328,12 @@ export function CTLogContent({ logSlug, permalinkedIndex, initialStart, initialP
 
   return (
     <div className="space-y-4">
-      <STHPanel sth={sth} loading={sthLoading} lastPolled={lastPolled} />
+      <div className="flex items-center justify-between gap-4">
+        <STHPanel sth={sth} loading={sthLoading} lastPolled={lastPolled} />
+        <Link href="/transparency" className="text-sm text-primary hover:underline whitespace-nowrap">
+          SCT Analytics &rarr;
+        </Link>
+      </div>
 
       {startIndex !== null && (
         <EntryNavigator

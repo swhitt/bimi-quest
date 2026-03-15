@@ -82,6 +82,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImageUrl = `/api/og/cert/${fp12}`;
 
   return {
+    alternates: { canonical: `/certificates/${fingerprint}` },
     title: `${org} — ${type} Certificate`,
     description: descParts.join(" | "),
     openGraph: {

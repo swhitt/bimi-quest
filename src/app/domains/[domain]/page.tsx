@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { permanentRedirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { domainBimiState } from "@/lib/db/schema";
@@ -34,6 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImage = `/api/og/domain/${encodeURIComponent(domain)}`;
 
   return {
+    alternates: { canonical: `/domains/${domain}` },
     title: `BIMI DNS for ${domain}`,
     description: parts.join(" | "),
     openGraph: {
@@ -81,6 +83,12 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const { domain: rawDomain } = await params;
   const { fresh } = await searchParams;
   const domain = await resolveDomain(rawDomain);
+
+  // Redirect non-canonical URLs (uppercase, trailing dots) to canonical form
+  if (decodeURIComponent(rawDomain) !== domain) {
+    permanentRedirect(`/domains/${encodeURIComponent(domain)}`);
+  }
+
   const triggerFreshCheck = fresh === "1";
   const row = await getDomainData(domain);
 

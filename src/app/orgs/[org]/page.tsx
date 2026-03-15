@@ -98,6 +98,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImageUrl = bestCert ? `/api/og/cert/${bestCert.fingerprintSha256.slice(0, 12)}` : undefined;
 
   return {
+    alternates: { canonical: `/orgs/${org}` },
     title: `Certificates for ${orgName}`,
     description: descParts.join(" | "),
     openGraph: {

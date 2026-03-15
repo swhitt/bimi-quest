@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { MapContent } from "./map-content";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/map" },
   title: "Geographic Distribution",
   description: "Global BIMI certificate distribution by country. See which regions are adopting BIMI.",
   openGraph: {

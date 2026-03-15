@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { lintPem, summarize } from "../lint";
 import type { LintResult } from "../types";
-import { BIMI_VMC_PEM, NON_BIMI_PEM } from "./fixtures";
+import { BIMI_VMC_PEM, NON_BIMI_PEM, PERFECT_BIMI_VMC_PEM } from "./fixtures";
 
 function makeResult(severity: LintResult["severity"], status: LintResult["status"]): LintResult {
   return {
@@ -100,6 +100,21 @@ describe("lintPem integration", () => {
     expect(summary.errors + summary.warnings + summary.notices + summary.passed).toBe(
       results.filter((r) => r.status !== "not_applicable").length,
     );
+  });
+
+  it("passes every rule for the perfect VMC fixture", () => {
+    const results = lintPem(PERFECT_BIMI_VMC_PEM);
+    const summary = summarize(results);
+
+    // Every applicable rule must pass — zero errors, warnings, or notices
+    expect(summary.errors).toBe(0);
+    expect(summary.warnings).toBe(0);
+    expect(summary.notices).toBe(0);
+    expect(summary.passed).toBeGreaterThanOrEqual(20);
+
+    // No rule should fail
+    const failures = results.filter((r) => r.status === "fail");
+    expect(failures).toEqual([]);
   });
 
   it("returns many failures for a non-BIMI cert", () => {

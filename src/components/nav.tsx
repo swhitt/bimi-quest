@@ -22,20 +22,24 @@ import { UniversalSearch } from "./universal-search";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/certificates", label: "Certificates" },
-  { href: "/logos", label: "Logos" },
-  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/domains", label: "Domains" },
+  { href: "/organizations", label: "Organizations" },
 ];
 
-const toolsItems = [
-  { href: "/validate", label: "Validate" },
-  { href: "/tools/lint", label: "Linter" },
+const analyzeItems = [
+  { href: "/check", label: "BIMI Check" },
+  { href: "/tools/lint", label: "Certificate Lint" },
+  { href: "/logos", label: "Logos" },
+];
+
+const observeItems = [
   { href: "/ct/gorgon", label: "CT Log" },
-  { href: "/domains", label: "Domains" },
+  { href: "/transparency", label: "Transparency" },
   { href: "/dns-changes", label: "DNS Changes" },
   { href: "/map", label: "Map" },
-  { href: "/tools/asn1", label: "ASN.1" },
-  { href: "/transparency", label: "Transparency" },
 ];
+
+const utilityItems = [{ href: "/tools/asn1", label: "ASN.1 Explorer" }];
 
 // Secondary filter keys that travel as query params
 const SECONDARY_FILTER_KEYS = [
@@ -92,9 +96,46 @@ function useNavHelpers() {
   return { buildHref, isActive };
 }
 
+function NavDropdown({
+  label,
+  items,
+  buildHref,
+  isActive,
+}: {
+  label: string;
+  items: { href: string; label: string }[];
+  buildHref: (href: string) => string;
+  isActive: (href: string) => boolean;
+}) {
+  const active = items.some((item) => isActive(item.href));
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "flex items-center gap-0.5 px-2 py-1 text-sm transition-colors outline-none",
+          active
+            ? "border-b-2 border-primary text-foreground font-medium rounded-none"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        {label}
+        <ChevronDown className="size-3.5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {items.map((item) => (
+          <DropdownMenuItem key={item.href} asChild>
+            <Link href={buildHref(item.href)} className={cn(isActive(item.href) && "font-medium")}>
+              {item.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function NavLinks() {
   const { buildHref, isActive } = useNavHelpers();
-  const toolsActive = toolsItems.some((item) => isActive(item.href));
 
   return (
     <nav aria-label="Main" className="flex items-center gap-1 text-sm">
@@ -112,28 +153,9 @@ function NavLinks() {
           {item.label}
         </Link>
       ))}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          className={cn(
-            "flex items-center gap-0.5 px-2 py-1 text-sm transition-colors outline-none",
-            toolsActive
-              ? "border-b-2 border-primary text-foreground font-medium rounded-none"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Tools
-          <ChevronDown className="size-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {toolsItems.map((item) => (
-            <DropdownMenuItem key={item.href} asChild>
-              <Link href={buildHref(item.href)} className={cn(isActive(item.href) && "font-medium")}>
-                {item.label}
-              </Link>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <NavDropdown label="Analyze" items={analyzeItems} buildHref={buildHref} isActive={isActive} />
+      <NavDropdown label="Observe" items={observeItems} buildHref={buildHref} isActive={isActive} />
+      <NavDropdown label="Utility" items={utilityItems} buildHref={buildHref} isActive={isActive} />
     </nav>
   );
 }
@@ -141,7 +163,15 @@ function NavLinks() {
 function MobileNavLinks({ onNavigate }: { onNavigate: () => void }) {
   const { buildHref, isActive } = useNavHelpers();
 
-  const allItems = [...navItems, { href: "divider", label: "Tools" }, ...toolsItems];
+  const allItems = [
+    ...navItems,
+    { href: "divider", label: "Analyze" },
+    ...analyzeItems,
+    { href: "divider", label: "Observe" },
+    ...observeItems,
+    { href: "divider", label: "Utility" },
+    ...utilityItems,
+  ];
 
   return (
     <nav aria-label="Mobile navigation" className="flex flex-col">
@@ -149,7 +179,7 @@ function MobileNavLinks({ onNavigate }: { onNavigate: () => void }) {
         if (item.href === "divider") {
           return (
             <div
-              key="tools-divider"
+              key={`divider-${item.label}`}
               className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
             >
               {item.label}

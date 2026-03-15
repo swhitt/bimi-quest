@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const displayName = CA_DISPLAY_NAMES[slug.toLowerCase()] ?? rootCaOrg;
   return {
+    alternates: { canonical: `/cas/${slug}` },
     title: `${displayName} — BIMI Certificates`,
     description: `BIMI VMC and CMC certificates issued by ${displayName}. Certificate counts, intermediates, and top organizations.`,
   };

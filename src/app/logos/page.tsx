@@ -4,6 +4,7 @@ import { getBaseUrl } from "@/lib/server-url";
 import { GalleryContent, type GalleryResponse } from "./gallery-content";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/logos" },
   title: "Logo Gallery",
   description: "Browse BIMI logos from VMC and CMC certificates discovered in Certificate Transparency logs.",
   openGraph: {

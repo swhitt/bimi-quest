@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { LeaderboardContent } from "../leaderboard/leaderboard-content";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/organizations" },
   title: "Organizations",
   description: "Organizations ranked by BIMI certificate count — VMC/CMC counts, active certs, and industries.",
 };

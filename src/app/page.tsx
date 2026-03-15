@@ -3,6 +3,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { DashboardContent } from "./dashboard-content";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/" },
   title: "Dashboard",
   description:
     "Real-time BIMI certificate market intelligence. Track VMC and CMC issuances, CA market share, and industry adoption from CT logs.",

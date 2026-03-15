@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
+import { desc, isNotNull, sql } from "drizzle-orm";
+import { ALL_CA_SLUGS } from "@/lib/ca-slugs";
 import { db } from "@/lib/db";
+import { certificates, domainBimiState } from "@/lib/db/schema";
 
 export const revalidate = 3600;
-
-import { desc } from "drizzle-orm";
-import { certificates } from "@/lib/db/schema";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://bimi.quest";
@@ -12,12 +12,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: "hourly", priority: 1.0 },
     { url: `${baseUrl}/certificates`, lastModified: new Date(), changeFrequency: "hourly", priority: 0.9 },
-    { url: `${baseUrl}/validate`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/map`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
+    { url: `${baseUrl}/check`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/domains`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
+    { url: `${baseUrl}/organizations`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
     { url: `${baseUrl}/logos`, lastModified: new Date(), changeFrequency: "daily", priority: 0.6 },
+    { url: `${baseUrl}/map`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
+    { url: `${baseUrl}/transparency`, lastModified: new Date(), changeFrequency: "daily", priority: 0.5 },
+    { url: `${baseUrl}/dns-changes`, lastModified: new Date(), changeFrequency: "daily", priority: 0.5 },
+    { url: `${baseUrl}/tools/lint`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/tools/asn1`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
   ];
 
+  // CA pages from known slugs
+  const caRoutes: MetadataRoute.Sitemap = ALL_CA_SLUGS.map((slug) => ({
+    url: `${baseUrl}/cas/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+
   try {
+    // Recent certificates (top 1000)
     const recentCerts = await db
       .select({
         fingerprintSha256: certificates.fingerprintSha256,
@@ -34,8 +49,59 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }));
 
-    return [...staticRoutes, ...certRoutes];
+    // Org pages (top 500 distinct orgs by slug)
+    const orgs = await db
+      .select({ slug: certificates.subjectOrgSlug })
+      .from(certificates)
+      .where(isNotNull(certificates.subjectOrgSlug))
+      .groupBy(certificates.subjectOrgSlug)
+      .orderBy(sql`count(*) desc`)
+      .limit(500);
+
+    const orgRoutes: MetadataRoute.Sitemap = orgs
+      .filter((r) => r.slug)
+      .map((r) => ({
+        url: `${baseUrl}/orgs/${r.slug}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
+      }));
+
+    // Domain pages (top 2000 domains with BIMI records)
+    const domains = await db
+      .select({ domain: domainBimiState.domain })
+      .from(domainBimiState)
+      .where(isNotNull(domainBimiState.bimiRecordRaw))
+      .orderBy(desc(domainBimiState.lastChecked))
+      .limit(2000);
+
+    const domainRoutes: MetadataRoute.Sitemap = domains.map((r) => ({
+      url: `${baseUrl}/domains/${r.domain}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    }));
+
+    // Logo pages (distinct SVG hashes, top 1000)
+    const logos = await db
+      .select({ hash: certificates.logotypeSvgHash })
+      .from(certificates)
+      .where(isNotNull(certificates.logotypeSvgHash))
+      .groupBy(certificates.logotypeSvgHash)
+      .orderBy(sql`max(${certificates.notBefore}) desc`)
+      .limit(1000);
+
+    const logoRoutes: MetadataRoute.Sitemap = logos
+      .filter((r) => r.hash)
+      .map((r) => ({
+        url: `${baseUrl}/logos/${r.hash}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.4,
+      }));
+
+    return [...staticRoutes, ...caRoutes, ...certRoutes, ...orgRoutes, ...domainRoutes, ...logoRoutes];
   } catch {
-    return staticRoutes;
+    return [...staticRoutes, ...caRoutes];
   }
 }
