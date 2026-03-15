@@ -78,9 +78,9 @@ export function RuaProviderChart() {
   }
 
   const aggregated = aggregateByProvider(data);
-  const chartData = aggregated.slice(0, 25);
+  const chartData = aggregated.slice(0, 10);
 
-  const barHeight = Math.max(chartData.length * 24, 120);
+  const barHeight = Math.max(chartData.length * 28, 120);
 
   return (
     <div>
@@ -107,7 +107,7 @@ export function RuaProviderChart() {
                 tick={{ fontSize: 11, fill: "var(--color-foreground)", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
-                width={200}
+                width={140}
                 interval={0}
               />
               <Tooltip

@@ -1,23 +1,25 @@
 import dynamic from "next/dynamic";
-import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { ChartErrorBoundary } from "@/components/dashboard/chart-error-boundary";
 import { DnsChangesFeed } from "@/components/dashboard/dns-changes-feed";
 import { KPICards } from "@/components/dashboard/kpi-cards";
 import { RecentCerts } from "@/components/dashboard/recent-certs";
-import { TopOrgs } from "@/components/dashboard/top-orgs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { displayIntermediateCa } from "@/lib/ca-display";
 import { fetchCertificates, type CertificatesResult } from "@/lib/data/certificates";
 import { fetchDashboardData } from "@/lib/data/dashboard";
-import {
-  fetchDmarcPolicyDistribution,
-  fetchExpiryTimeline,
-  fetchIndustryBreakdown,
-  fetchTopOrgs,
-} from "@/lib/data/stats";
+import { fetchDmarcPolicyDistribution, fetchExpiryTimeline, fetchHeatmapData } from "@/lib/data/stats";
 import { buildApiParamsFromSearchParams } from "@/lib/global-filter-params";
 
-const IndustryChart = dynamic(
-  () => import("@/components/dashboard/industry-chart").then((m) => ({ default: m.IndustryChart })),
+const TrendChart = dynamic(
+  () => import("@/components/dashboard/trend-chart").then((m) => ({ default: m.TrendChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
+const MarketShareChart = dynamic(
+  () => import("@/components/dashboard/market-share-chart").then((m) => ({ default: m.MarketShareChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
+const CertTypeChart = dynamic(
+  () => import("@/components/dashboard/cert-type-chart").then((m) => ({ default: m.CertTypeChart })),
   { loading: () => <Skeleton className="h-[200px]" /> },
 );
 const ExpiryChart = dynamic(
@@ -26,6 +28,10 @@ const ExpiryChart = dynamic(
 );
 const DmarcPolicyChart = dynamic(
   () => import("@/components/dashboard/dmarc-policy-chart").then((m) => ({ default: m.DmarcPolicyChart })),
+  { loading: () => <Skeleton className="h-[200px]" /> },
+);
+const CertHeatmap = dynamic(
+  () => import("@/components/dashboard/cert-heatmap").then((m) => ({ default: m.CertHeatmap })),
   { loading: () => <Skeleton className="h-[200px]" /> },
 );
 const RuaProviderChart = dynamic(
@@ -73,17 +79,18 @@ export async function DashboardContent({
   const recentCertsSearchParams = toURLSearchParams(searchParams);
   recentCertsSearchParams.set("page", "1");
   recentCertsSearchParams.set("limit", "7");
-  recentCertsSearchParams.set("sort", "notBefore");
+  recentCertsSearchParams.set("sort", "ctLogTimestamp");
   recentCertsSearchParams.set("dir", "desc");
 
   // Fetch all data in parallel directly from the database (no loopback HTTP calls)
-  const [dashboardData, industryData, expiryData, topOrgsData, recentCertsData, dmarcPolicyData] = await Promise.all([
+  const [dashboardData, expiryData, recentCertsData, dmarcPolicyData, heatmapData] = await Promise.all([
     fetchDashboardData(filterParams).catch(() => null),
-    fetchIndustryBreakdown(filterParams).catch(() => null),
     fetchExpiryTimeline(filterParams).catch(() => null),
-    fetchTopOrgs(filterParams).catch(() => null),
-    fetchCertificates(recentCertsSearchParams, { page: 1, limit: 7, sort: "notBefore", dir: "desc" }).catch(() => null),
+    fetchCertificates(recentCertsSearchParams, { page: 1, limit: 7, sort: "ctLogTimestamp", dir: "desc" }).catch(
+      () => null,
+    ),
     fetchDmarcPolicyDistribution(filterParams).catch(() => null),
+    fetchHeatmapData(filterParams).catch(() => null),
   ]);
 
   if (!dashboardData) {
@@ -104,69 +111,81 @@ export async function DashboardContent({
 
   return (
     <div data-testid="dashboard" className="space-y-3">
-      <div data-dashboard-section="1">
-        <KPICards
-          selectedCA={displayCA}
-          totalCerts={data.totalCerts}
-          caCerts={data.caCerts}
-          activeCerts={data.activeCerts || 0}
-          marketShare={data.marketShare}
-          uniqueOrgs={data.uniqueOrgs}
-          caNewLast30d={data.caNewLast30d || 0}
-          expiringCount={data.expiringCount || 0}
-          vmcTotal={vmcTotal}
-          cmcTotal={cmcTotal}
-          activeFilters={data.activeFilters}
-          lastUpdated={data.lastUpdated}
-          dailyTrend={data.dailyTrend}
-        />
-      </div>
+      {/* Row 1: KPI Cards */}
+      <KPICards
+        selectedCA={displayCA}
+        totalCerts={data.totalCerts}
+        caCerts={data.caCerts}
+        activeCerts={data.activeCerts || 0}
+        marketShare={data.marketShare}
+        uniqueOrgs={data.uniqueOrgs}
+        caNewLast30d={data.caNewLast30d || 0}
+        expiringCount={data.expiringCount || 0}
+        vmcTotal={vmcTotal}
+        cmcTotal={cmcTotal}
+        activeFilters={data.activeFilters}
+        lastUpdated={data.lastUpdated}
+        dailyTrend={data.dailyTrend}
+      />
 
-      <div data-dashboard-section="2">
-        <DashboardCharts
-          caBreakdown={data.caBreakdown}
-          monthlyTrend={data.monthlyTrend}
-          markTypeBreakdown={data.markTypeBreakdown}
-          selectedCA={displayCA}
-          apiQuery={apiQuery}
-          hasDateFilter={hasDateFilter}
-        />
-      </div>
-
-      <div data-dashboard-section="3" className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-lg border border-border p-2">
-          <IndustryChart initialData={industryData ?? undefined} />
-        </div>
-        <div className="rounded-lg border border-border p-2">
-          <ExpiryChart initialData={expiryData ?? undefined} />
-        </div>
-      </div>
-
-      <div data-dashboard-section="4" className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-3">
-        <div className="rounded-lg border border-border p-2">
-          <TopOrgs
-            initialData={topOrgsData?.data ?? undefined}
-            initialTotalPages={topOrgsData?.totalPages ?? undefined}
-          />
-        </div>
+      {/* Row 2: Recent Certs (wide) + Trend Chart */}
+      <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-3">
         <div className="rounded-lg border border-border p-2">
           <RecentCerts
             initialData={recentCertsData ? serializeCertsForClient(recentCertsData) : undefined}
             initialTotalPages={recentCertsData?.pagination?.totalPages ?? undefined}
           />
         </div>
+        <div className="rounded-lg border border-border p-2">
+          <ChartErrorBoundary>
+            <TrendChart
+              data={data.monthlyTrend}
+              selectedCA={displayCA}
+              apiQuery={apiQuery}
+              hasDateFilter={hasDateFilter}
+            />
+          </ChartErrorBoundary>
+        </div>
       </div>
 
-      <div data-dashboard-section="5" className="rounded-lg border border-border p-2">
-        <DnsChangesFeed />
+      {/* Row 3: Heatmap (wide) + VMC/CMC */}
+      <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-3">
+        <div className="rounded-lg border border-border p-2">
+          <CertHeatmap initialData={heatmapData?.data ?? undefined} />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <ChartErrorBoundary>
+            <CertTypeChart
+              caBreakdown={data.caBreakdown}
+              markTypeBreakdown={data.markTypeBreakdown}
+              apiQuery={apiQuery}
+            />
+          </ChartErrorBoundary>
+        </div>
       </div>
 
-      <div data-dashboard-section="6" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Row 4: DNS Changes + Market Share */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border p-2">
+          <DnsChangesFeed />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <ChartErrorBoundary>
+            <MarketShareChart data={data.caBreakdown} selectedCA={displayCA} apiQuery={apiQuery} />
+          </ChartErrorBoundary>
+        </div>
+      </div>
+
+      {/* Row 5: DMARC + RUA Providers + Expiry */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="rounded-lg border border-border p-2">
           <DmarcPolicyChart initialData={dmarcPolicyData ?? undefined} />
         </div>
         <div className="rounded-lg border border-border p-2">
           <RuaProviderChart />
+        </div>
+        <div className="rounded-lg border border-border p-2">
+          <ExpiryChart initialData={expiryData ?? undefined} />
         </div>
       </div>
     </div>

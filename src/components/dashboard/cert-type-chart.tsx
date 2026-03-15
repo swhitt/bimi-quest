@@ -128,6 +128,10 @@ export function CertTypeChart({ caBreakdown, markTypeBreakdown, apiQuery = "" }:
                     innerRadius="30%"
                     paddingAngle={2}
                     strokeWidth={0}
+                    style={{ cursor: "pointer" }}
+                    onClick={(d) => {
+                      if (d?.name) router.push(`/certificates?mark=${encodeURIComponent(d.name)}`);
+                    }}
                   >
                     {markTypes.map((entry) => (
                       <Cell key={entry.name} fill={entry.fill} />
