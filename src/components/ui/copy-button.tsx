@@ -2,21 +2,24 @@
 
 import { Check, Copy } from "lucide-react";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface CopyButtonProps {
   value: string;
+  label?: string;
   className?: string;
 }
 
-export function CopyButton({ value, className }: CopyButtonProps) {
+export function CopyButton({ value, label, className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(value);
     setCopied(true);
+    toast.success(label ? `${label} copied` : "Copied to clipboard");
     setTimeout(() => setCopied(false), 1500);
-  }, [value]);
+  }, [value, label]);
 
   return (
     <button

@@ -3,14 +3,13 @@
 import { formatDistanceToNow } from "date-fns";
 import { HelpCircle } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { DomainChip } from "@/components/domain-chip";
 import { LogoCard } from "@/components/logo-card";
 import { OrgChip } from "@/components/org-chip";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import { ExternalArrowIcon } from "@/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatUtcFull, UtcTime } from "@/components/ui/utc-time";
@@ -24,13 +23,6 @@ export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
   const cert = data.certificate;
   const isExpired = new Date(cert.notAfter) < new Date();
   const notYetValid = new Date(cert.notBefore) > new Date();
-
-  const [copied, setCopied] = useState<string | null>(null);
-  const copyToClipboard = useCallback((text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
-  }, []);
 
   return (
     <>
@@ -232,19 +224,20 @@ export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
         <CardContent className="space-y-3 text-sm">
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
             <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Fingerprint (SHA-256)</span>
-            <code className="break-all text-xs font-mono flex-1 min-w-0">{cert.fingerprintSha256}</code>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-xs shrink-0"
-              onClick={() => copyToClipboard(cert.fingerprintSha256, "fingerprint")}
-            >
-              {copied === "fingerprint" ? "Copied" : "Copy"}
-            </Button>
+            <span className="inline-flex items-center gap-1.5 min-w-0">
+              <code className="break-all text-xs font-mono">{cert.fingerprintSha256}</code>
+              <CopyButton value={cert.fingerprintSha256} label="Fingerprint" />
+            </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-3">
-              <Row label="Serial Number" value={formatSerial(cert.serialNumber)} mono />
+              <div className="flex flex-col sm:flex-row sm:gap-4">
+                <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Serial Number</span>
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <span className="font-mono text-xs break-all">{formatSerial(cert.serialNumber)}</span>
+                  <CopyButton value={formatSerial(cert.serialNumber)} label="Serial number" />
+                </span>
+              </div>
               <div className="flex flex-col sm:flex-row sm:gap-4">
                 <span className="sm:w-40 sm:shrink-0 text-muted-foreground">Issued</span>
                 <UtcTime date={cert.notBefore} />

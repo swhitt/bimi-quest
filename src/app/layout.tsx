@@ -9,6 +9,7 @@ import { GlobalFilterBar } from "@/components/global-filter-bar";
 import { Nav } from "@/components/nav";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner } from "@/components/update-banner";
 import "./globals.css";
@@ -92,6 +93,7 @@ export default function RootLayout({
             <OfflineBanner />
             <CommandPalette />
           </TooltipProvider>
+          <Toaster />
           <Analytics />
           <SpeedInsights />
         </ThemeProvider>
