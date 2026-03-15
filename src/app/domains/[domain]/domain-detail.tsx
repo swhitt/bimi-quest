@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DnsSnapshot } from "@/lib/db/schema";
 import { computeReadinessScore, type ReadinessResult, type ReadinessTier } from "@/lib/bimi/readiness-score";
 import { cn, errorMessage } from "@/lib/utils";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
+import { ValidationChecklist } from "@/components/bimi/validation-checklist";
+import { ValidationGrade } from "@/components/bimi/validation-grade";
+import { NextSteps } from "@/components/bimi/next-steps";
+import { TechnicalDetails } from "@/components/bimi/technical-details";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ExternalArrowIcon } from "@/components/ui/icons";
 import { BimiInboxPreview } from "@/components/bimi-inbox-preview";
 import { DomainWatchButton } from "@/components/domain-watch-button";
@@ -17,34 +22,56 @@ import { DiffBlock, computeDiff } from "@/components/dns/diff-block";
 import { type DnsChange, CHANGE_STYLE } from "@/components/dashboard/dns-changes-feed";
 import { UtcTime } from "@/components/ui/utc-time";
 import { useGlobalFilters } from "@/lib/use-global-filters";
-import { validateUrl } from "@/lib/entity-urls";
+import type { BimiCheckItem, BimiGrade } from "@/lib/bimi/types";
+
+interface DomainData {
+  bimiRecordRaw: string | null;
+  bimiVersion: string | null;
+  bimiLogoUrl: string | null;
+  bimiAuthorityUrl: string | null;
+  bimiLpsTag: string | null;
+  bimiAvpTag: string | null;
+  bimiDeclination: boolean | null;
+  bimiSelector: string | null;
+  bimiOrgDomainFallback: boolean | null;
+  dmarcRecordRaw: string | null;
+  dmarcPolicy: string | null;
+  dmarcPct: number | null;
+  dmarcValid: boolean | null;
+  svgFetched: boolean | null;
+  svgContentType: string | null;
+  svgSizeBytes: number | null;
+  svgTinyPsValid: boolean | null;
+  svgValidationErrors: string[] | null;
+  svgIndicatorHash: string | null;
+  bimiGrade: string | null;
+  dnsSnapshot: DnsSnapshot | null;
+  lastChecked: string | null;
+}
 
 interface DomainDetailProps {
   domain: string;
-  data: {
-    bimiRecordRaw: string | null;
-    bimiVersion: string | null;
-    bimiLogoUrl: string | null;
-    bimiAuthorityUrl: string | null;
-    bimiLpsTag: string | null;
-    bimiAvpTag: string | null;
-    bimiDeclination: boolean | null;
-    bimiSelector: string | null;
-    bimiOrgDomainFallback: boolean | null;
-    dmarcRecordRaw: string | null;
-    dmarcPolicy: string | null;
-    dmarcPct: number | null;
-    dmarcValid: boolean | null;
-    svgFetched: boolean | null;
-    svgContentType: string | null;
-    svgSizeBytes: number | null;
-    svgTinyPsValid: boolean | null;
-    svgValidationErrors: string[] | null;
-    svgIndicatorHash: string | null;
-    bimiGrade: string | null;
-    dnsSnapshot: DnsSnapshot | null;
-    lastChecked: string | null;
-  };
+  data: DomainData | null;
+  triggerFreshCheck?: boolean;
+}
+
+interface FreshCheckResult {
+  grade: BimiGrade;
+  gradeSummary: string;
+  checks: BimiCheckItem[];
+  lintChecks: BimiCheckItem[];
+  overallValid: boolean;
+  errors: string[];
+  authResult: string;
+  responseHeaders: Record<string, string>;
+  bimi: { record?: { raw: string } | null; orgDomainFallback: boolean; orgDomain: string | null; declined: boolean };
+  dmarc: { record?: { raw: string } | null };
+  caa: {
+    status: "permissive" | "standard_only" | "vmc_authorized";
+    entries: { critical: number; tag: string; value: string }[];
+    issueVmcEntries: { critical: number; tag: string; value: string }[];
+    authorizedCAs: string[];
+  } | null;
 }
 
 const GRADE_COLORS: Record<string, string> = {
@@ -209,7 +236,7 @@ function ReadinessScoreCard({ result }: { result: ReadinessResult }) {
  * Grade Breakdown and Readiness Score cards render for DNS-backfilled domains
  * that don't have a full dnsSnapshot JSON blob.
  */
-function synthesizeSnapshot(data: DomainDetailProps["data"]): DnsSnapshot {
+function synthesizeSnapshot(data: DomainData): DnsSnapshot {
   const dmarcPolicy = data.dmarcPolicy?.toLowerCase() ?? null;
   const isRejectOrQuarantine = dmarcPolicy === "reject" || dmarcPolicy === "quarantine";
   const pct = data.dmarcPct;
@@ -258,6 +285,121 @@ function synthesizeSnapshot(data: DomainDetailProps["data"]): DnsSnapshot {
       grade: data.bimiGrade,
     },
   };
+}
+
+function FreshCheckSection({ domain }: { domain: string }) {
+  const [result, setResult] = useState<FreshCheckResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const didCheck = useRef(false);
+
+  const runCheck = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Check failed");
+      setResult(data);
+      // Remove ?fresh=1 from URL without reloading
+      window.history.replaceState(null, "", `/domains/${encodeURIComponent(domain)}`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [domain]);
+
+  useEffect(() => {
+    if (!didCheck.current) {
+      didCheck.current = true;
+      runCheck();
+    }
+  }, [runCheck]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>BIMI Check</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardContent className="pt-6 space-y-3">
+          <p className="text-destructive text-sm">{error}</p>
+          <Button variant="outline" size="sm" onClick={runCheck}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!result) return null;
+
+  const rngChecks = result.checks.filter((c) => c.id.startsWith("rng-"));
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center gap-4">
+          <ValidationGrade grade={result.grade} summary={result.gradeSummary} />
+          <div className="ml-auto flex items-center gap-2">
+            <Badge variant={result.overallValid ? "default" : "destructive"} className="text-base px-4 py-1">
+              {result.overallValid ? "PASS" : "FAIL"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {result.bimi.orgDomainFallback && (
+            <p className="text-xs text-muted-foreground">
+              BIMI record found via org domain fallback ({result.bimi.orgDomain})
+            </p>
+          )}
+          {result.bimi.declined && (
+            <p className="text-sm text-destructive">This domain has explicitly declined BIMI participation</p>
+          )}
+          {result.errors.length > 0 && (
+            <ul className="space-y-1 text-sm text-destructive">
+              {result.errors.map((err, i) => (
+                <li key={i}>&#x2022; {err}</li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <NextSteps checks={result.checks} overallValid={result.overallValid} />
+      <ValidationChecklist checks={result.checks} lintChecks={result.lintChecks} />
+
+      <Card>
+        <CardContent>
+          <TechnicalDetails
+            authResult={result.authResult}
+            responseHeaders={result.responseHeaders}
+            rngChecks={rngChecks}
+            rawBimiRecord={result.bimi.record?.raw}
+            rawDmarcRecord={result.dmarc.record?.raw}
+            caa={result.caa}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 const POLICY_CHANGES = new Set(["policy_strengthened", "policy_weakened"]);
@@ -423,7 +565,22 @@ function DomainCertificates({ domain }: { domain: string }) {
   );
 }
 
-export function DomainDetail({ domain, data }: DomainDetailProps) {
+export function DomainDetail({ domain, data, triggerFreshCheck }: DomainDetailProps) {
+  // If no stored data, show only the fresh check section
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6 px-4 py-4 sm:py-8">
+        <BreadcrumbNav
+          items={[{ label: "Dashboard", href: "/" }, { label: "Domains", href: "/domains" }, { label: domain }]}
+        />
+        <div>
+          <h1 className="font-mono text-2xl font-bold">{domain}</h1>
+        </div>
+        <FreshCheckSection domain={domain} />
+      </div>
+    );
+  }
+
   // Use real dnsSnapshot when available, otherwise synthesize from flat columns
   const snapshot = data.dnsSnapshot ?? synthesizeSnapshot(data);
 
@@ -484,7 +641,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           )}
           <DomainWatchButton domain={domain} />
           <Button asChild size="sm" variant="outline">
-            <Link href={validateUrl(domain)}>Re-check</Link>
+            <Link href={`/domains/${encodeURIComponent(domain)}?fresh=1`}>Re-check</Link>
           </Button>
           <a
             href={`https://crt.sh/?q=${encodeURIComponent(domain)}`}
@@ -506,6 +663,9 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
           </a>
         </div>
       </div>
+
+      {/* Fresh BIMI Check (when triggered via ?fresh=1) */}
+      {triggerFreshCheck && <FreshCheckSection domain={domain} />}
 
       {/* Grade Breakdown */}
       {gradeChecks && (
@@ -747,7 +907,7 @@ export function DomainDetail({ domain, data }: DomainDetailProps) {
                   Certificate details were not captured during initial ingestion.
                 </p>
                 <Button asChild size="sm" variant="outline">
-                  <Link href={`/validate?q=${encodeURIComponent(domain)}`}>
+                  <Link href={`/domains/${encodeURIComponent(domain)}?fresh=1`}>
                     Run a full check to see certificate details
                   </Link>
                 </Button>

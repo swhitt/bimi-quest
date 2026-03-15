@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { CopyButton } from "@/components/ui/copy-button";
 import { ChainLinkIcon, ExternalArrowIcon } from "@/components/ui/icons";
 import { UtcTime } from "@/components/ui/utc-time";
-import { logoUrl } from "@/lib/entity-urls";
+import { certUrl, logoUrl } from "@/lib/entity-urls";
 import type { DecodedCert, DecodedLeaf } from "@/lib/ct/decode-entry";
 
 interface CertSummaryProps {
@@ -162,6 +162,12 @@ export function CertSummary({ cert, leaf }: CertSummaryProps) {
               className="shrink-0 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-secondary"
             >
               Lint
+            </Link>
+            <Link
+              href={certUrl(cert.fingerprint)}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-secondary"
+            >
+              Database
             </Link>
           </div>
         </Field>

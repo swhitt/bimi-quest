@@ -553,7 +553,7 @@ export function CertificatesTable({
                     <p>No certificates match your current filters.</p>
                     <p className="text-xs">
                       Try adjusting your search or filters, or use{" "}
-                      <Link href="/validate" className="text-primary hover:underline">
+                      <Link href="/check" className="text-primary hover:underline">
                         BIMI Check
                       </Link>{" "}
                       to check a specific domain.

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ClipboardCopy, ExternalLink } from "lucide-react";
+import { Check, ClipboardCopy, ExternalLink, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { LintResult, LintSummary } from "@/lib/lint/types";
+import { checkUrl } from "@/lib/entity-urls";
 import { LintResults } from "./lint-results";
 
 interface BimiRecordInfo {
@@ -179,13 +180,25 @@ function CertSummaryCard({ cert }: { cert: CertMeta }) {
             </button>
           </dd>
         </dl>
-        <a
-          href={`/certificates?search=${encodeURIComponent(cert.serialNumber)}`}
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-        >
-          <ExternalLink className="size-3" />
-          View in BIMI Quest
-        </a>
+        <div className="flex flex-wrap gap-3 mt-2">
+          <a
+            href={`/certificates?search=${encodeURIComponent(cert.serialNumber)}`}
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <ExternalLink className="size-3" />
+            View in database
+          </a>
+          {cert.sanList.map((san) => (
+            <a
+              key={san}
+              href={checkUrl(san)}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <Shield className="size-3" />
+              Check BIMI for {san}
+            </a>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
@@ -194,20 +207,16 @@ function CertSummaryCard({ cert }: { cert: CertMeta }) {
 export function LintForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initDomain = searchParams.get("domain") ?? "";
   const initFp = searchParams.get("fingerprint") ?? "";
-  const initSelector = searchParams.get("selector") ?? "default";
-  const [domain, setDomain] = useState(initDomain);
   const [pem, setPem] = useState("");
   const [url, setUrl] = useState("");
   const [fingerprint, setFingerprint] = useState(initFp);
-  const [selector, setSelector] = useState(initSelector);
   const [pemSizeError, setPemSizeError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bimiRecord, setBimiRecord] = useState<BimiRecordInfo | null>(null);
   const [response, setResponse] = useState<LintResponse | null>(null);
-  const [activeTab, setActiveTab] = useState(initFp ? "fingerprint" : initDomain ? "domain" : "domain");
+  const [activeTab, setActiveTab] = useState(initFp ? "fingerprint" : "pem");
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
   const autoSubmittedRef = useRef<string | null>(null);
@@ -224,11 +233,7 @@ export function LintForm() {
         const data = await fetchLint(body);
         setResponse(data);
         // Update URL for shareable links (skip PEM — too large)
-        if ("domain" in body) {
-          const selectorParam =
-            body.selector && body.selector !== "default" ? `&selector=${encodeURIComponent(body.selector)}` : "";
-          router.replace(`/tools/lint?domain=${encodeURIComponent(body.domain)}${selectorParam}`, { scroll: false });
-        } else if ("fingerprint" in body) {
+        if ("fingerprint" in body) {
           router.replace(`/tools/lint?fingerprint=${encodeURIComponent(body.fingerprint)}`, { scroll: false });
         }
       } catch (err) {
@@ -246,24 +251,14 @@ export function LintForm() {
     [router],
   );
 
-  // Auto-submit when fingerprint or domain is provided via URL (once per unique value)
+  // Auto-submit when fingerprint is provided via URL (once per unique value)
   useEffect(() => {
     const fp = searchParams.get("fingerprint");
-    const d = searchParams.get("domain");
-    const s = searchParams.get("selector") ?? "default";
-    const key = fp ? `fp:${fp}` : d ? `d:${d}:${s}` : null;
-    if (!key || autoSubmittedRef.current === key) return;
-    autoSubmittedRef.current = key;
-    if (fp) {
-      setFingerprint(fp);
-      setActiveTab("fingerprint");
-      submit({ fingerprint: fp });
-    } else if (d) {
-      setDomain(d);
-      setSelector(s);
-      setActiveTab("domain");
-      submit({ domain: d, selector: s });
-    }
+    if (!fp || autoSubmittedRef.current === fp) return;
+    autoSubmittedRef.current = fp;
+    setFingerprint(fp);
+    setActiveTab("fingerprint");
+    submit({ fingerprint: fp });
   }, [searchParams, submit]);
 
   function handleDrop(e: React.DragEvent) {
@@ -325,35 +320,10 @@ export function LintForm() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
-              <TabsTrigger value="domain">Domain</TabsTrigger>
               <TabsTrigger value="pem">Paste PEM</TabsTrigger>
               <TabsTrigger value="url">Fetch URL</TabsTrigger>
               <TabsTrigger value="fingerprint">Lookup Fingerprint</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="domain">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (domain.trim()) submit({ domain: domain.trim(), selector: selector.trim() || "default" });
-                }}
-                className="space-y-3"
-              >
-                <Input placeholder="example.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground shrink-0">Selector</span>
-                  <Input
-                    placeholder="default"
-                    value={selector === "default" ? "" : selector}
-                    onChange={(e) => setSelector(e.target.value || "default")}
-                    className="max-w-[200px]"
-                  />
-                </div>
-                <Button type="submit" disabled={loading || !domain.trim()}>
-                  {loading ? "Looking up…" : "Lookup & Lint"}
-                </Button>
-              </form>
-            </TabsContent>
 
             <TabsContent value="pem">
               <form

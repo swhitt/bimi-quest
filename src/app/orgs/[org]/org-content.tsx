@@ -90,7 +90,11 @@ export function OrgContent({ org, initialData, initialPagination }: OrgContentPr
       {/* Header */}
       <div>
         <BreadcrumbNav
-          items={[{ label: "Dashboard", href: "/" }, { label: "Organizations", href: "/leaderboard" }, { label: org }]}
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Organizations", href: "/organizations" },
+            { label: org },
+          ]}
         />
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

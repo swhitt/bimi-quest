@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ExternalArrowIcon } from "@/components/ui/icons";
-import { domainUrl, validateUrl } from "@/lib/entity-urls";
+import { domainUrl, checkUrl } from "@/lib/entity-urls";
 import { cn } from "@/lib/utils";
 
 interface DomainChipProps {
@@ -35,7 +35,7 @@ export function DomainChip({
       </Link>
       {showBimiCheck && (
         <Link
-          href={validateUrl(domain)}
+          href={checkUrl(domain)}
           className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
           aria-label={`Run BIMI check for ${domain}`}
           title={`Run BIMI check for ${domain}`}

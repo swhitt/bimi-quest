@@ -6,7 +6,7 @@ import { ExternalArrowIcon } from "@/components/ui/icons";
 import { useMemo, useEffect, useState } from "react";
 import { OrgChip } from "@/components/org-chip";
 import { CertificatesTable, type CertRow } from "@/components/tables/certificates-table";
-import { validateUrl } from "@/lib/entity-urls";
+import { checkUrl } from "@/lib/entity-urls";
 import { useGlobalFilters } from "@/lib/use-global-filters";
 import { errorMessage } from "@/lib/utils";
 
@@ -117,7 +117,7 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={validateUrl(hostname)}
+              href={checkUrl(hostname)}
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary"
             >
               <svg
@@ -179,7 +179,7 @@ export function HostContent({ hostname, initialData, initialPagination }: HostCo
           <p className="text-sm text-muted-foreground">
             This domain has not appeared in any VMC or CMC certificates in our CT log data.
           </p>
-          <Link href={validateUrl(hostname)} className="text-sm text-primary hover:underline">
+          <Link href={checkUrl(hostname)} className="text-sm text-primary hover:underline">
             Run a BIMI check to see if this domain has BIMI configured
           </Link>
         </div>

@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@peculiar/x509", "xmllint-wasm", "jsdom"],
   outputFileTracingIncludes: {
     "/api/*": ["./src/lib/bimi/svg-tiny-ps.rng"],
-    "/validate": ["./src/lib/bimi/svg-tiny-ps.rng"],
+    "/check": ["./src/lib/bimi/svg-tiny-ps.rng"],
     "/certificates/*": ["./src/lib/bimi/svg-tiny-ps.rng"],
   },
   async redirects() {

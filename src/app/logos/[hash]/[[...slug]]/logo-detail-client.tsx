@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChainLinkIcon } from "@/components/ui/icons";
 import { formatUtcFull } from "@/components/ui/utc-time";
-import { certUrl, orgUrl, validateUrl } from "@/lib/entity-urls";
+import { certUrl, orgUrl, checkUrl } from "@/lib/entity-urls";
 import { getMarkTypeInfo } from "@/lib/mark-types";
 
 interface LogoData {
@@ -225,7 +225,7 @@ export function LogoDetailClient({ logo }: { logo: LogoData }) {
           )}
           {logo.primaryDomain && (
             <Link
-              href={validateUrl(logo.primaryDomain)}
+              href={checkUrl(logo.primaryDomain)}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <Shield className="size-3.5" />

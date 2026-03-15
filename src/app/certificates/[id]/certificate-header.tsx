@@ -182,6 +182,25 @@ export function CertificateHeader({ data }: { data: CertificateHeaderData }) {
               {cert.isPrecert ? "View Final Cert" : "View Precert"}
             </Link>
           )}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary"
+            onClick={() => {
+              const el = document.getElementById("lint");
+              if (el) {
+                if (el instanceof HTMLDetailsElement && !el.open) el.open = true;
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
+          >
+            Lint
+          </button>
+          <Link
+            href={`/tools/asn1?cert=${cert.fingerprintSha256}`}
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-secondary"
+          >
+            ASN.1
+          </Link>
           <a
             href={`https://crt.sh/?q=${cert.fingerprintSha256}`}
             target="_blank"

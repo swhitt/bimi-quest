@@ -8,6 +8,7 @@ import { DomainDetail } from "./domain-detail";
 
 interface Props {
   params: Promise<{ domain: string }>;
+  searchParams: Promise<{ fresh?: string }>;
 }
 
 const resolveDomain = cache(async (raw: string) => {
@@ -76,18 +77,20 @@ function serializeRow(row: NonNullable<Awaited<ReturnType<typeof getDomainData>>
   };
 }
 
-export default async function DomainPage({ params }: Props) {
+export default async function DomainPage({ params, searchParams }: Props) {
   const { domain: rawDomain } = await params;
+  const { fresh } = await searchParams;
   const domain = await resolveDomain(rawDomain);
+  const triggerFreshCheck = fresh === "1";
   const row = await getDomainData(domain);
 
-  if (!row) {
+  if (!row && !triggerFreshCheck) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
         <h1 className="text-2xl font-semibold">No BIMI data for {domain}</h1>
         <p className="text-muted-foreground mt-2">
           We haven&apos;t checked this domain yet.{" "}
-          <Link href={`/validate?q=${encodeURIComponent(domain)}`} className="text-primary underline">
+          <Link href={`/check?q=${encodeURIComponent(domain)}`} className="text-primary underline">
             Run a check
           </Link>{" "}
           to fetch its BIMI/DMARC records.
@@ -96,5 +99,5 @@ export default async function DomainPage({ params }: Props) {
     );
   }
 
-  return <DomainDetail domain={domain} data={serializeRow(row)} />;
+  return <DomainDetail domain={domain} data={row ? serializeRow(row) : null} triggerFreshCheck={triggerFreshCheck} />;
 }
